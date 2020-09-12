@@ -1,0 +1,11 @@
+boto3
+PyGithub
+black
+flake8
+pytest
+pytest-cov
+pyyaml
+pynacl
+requests
+moto
+pytest-mock
