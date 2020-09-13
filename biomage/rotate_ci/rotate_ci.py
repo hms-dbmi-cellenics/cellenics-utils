@@ -153,6 +153,7 @@ def update_github_secrets(keys, token, org):
 
         access_key_id = encrypt(ci_keys["key"], access_key_id)
         secret_access_key = encrypt(ci_keys["key"], secret_access_key)
+        encrypted_token = encrypt(ci_keys["key"], token)
 
         r = s.put(
             f"{url_base}/{repo_name}/actions/secrets/AWS_ACCESS_KEY_ID",
@@ -162,6 +163,11 @@ def update_github_secrets(keys, token, org):
         r = s.put(
             f"{url_base}/{repo_name}/actions/secrets/AWS_SECRET_ACCESS_KEY",
             json={"encrypted_value": secret_access_key, "key_id": ci_keys["key_id"]},
+        )
+
+        r = s.put(
+            f"{url_base}/{repo_name}/actions/secrets/API_TOKEN_GITHUB",
+            json={"encrypted_value": token, "key_id": ci_keys["key_id"]},
         )
 
         results[repo_name] = r.status_code

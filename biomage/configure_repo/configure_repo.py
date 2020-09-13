@@ -55,7 +55,7 @@ def configure_repo(name, token, create, org):
     g = Github(token)
     o = g.get_organization(org)
 
-    click.echo(f"Successfully logged into organization {org.name} ({org.login}).")
+    click.echo(f"Successfully logged into organization {o.name} ({o.login}).")
 
     try:
         r = o.get_repo(name)
@@ -77,8 +77,13 @@ def configure_repo(name, token, create, org):
             if not answers["create"]:
                 exit(1)
 
-        r = o.create_repository(name)
-        click.echo(f"{name} created.")
+        r = o.create_repo(name)
+        click.echo(f"✔️ {name} created.")
+        click.echo(
+            "✔️ Push something to `master` and re-run this utility to set "
+            "everything up appropriately."
+        )
+        exit(0)
 
     configure(r, token)
 
