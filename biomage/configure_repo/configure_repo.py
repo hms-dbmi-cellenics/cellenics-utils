@@ -83,6 +83,3 @@ def configure_repo(name, token, create, org):
     configure(r, token)
 
     click.echo(f"✔️ Successfully configured {name} according to convention.")
-
-
-# {type: 'confirm'}
