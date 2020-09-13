@@ -35,7 +35,7 @@ def filter_iam_repos(repo):
 
     for content in contents:
         # search for tags.y(a)ml file
-        if content.path != "tags.yml" and content.path != "tags.yaml":
+        if content.path != ".ci.yml" and content.path != ".ci.yaml":
             continue
 
         # open contents
