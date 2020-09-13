@@ -167,7 +167,7 @@ def update_github_secrets(keys, token, org):
 
         r = s.put(
             f"{url_base}/{repo_name}/actions/secrets/API_TOKEN_GITHUB",
-            json={"encrypted_value": token, "key_id": ci_keys["key_id"]},
+            json={"encrypted_value": encrypted_token, "key_id": ci_keys["key_id"]},
         )
 
         results[repo_name] = r.status_code
