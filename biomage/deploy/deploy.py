@@ -2,19 +2,64 @@ import click
 from github import Github
 from PyInquirer import prompt
 import boto3
-
-"""
-AWS_ACCESS_KEY_ID
-Updated yesterday
-AWS_SECRET_ACCESS_KEY
-Updated yesterday
-DEPLOY_KEY_ACCESS_TOKEN
-Updated yesterday
-"""
+import json
+from utils import encrypt
+import requests
 
 
-def do_deploy(org, region):
-    repo = org.get_repo("iac")
+def update_serets(org, repo, github_token, aws_token):
+    click.echo("Now updating repository with federated tokens...")
+    s = requests.Session()
+    s.headers = {"Authorization": f"token {github_token}", "User-Agent": "Requests"}
+    url_base = f"https://api.github.com/repos/{org.login}/iac"
+
+    ci_keys = s.get(f"{url_base}/actions/secrets/public-key")
+
+    if ci_keys.status_code != requests.codes.ok:
+        click.echo(
+            click.style(
+                "✖️ Updating iac repo secrets not possible, could not get public key "
+                f"(status: {ci_keys.status_code}). "
+                "Are you sure your deploy key has the correct rights?",
+                fg="red",
+                bold=True,
+            )
+        )
+        exit(1)
+
+    ci_keys = ci_keys.json()
+
+    secrets = {
+        "AWS_ACCESS_KEY_ID": aws_token["Credentials"]["AccessKeyId"],
+        "AWS_SECRET_ACCESS_KEY": aws_token["Credentials"]["SecretAccessKey"],
+        "AWS_SESSION_TOKEN": aws_token["Credentials"]["SessionToken"],
+        "DEPLOY_KEY_ACCESS_TOKEN": github_token,
+    }
+
+    for secret_name, cred in secrets.items():
+        click.echo(f"Updating {secret_name}...")
+        key = encrypt(ci_keys["key"], cred)
+
+        r = s.put(
+            f"{url_base}/actions/secrets/{secret_name}",
+            json={"encrypted_value": key, "key_id": ci_keys["key_id"]},
+        )
+
+        if not 200 <= r.status_code <= 299:
+            click.echo(
+                click.style(
+                    "✖️ Updating iac repo secrets not possible, updating secret "
+                    f"{secret_name} failed (status: {r.status_code}).",
+                    fg="red",
+                    bold=True,
+                )
+            )
+            exit(1)
+
+    click.echo("All secrets successfully updated.")
+
+
+def do_deploy(org, repo, region):
     workflows = repo.get_workflows()
     deploy_wf = None
 
@@ -133,4 +178,22 @@ def deploy(region, org, token):
         click.echo("All right. Quitting...")
         exit(1)
 
-    do_deploy(o, region)
+    click.echo(
+        "Now attempting to get a federated user for 30 minutes "
+        "with all required permissions..."
+    )
+
+    repo = o.get_repo("iac")
+    aws_token = boto3.client("sts").get_federation_token(
+        Name="biomage-utils-deploy-infra",
+        Policy=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}],
+            }
+        ),
+        DurationSeconds=60 * 30,
+    )
+
+    update_serets(o, repo, token, aws_token)
+    do_deploy(o, repo, region)

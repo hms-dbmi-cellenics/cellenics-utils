@@ -5,10 +5,9 @@ import boto3
 from github import Github
 import json
 import requests
-from base64 import b64encode
-from nacl import encoding, public
 import cfn_flip
 import time
+from utils import encrypt
 
 config = Config(
     region_name="eu-west-1",
@@ -17,13 +16,6 @@ config = Config(
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
-
-
-def encrypt(public_key, secret_value):
-    public_key = public.PublicKey(public_key.encode("utf-8"), encoding.Base64Encoder())
-    sealed_box = public.SealedBox(public_key)
-    encrypted = sealed_box.encrypt(secret_value.encode("utf-8"))
-    return b64encode(encrypted).decode("utf-8")
 
 
 def filter_iam_repos(repo):
@@ -84,10 +76,14 @@ def create_new_iam_users(iam, policies):
         stack = cf.create_stack(**kwargs)
     except Exception as e:
         if "AlreadyExistsException" in str(e):
-            stack = cf.update_stack(**kwargs)
-        elif "No updates are to be performed" in str(e):
-            click.echo("All users are up to date.")
-            return
+            try:
+                stack = cf.update_stack(**kwargs)
+            except Exception as e:
+                if "No updates are to be performed" in str(e):
+                    click.echo("All users are up to date.")
+                    return
+                else:
+                    raise e
         else:
             raise e
 
