@@ -22,7 +22,7 @@ def configure(r, token):
         required_approving_review_count=1,
         enforce_admins=True,
         strict=True,
-        contexts=["Merge possible"],
+        contexts=[],
     )
 
 
