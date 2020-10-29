@@ -9,3 +9,6 @@ pynacl
 requests
 moto
 pytest-mock
+PyInquirer
+click
+cfn-flip

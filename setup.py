@@ -13,8 +13,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/biomage-ltd/biomage-utils",
     packages=setuptools.find_packages(),
-    python_requires='>=3.6',
-    entry_points = {
-        'console_scripts': ['biomage=biomage.cli:main'],
-    }
+    python_requires=">=3.6",
+    entry_points={
+        "console_scripts": ["biomage=biomage:__main__"],
+    },
 )
