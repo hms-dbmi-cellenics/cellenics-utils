@@ -10,8 +10,8 @@ def configure(r, token):
         has_issues=False,
         has_wiki=False,
         has_projects=False,
-        allow_squash_merge=False,
-        allow_merge_commit=True,
+        allow_squash_merge=True,
+        allow_merge_commit=False,
         allow_rebase_merge=False,
         delete_branch_on_merge=True,
     )
