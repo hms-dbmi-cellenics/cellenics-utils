@@ -24,7 +24,7 @@ def configure(r, token):
         strict=True,
         contexts=[],
     )
-
+    master.add_required_signatures()
 
 @click.command()
 @click.argument("name")
