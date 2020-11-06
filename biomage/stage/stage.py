@@ -80,7 +80,22 @@ def compile_requirements(org, refs):
     return templates
 
 
-def create_manifest(templates):
+def get_latest_master_sha(chart, token):
+    path = chart["git"].split(":")
+    org, repo = path[1].split("/")
+
+    g = Github(token)
+    org = g.get_organization(org)
+    repo = org.get_repo(repo)
+
+    for ref in repo.get_git_refs():
+        if ref.ref == "refs/heads/master":
+            return ref.object.sha
+
+    raise Exception("Invalid repository supplied.")
+
+
+def create_manifest(templates, token):
     # Ask about which releases to pin.
     click.echo()
     click.echo(
@@ -92,13 +107,13 @@ def create_manifest(templates):
         )
     )
     click.echo(
-        "Pinned deployments are immutable, i.e. the sandbox will not be updated"
+        "Pinned deployments are immutable, i.e. the sandbox will not be updated "
         "with new images and charts that may be available for\n"
-        "the deployment under the given ref. For example, if you want to ensure"
-        "that other developers pushing ui features \n"
-        "to the master branch do not update and potentially break your sandbox,"
+        "the deployment under the given ref. For example, if you want to ensure "
+        "that other developers pushing ui features\n"
+        "to the master branch do not update and potentially break your sandbox, "
         "you should pin your ui deployment. By default, \n"
-        "only deployments sourced from the master branch are pinned, other refs"
+        "only deployments sourced from the master branch are pinned, other refs "
         "you likely want to test (e.g. pull requests) are not."
     )
     questions = [
@@ -120,6 +135,7 @@ def create_manifest(templates):
     except Exception:
         exit(1)
 
+    # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
     manifests = []
 
@@ -130,12 +146,25 @@ def create_manifest(templates):
         documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
 
         for document in documents:
+            # disable automatic image fetching if pinning is on
             if recursive_get(
                 document, "metadata", "annotations", "fluxcd.io/automated"
             ):
                 document["metadata"]["annotations"]["fluxcd.io/automated"] = str(
                     name not in pins
                 ).lower()
+
+            # pin chart version if pinning is on
+            if (
+                recursive_get(document, "spec", "chart", "ref")
+                and document["spec"]["chart"]["ref"] == "STAGING_CHART_REF"
+            ):
+                if name in pins:
+                    document["spec"]["chart"]["ref"] = get_latest_master_sha(
+                        document["spec"]["chart"], token
+                    )
+                else:
+                    document["spec"]["chart"]["ref"] = "master"
 
             manifests.append(document)
 
@@ -149,9 +178,9 @@ def create_manifest(templates):
     click.echo()
     click.echo(click.style("Give a sandbox ID.", fg="yellow", bold=True))
     click.echo(
-        "The sandbox ID must be no more than 26 characters long, consist of"
+        "The sandbox ID must be no more than 26 characters long, consist of "
         "lower case alphanumeric characters, or `-`, and must\n"
-        "start and end with an alphanumeric character. A unique ID generated from"
+        "start and end with an alphanumeric character. A unique ID generated from "
         "the contents of the deployments and your pinning\n"
         "choices has been provided as a default."
     )
@@ -200,7 +229,7 @@ def stage(token, org, refs):
 
     # generate templats
     templates = compile_requirements(org, refs)
-    manifest, sandbox_id = create_manifest(templates)
+    manifest, sandbox_id = create_manifest(templates, token)
     manifest = base64.b64encode(manifest.encode()).decode()
 
     # get (secret) access keys
