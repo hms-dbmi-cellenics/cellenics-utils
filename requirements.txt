@@ -12,3 +12,4 @@ pytest-mock
 PyInquirer
 click
 cfn-flip
+anybase32
