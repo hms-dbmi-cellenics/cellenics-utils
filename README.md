@@ -26,6 +26,16 @@ supply it when required. Utilities can accept this token in two ways:
     * either by having it available as the environment variable `GITHUB_API_TOKEN`
     * or by passing it as an option with the `-t` flag.
 
+For example:
+    
+    GITHUB_API_TOKEN=mytoken python3 biomage stage
+
+or
+    python3 biomage -t mytoken stage
+
+Using the environment variable means you can put the token in your
+`.bashrc` or `.zshrc` file, thereby avoiding typing it again and again.
+
 Utilities
 ---------
 
