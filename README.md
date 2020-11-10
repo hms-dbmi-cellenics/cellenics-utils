@@ -88,7 +88,9 @@ If you wish to test changes to you made to the API available under pull request 
 This will compose a *sandbox* comprising `api` as found under pull request `25`, as well as `ui`
 and `worker` as found under `master`.
 
-#### Pinning:
+The utility will launch an interactive wizard to guide you through creating your environment.
+
+#### Pinning
 
 Pinning is a feature of the utility. When you pin a deployment, you ensure that no changes made
 to the manifest file after the fact will effect the sandbox you are creating. For example, if you
