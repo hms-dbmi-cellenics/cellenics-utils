@@ -21,7 +21,7 @@ def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
-def download_deployments(org, repo, ref):
+def download_templates(org, repo, ref):
     if not ref:
         url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-heads-master.yaml"  # noqa: E501
     else:
@@ -35,22 +35,31 @@ def download_deployments(org, repo, ref):
     return Deployment(ref=ref or "master", url=url, status=r.status_code, text=r.text)
 
 
-def compile_requirements(org, refs):
+def compile_requirements(org, deployments):
     REPOS = ("ui", "api", "worker")
 
-    ref_data = {deployment: None for deployment in REPOS}
-    for ref in refs:
+    repo_to_ref = {deployment: None for deployment in REPOS}
+
+    for deployment in deployments:
         try:
-            repo, pr_id = ref.split("/", 1)
-            ref_data[repo] = int(pr_id)
+            repo, pr_id = deployment.split("/", 1)
+            repo_to_ref[repo] = int(pr_id)
         except Exception:
-            ref_data[ref] = None
+            repo_to_ref[deployment] = None
 
     templates = {}
-    for repo, ref in ref_data.items():
-        templates[repo] = download_deployments(org, repo, ref)
+    for repo, ref in repo_to_ref.items():
+        templates[repo] = download_templates(org, repo, ref)
 
-    click.echo("{0:<15}{1:<10}{2:<10}{3}".format("DEPLOYMENT", "REF", "STATUS", "URL"))
+    click.echo(
+        click.style(
+            "Deployments fetched:",
+            bold=True,
+        )
+    )
+    click.echo(
+        "{0:<15}{1:<10}{2:<10}{3}".format("Repository", "Ref", "Status", "Manifest URL")
+    )
 
     can_deploy = True
     for repo, (ref, url, status, text) in templates.items():
@@ -107,14 +116,13 @@ def create_manifest(templates, token):
         )
     )
     click.echo(
-        "Pinned deployments are immutable, i.e. the sandbox will not be updated "
-        "with new images and charts that may be available for\n"
-        "the deployment under the given ref. For example, if you want to ensure "
-        "that other developers pushing ui features\n"
-        "to the master branch do not update and potentially break your sandbox, "
-        "you should pin your ui deployment. By default, \n"
-        "only deployments sourced from the master branch are pinned, other refs "
-        "you likely want to test (e.g. pull requests) are not."
+        "The sandbox will not be affected by any future changes made to pinned "
+        "deployments. For example, if you pin `ui`,\n"
+        "no new changes made to the `master` branch of the `ui` repository "
+        "will propagate to your sandbox after it’s created.\n"
+        "By default, only deployments sourced from the `master` branch are pinned, "
+        "deployments using branches you are\n"
+        "likely to be testing (e.g. pull requests) are not."
     )
     questions = [
         {
@@ -208,7 +216,7 @@ def create_manifest(templates, token):
 
 
 @click.command()
-@click.argument("refs", nargs=-1)
+@click.argument("deployments", nargs=-1)
 @click.option(
     "--token",
     "-t",
@@ -222,13 +230,13 @@ def create_manifest(templates, token):
     default="biomage-ltd",
     help="The GitHub organization to perform the operation in.",
 )
-def stage(token, org, refs):
+def stage(token, org, deployments):
     """
     Deploys a custom staging environment.
     """
 
     # generate templats
-    templates = compile_requirements(org, refs)
+    templates = compile_requirements(org, deployments)
     manifest, sandbox_id = create_manifest(templates, token)
     manifest = base64.b64encode(manifest.encode()).decode()
 
