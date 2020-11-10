@@ -21,7 +21,7 @@ def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
-def download_deployments(org, repo, ref):
+def download_REPOS(org, repo, ref):
     if not ref:
         url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-heads-master.yaml"  # noqa: E501
     else:
@@ -36,9 +36,9 @@ def download_deployments(org, repo, ref):
 
 
 def compile_requirements(org, refs):
-    DEPLOYMENTS = ("ui", "api", "worker")
+    REPOS = ("ui", "api", "worker")
 
-    ref_data = {deployment: None for deployment in DEPLOYMENTS}
+    ref_data = {deployment: None for deployment in REPOS}
     for ref in refs:
         try:
             repo, pr_id = ref.split("/", 1)
@@ -48,7 +48,7 @@ def compile_requirements(org, refs):
 
     templates = {}
     for repo, ref in ref_data.items():
-        templates[repo] = download_deployments(org, repo, ref)
+        templates[repo] = download_REPOS(org, repo, ref)
 
     click.echo("{0:<15}{1:<10}{2:<10}{3}".format("DEPLOYMENT", "REF", "STATUS", "URL"))
 
@@ -101,26 +101,26 @@ def create_manifest(templates, token):
     click.echo(
         click.style(
             "A sandbox will be created from the manifest files listed above. "
-            "Now specify which deployments you would like to pin.",
+            "Now specify which REPOS you would like to pin.",
             fg="yellow",
             bold=True,
         )
     )
     click.echo(
-        "Pinned deployments are immutable, i.e. the sandbox will not be updated "
+        "Pinned REPOS are immutable, i.e. the sandbox will not be updated "
         "with new images and charts that may be available for\n"
         "the deployment under the given ref. For example, if you want to ensure "
         "that other developers pushing ui features\n"
         "to the master branch do not update and potentially break your sandbox, "
         "you should pin your ui deployment. By default, \n"
-        "only deployments sourced from the master branch are pinned, other refs "
+        "only REPOS sourced from the master branch are pinned, other refs "
         "you likely want to test (e.g. pull requests) are not."
     )
     questions = [
         {
             "type": "checkbox",
             "name": "pins",
-            "message": "Which deployments would you like to pin?",
+            "message": "Which REPOS would you like to pin?",
             "choices": [
                 {"name": name, "checked": props.ref == "master"}
                 for name, props in templates.items()
@@ -181,7 +181,7 @@ def create_manifest(templates, token):
         "The sandbox ID must be no more than 26 characters long, consist of "
         "lower case alphanumeric characters, or `-`, and must\n"
         "start and end with an alphanumeric character. A unique ID generated from "
-        "the contents of the deployments and your pinning\n"
+        "the contents of the REPOS and your pinning\n"
         "choices has been provided as a default."
     )
     questions = [
