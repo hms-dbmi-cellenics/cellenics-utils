@@ -101,3 +101,12 @@ The default behavior is to pin all deployments that source from `master`. This e
 is immutable, i.e. anything not currently being tested in the sandbox will not change unpredictably
 after it's deployed. Deployments that source from a pull request branch are by default not pinned,
 as these are commonly the branches that a developer would push features to mid-development.
+
+### unstage
+
+Removes a staging environment. You must specify the sandbox ID of the staging environment deployed
+previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/staging). Then, run
+
+    python3 biomage unstage my-sandbox-id
+
+to remove your deployment.
