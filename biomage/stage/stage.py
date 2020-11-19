@@ -163,10 +163,7 @@ def create_manifest(templates, token):
                 ).lower()
 
             # pin chart version if pinning is on
-            if (
-                recursive_get(document, "spec", "chart", "ref")
-                and document["spec"]["chart"]["ref"] == "STAGING_CHART_REF"
-            ):
+            if recursive_get(document, "spec", "chart", "ref"):
                 if name in pins:
                     document["spec"]["chart"]["ref"] = get_latest_master_sha(
                         document["spec"]["chart"], token
