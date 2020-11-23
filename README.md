@@ -32,7 +32,7 @@ For example:
 
 or
 
-    python3 biomage -t mytoken stage
+    python3 biomage stage -t mytoken
 
 Using the environment variable means you can put the token in your
 `.bashrc` or `.zshrc` file, thereby avoiding typing it again and again. You can
