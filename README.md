@@ -18,7 +18,7 @@ You should be able to access `biomage-utils` by typing:
 
     python3 biomage
 
-For most deployments to work properly, you will need a GitHub Personal Access
+As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
 Token with full access to your account. You can generate one
 [here](https://github.com/settings/tokens). Make sure you note down this and
 supply it when required. Utilities can accept this token in two ways:
@@ -51,7 +51,8 @@ as in:
     python3 biomage configure-repo ui
 
 The script will ensure the repository is configured according to the current
-best practices for the repository.
+best practices for the repository. You can see more details about the
+configuration in configure-repo/configure_repo.py script.
 
 ### rotate-ci
 

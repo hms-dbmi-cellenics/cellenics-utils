@@ -1,0 +1,29 @@
+# Background
+#### Link to issue 
+
+#### Link to staging deployment URL 
+
+#### Links to any PRs related to this
+
+#### Anything else the reviewers should know about the changes here
+
+# Changes
+### Code changes
+
+### Testing
+| Testing type | Completed? |
+| ------------- | ------------- |
+| Unit tests  | No  |
+| Local testing with inframock  | No  |
+| Deployed to staging  | No  |
+
+To set up easy local testing with inframock, follow the instructions here: https://github.com/biomage-ltd/inframock
+To deploy to the staging environment, follow the instructions here: https://github.com/biomage-ltd/biomage-utils
+
+### Documentation updates
+Is all relevant documentation updated to reflect the proposed changes in this PR?
+
+| Docs type | Link | Updated? |
+| ------------- | ------------- | ------------- |
+| Github README  | | No  |
+| wiki pages  | | No  |
