@@ -278,10 +278,22 @@ def stage(token, org, deployments):
 
     wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
+    success = wf.create_dispatch(
         ref="master",
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
+
+    if not success:
+        click.echo()
+        click.echo(
+            click.style(
+                "✖️ Staging environment could not be created."
+                "Make sure you have a PAT with the required permissions and try again.",
+                fg="red",
+                bold=True,
+            )
+        )
+        exit(1)
 
     click.echo()
     click.echo(

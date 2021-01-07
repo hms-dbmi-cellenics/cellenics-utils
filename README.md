@@ -8,6 +8,20 @@ infrastructure.
 Setup
 -----
 
+### Setting up a GitHub PAT
+
+As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
+Token with full access to your account. You can generate one
+[here](https://github.com/settings/tokens).
+
+While creating the token, make sure at the least the scopes `repo`, and `workflow`.
+If you have the rights to manage Biomage repositories, the `admin:org`, `admin:public_key`,
+`admin:repo_hook` and `admin:org_hook` scopes must also be checked for those commands to work. 
+
+Make sure you note down this and supply it when required. 
+
+### Setting up the tool
+
 After cloning the repository, do the following:
 
     python3 -m venv venv
@@ -18,25 +32,23 @@ You should be able to access `biomage-utils` by typing:
 
     python3 biomage
 
-As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
-Token with full access to your account. You can generate one
-[here](https://github.com/settings/tokens). Make sure you note down this and
-supply it when required. Utilities can accept this token in two ways:
 
-* either by having it available as the environment variable `GITHUB_API_TOKEN`
-* or by passing it as an option with the `-t` flag.
+### Passing credentials
 
-For example:
-    
-    GITHUB_API_TOKEN=mytoken python3 biomage stage
+Tools typically require you to have sufficient AWS and GitHub credentials to function.
 
-or
+AWS credentials are automatically fetched from your `~/.aws` folder, so there is nothing
+to do as long as you have set up `aws-cli` properly.
 
-    python3 biomage stage -t mytoken
+For GitHub PATs, there are two ways to do this:
 
-Using the environment variable means you can put the token in your
-`.bashrc` or `.zshrc` file, thereby avoiding typing it again and again. You can
-then simply do:
+* either by having it available as the environment variable `GITHUB_API_TOKEN`, i.e.
+`GITHUB_API_TOKEN=mytoken python3 biomage stage`
+* or by passing it as an option with the `-t` flag, i.e. `python3 biomage stage -t mytoken`
+
+Although these methods work, they leave your PAT exposed in your history and logs, as well as to
+other users of your computer (if applicable). We recommend putting the token in your
+`.bashrc` or `.zshrc` file, thereby avoiding typing it again and again. You can then simply do:
 
     python3 biomage stage
 
