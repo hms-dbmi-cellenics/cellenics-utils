@@ -36,7 +36,7 @@ def download_templates(org, repo, ref):
 
 
 def compile_requirements(org, deployments):
-    REPOS = ("ui", "api", "worker")
+    REPOS = ("ui", "api", "worker", "pipeline")
 
     repo_to_ref = {deployment: None for deployment in REPOS}
 
