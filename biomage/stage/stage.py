@@ -7,6 +7,7 @@ import anybase32
 import base64
 import boto3
 import re
+import os
 from collections import namedtuple
 from PyInquirer import prompt
 from github import Github
@@ -104,6 +105,52 @@ def get_latest_master_sha(chart, token):
     raise Exception("Invalid repository supplied.")
 
 
+def get_sandbox_id(templates, manifests):
+    # Generate a sandbox name and ask the user what they want theirs to be called.
+    sandbox_id = hashlib.md5(manifests.encode()).digest()
+    sandbox_id = anybase32.encode(sandbox_id, anybase32.ZBASE32).decode()
+    fragments = (
+        os.getenv("USER", ""),
+        "-".join(
+            [
+                f"{repo}{opts.ref}"
+                for repo, opts in templates.items()
+                if opts.ref != "master"
+            ]
+        ),
+        sandbox_id,
+    )
+    sandbox_id = "-".join([frag for frag in fragments if frag]).lower()[:26]
+
+    # Ask the user to provide one if they want
+    click.echo()
+    click.echo(click.style("Give a sandbox ID.", fg="yellow", bold=True))
+    click.echo(
+        "The sandbox ID must be no more than 26 characters long, consist of "
+        "lower case alphanumeric characters, or `-`, and must\n"
+        "start and end with an alphanumeric character. A unique ID generated from "
+        "the contents of the deployments and your pinning\n"
+        "choices has been provided as a default."
+    )
+    while True:
+        questions = [
+            {
+                "type": "input",
+                "name": "sandbox_id",
+                "message": "Provide an ID:",
+                "default": sandbox_id,
+            }
+        ]
+
+        click.echo()
+        sandbox_id = prompt(questions)
+        sandbox_id = sandbox_id["sandbox_id"]
+        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
+            return sandbox_id
+        else:
+            click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
+
+
 def create_manifest(templates, token):
     # Ask about which releases to pin.
     click.echo()
@@ -175,38 +222,8 @@ def create_manifest(templates, token):
 
     manifests = yaml.dump_all(manifests)
 
-    # Generate a sandbox name and ask the user what they want theirs to be called.
-    sandbox_id = hashlib.md5(manifests.encode()).digest()
-    sandbox_id = anybase32.encode(sandbox_id, anybase32.ZBASE32).decode()
-
-    # Ask the user to provide one if they want
-    click.echo()
-    click.echo(click.style("Give a sandbox ID.", fg="yellow", bold=True))
-    click.echo(
-        "The sandbox ID must be no more than 26 characters long, consist of "
-        "lower case alphanumeric characters, or `-`, and must\n"
-        "start and end with an alphanumeric character. A unique ID generated from "
-        "the contents of the deployments and your pinning\n"
-        "choices has been provided as a default."
-    )
-    questions = [
-        {
-            "type": "input",
-            "name": "sandbox_id",
-            "message": "Provide an ID:",
-            "default": sandbox_id,
-            "validate": lambda i: SANDBOX_NAME_REGEX.match(i) and len(i) <= 26,
-        }
-    ]
-
-    click.echo()
-    sandbox_id = prompt(questions)
-    try:
-        sandbox_id = sandbox_id["sandbox_id"]
-    except Exception:
-        exit(1)
-
     # Write sandbox ID
+    sandbox_id = get_sandbox_id(templates, manifests)
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
 
     return manifests, sandbox_id
