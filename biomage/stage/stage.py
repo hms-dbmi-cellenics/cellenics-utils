@@ -110,7 +110,7 @@ def get_sandbox_id(templates, manifests):
     sandbox_id = hashlib.md5(manifests.encode()).digest()
     sandbox_id = anybase32.encode(sandbox_id, anybase32.ZBASE32).decode()
     fragments = (
-        os.getenv("USER", ""),
+        os.getenv("BIOMAGE_NICK", os.getenv("USER", "")),
         "-".join(
             [
                 f"{repo}{opts.ref}"
@@ -120,7 +120,7 @@ def get_sandbox_id(templates, manifests):
         ),
         sandbox_id,
     )
-    sandbox_id = "-".join([frag for frag in fragments if frag]).lower()[:26]
+    sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
 
     # Ask the user to provide one if they want
     click.echo()

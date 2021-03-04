@@ -27,7 +27,7 @@ supply it when required. Utilities can accept this token in two ways:
 * or by passing it as an option with the `-t` flag.
 
 For example:
-    
+
     GITHUB_API_TOKEN=mytoken python3 biomage stage
 
 or
@@ -39,6 +39,12 @@ Using the environment variable means you can put the token in your
 then simply do:
 
     python3 biomage stage
+
+### Other Enviroment Variables
+
+* `BIOMAGE_NICK` is optional and used to override the `USER` environment variable
+  as the first part of the name of the staging environments created by you:
+  `${BIOMAGE_NICK:-${USER}}-...`.
 
 Utilities
 ---------
