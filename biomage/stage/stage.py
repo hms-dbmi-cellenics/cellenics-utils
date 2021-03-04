@@ -107,18 +107,19 @@ def get_latest_master_sha(chart, token):
 
 def get_sandbox_id(templates, manifests):
     # Generate a sandbox name and ask the user what they want theirs to be called.
-    sandbox_id = hashlib.md5(manifests.encode()).digest()
-    sandbox_id = anybase32.encode(sandbox_id, anybase32.ZBASE32).decode()
+    manifest_hash = hashlib.md5(manifests.encode()).digest()
+    manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
+    pr_ids = "-".join(
+        [
+            f"{repo}{opts.ref}"
+            for repo, opts in templates.items()
+            if opts.ref != "master"
+        ]
+    )
+
     fragments = (
         os.getenv("BIOMAGE_NICK", os.getenv("USER", "")),
-        "-".join(
-            [
-                f"{repo}{opts.ref}"
-                for repo, opts in templates.items()
-                if opts.ref != "master"
-            ]
-        ),
-        sandbox_id,
+        pr_ids if pr_ids else manifest_hash,
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
 
