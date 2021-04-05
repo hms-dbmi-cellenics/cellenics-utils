@@ -1,0 +1,154 @@
+import itertools
+import copy
+from pprint import pprint
+
+import click
+import boto3
+from botocore.exceptions import ClientError
+from deepdiff import DeepDiff
+
+
+@click.group()
+def experiment():
+    """
+    Work with Cellscope experiment settinsg
+    """
+    pass
+
+
+def hash_cell_ids(ids):
+    return f"Hashed_as_{abs(hash(tuple(ids)))}"
+
+
+def experiment_record(db_table, experimentId):
+    record = db_table.get_item(Key={"experimentId": experimentId})
+    if "Item" in record:
+        return record["Item"]
+
+
+def experiment_item_summary(item, env_name):
+    CELL_SETS = "cellSets"
+    CELL_IDS = "cellIds"
+    CHILDREN = "children"
+    summary = copy.deepcopy(item)
+    if CELL_SETS in summary:
+        for cellSet in summary[CELL_SETS]:
+            if CELL_IDS in cellSet:
+                cellSet[CELL_IDS] = hash_cell_ids(cellSet[CELL_IDS])
+            if CHILDREN in cellSet:
+                for child in cellSet[CHILDREN]:
+                    child[CELL_IDS] = hash_cell_ids(child[CELL_IDS])
+    MATRIX_PATH = "matrixPath"
+    if MATRIX_PATH in summary:
+        summary[MATRIX_PATH] = summary[MATRIX_PATH].replace(env_name, "${ENV}")
+    return summary
+
+
+@click.command()
+@click.argument("experimentid")
+def compare(experimentid):
+    """
+    Compares an experiment's information accross environments
+    """
+
+    environments = {
+        "development": {
+            "endpoint_url": "http://localhost:4566",
+            "s3": {},
+            "dynamoDB": {},
+        },
+        "staging": {
+            "s3": {},
+            "dynamoDB": {},
+        },
+        "production": {
+            "s3": {},
+            "dynamoDB": {},
+        },
+    }
+    tables = {
+        "experiments": {"query": experiment_record, "summary": experiment_item_summary},
+        # "plots-tables" is not very interesting unless we can access the s3 buckets
+        # that contain the actual plot data. I lack privileges to access them.
+    }
+    buckets = {"biomage-source": {}}
+
+    for env_name, env_values in environments.items():
+        dynamodb = boto3.resource(
+            "dynamodb", endpoint_url=env_values.get("endpoint_url")
+        )
+        for table_name, table in tables.items():
+            db_table = dynamodb.Table(f"{table_name}-{env_name}")
+            try:
+                record = table["query"](db_table, experimentid)
+                if record:
+                    env_values["dynamoDB"][table_name] = table["summary"](
+                        record, env_name
+                    )
+
+            except ClientError as e:
+                click.echo(e.response["Error"]["Message"])
+
+        s3 = boto3.client("s3", endpoint_url=env_values.get("endpoint_url"))
+        for bucket_name in buckets.keys():
+            env_values["s3"][bucket_name] = {}
+            for s3_object in s3.list_objects(
+                Bucket=f"{bucket_name}-{env_name}", Prefix=experimentid
+            ).get("Contents", []):
+                file_name = s3_object["Key"].split("/", 1)[1]
+                env_values["s3"][bucket_name][file_name] = {
+                    "ETag": s3_object["ETag"],
+                    "Size": s3_object["Size"],
+                    "LastModified": s3_object["LastModified"].isoformat(),
+                }
+
+    for table_name in tables.keys():
+        click.echo(f"Comparing records for table {table_name}")
+        missing = [
+            env_name
+            for env_name in environments.keys()
+            if table_name not in environments[env_name]["dynamoDB"]
+        ]
+        available = [
+            env_name for env_name in environments.keys() if env_name not in missing
+        ]
+        if len(missing):
+            click.echo(f"No record for {table_name} in {missing}")
+        if len(available) >= 2:
+            for env1, env2 in itertools.combinations(available, 2):
+                diff = DeepDiff(
+                    environments[env1]["dynamoDB"][table_name],
+                    environments[env2]["dynamoDB"][table_name],
+                )
+                if not diff:
+                    click.echo(f"{env1} to {env2} are equal for {table_name}")
+                else:
+                    click.echo(f"Comparing {env1} to {env2} for {table_name}")
+                    pprint(diff)
+
+    for bucket_name in buckets.keys():
+        click.echo(f"Comparing files for bucket {bucket_name}")
+        missing = [
+            env_name
+            for env_name in environments.keys()
+            if bucket_name not in environments[env_name]["s3"]
+        ]
+        available = [
+            env_name for env_name in environments.keys() if env_name not in missing
+        ]
+        if len(missing):
+            click.echo(f"No record for {bucket_name} in {missing}")
+        if len(available) >= 2:
+            for env1, env2 in itertools.combinations(available, 2):
+                diff = DeepDiff(
+                    environments[env1]["s3"][bucket_name],
+                    environments[env2]["s3"][bucket_name],
+                )
+                if not diff:
+                    click.echo(f"{env1} to {env2} are equal for {bucket_name}")
+                else:
+                    click.echo(f"Comparing {env1} to {env2} for {bucket_name}")
+                    pprint(diff)
+
+
+experiment.add_command(compare)

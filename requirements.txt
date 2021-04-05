@@ -13,3 +13,4 @@ PyInquirer
 click
 cfn-flip
 anybase32
+deepdiff-5.2.3
