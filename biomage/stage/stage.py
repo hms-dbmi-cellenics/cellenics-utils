@@ -118,7 +118,7 @@ def get_sandbox_id(templates, manifests):
     )
 
     fragments = (
-        os.getenv("BIOMAGE_NICK", os.getenv("USER", "")),
+        re.sub(r'[^\w\s]','', os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
         pr_ids if pr_ids else manifest_hash,
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
