@@ -6,12 +6,13 @@ import click
 import boto3
 from botocore.exceptions import ClientError
 from deepdiff import DeepDiff
+from PyInquirer import prompt
 
 
 @click.group()
 def experiment():
     """
-    Work with Cellscope experiment settinsg
+    Work with Cellscope experiment settings
     """
     pass
 
@@ -69,9 +70,11 @@ def compare(experimentid):
     tables = {
         "experiments": {"query": experiment_record, "summary": experiment_item_summary},
         # "plots-tables" is not very interesting unless we can access the s3 buckets
-        # that contain the actual plot data. I lack privileges to access them.
+        # that contain the actual plot data. I lack privileges and access them.
     }
-    buckets = {"biomage-source": {}}
+    buckets = {
+        "biomage-source": {},
+    }
 
     for env_name, env_values in environments.items():
         dynamodb = boto3.resource(
@@ -102,6 +105,7 @@ def compare(experimentid):
                     "LastModified": s3_object["LastModified"].isoformat(),
                 }
 
+    diff_details = []
     for table_name in tables.keys():
         click.echo(f"Comparing records for table {table_name}")
         missing = [
@@ -113,7 +117,11 @@ def compare(experimentid):
             env_name for env_name in environments.keys() if env_name not in missing
         ]
         if len(missing):
-            click.echo(f"No record for {table_name} in {missing}")
+            click.echo(
+                click.style(
+                    f"✖ No record for {table_name} in {missing}", fg="white", bg="red"
+                )
+            )
         if len(available) >= 2:
             for env1, env2 in itertools.combinations(available, 2):
                 diff = DeepDiff(
@@ -121,10 +129,21 @@ def compare(experimentid):
                     environments[env2]["dynamoDB"][table_name],
                 )
                 if not diff:
-                    click.echo(f"{env1} to {env2} are equal for {table_name}")
+                    click.echo(
+                        click.style(
+                            f"✔️ {env1} and {env2} are equal for table '{table_name}'",
+                            bg="green",
+                        )
+                    )
                 else:
-                    click.echo(f"Comparing {env1} to {env2} for {table_name}")
-                    pprint(diff)
+                    click.echo(
+                        click.style(
+                            f"✖ {env1} and {env2} differ for table '{table_name}'",
+                            fg="white",
+                            bg="red",
+                        )
+                    )
+                    diff_details.append(("table", table_name, env1, env2, diff))
 
     for bucket_name in buckets.keys():
         click.echo(f"Comparing files for bucket {bucket_name}")
@@ -137,7 +156,11 @@ def compare(experimentid):
             env_name for env_name in environments.keys() if env_name not in missing
         ]
         if len(missing):
-            click.echo(f"No record for {bucket_name} in {missing}")
+            click.echo(
+                click.style(
+                    f"✖ No files on {bucket_name} in {missing}", fg="white", bg="red"
+                )
+            )
         if len(available) >= 2:
             for env1, env2 in itertools.combinations(available, 2):
                 diff = DeepDiff(
@@ -145,9 +168,52 @@ def compare(experimentid):
                     environments[env2]["s3"][bucket_name],
                 )
                 if not diff:
-                    click.echo(f"{env1} to {env2} are equal for {bucket_name}")
+                    click.echo(
+                        click.style(
+                            f"✔️ {env1} and {env2} are equal for bucket '{bucket_name}'",
+                            bg="green",
+                        )
+                    )
                 else:
-                    click.echo(f"Comparing {env1} to {env2} for {bucket_name}")
+                    click.echo(
+                        click.style(
+                            f"✖ {env1} and {env2} differ for bucket '{bucket_name}'",
+                            fg="white",
+                            bg="red",
+                        )
+                    )
+                    diff_details.append(("bucket", bucket_name, env1, env2, diff))
+
+    if len(diff_details):
+        questions = [
+            {
+                "type": "confirm",
+                "name": "details",
+                "default": False,
+                "message": "Do you want and know more details about the differences?",
+            }
+        ]
+        answers = prompt(questions)
+        if answers["details"]:
+            for setting_type, setting_name, env1, env2, diff in diff_details:
+                questions = [
+                    {
+                        "type": "confirm",
+                        "name": "details",
+                        "message": f"More details about {env1} vs {env2} regarding "
+                        f"{setting_type} '{setting_name}'?",
+                    }
+                ]
+                answers = prompt(questions)
+                if answers["details"]:
+                    click.echo(
+                        click.style(
+                            f"Comparing {env1} and {env2} for {setting_type} "
+                            f"'{setting_name}'",
+                            fg="white",
+                            bg="red",
+                        )
+                    )
                     pprint(diff)
 
 
