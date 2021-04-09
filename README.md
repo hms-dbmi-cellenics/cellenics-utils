@@ -120,8 +120,8 @@ to remove your deployment.
 
 ### experiment
 
-#### exepriment compare
+#### experiment compare
 
 Compares experiment settings accros development/staging/production environments.
 
-    python3 biomage experiment compare my-exeperiment-id
+    python3 biomage experiment compare my-experiment-id
