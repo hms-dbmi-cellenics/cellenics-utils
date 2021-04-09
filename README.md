@@ -122,6 +122,6 @@ to remove your deployment.
 
 #### experiment compare
 
-Compares experiment settings accros development/staging/production environments.
+Compares experiment settings accros development/staging/production environments. **Note** it needs inframock running in order to work.
 
     python3 biomage experiment compare my-experiment-id
