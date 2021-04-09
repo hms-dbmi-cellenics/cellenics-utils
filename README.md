@@ -117,3 +117,11 @@ previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/s
     python3 biomage unstage my-sandbox-id
 
 to remove your deployment.
+
+### experiment
+
+#### exepriment compare
+
+Compares experiment settings accros development/staging/production environments.
+
+    python3 biomage experiment compare my-exeperiment-id
