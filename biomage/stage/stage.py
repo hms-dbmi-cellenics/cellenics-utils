@@ -16,6 +16,7 @@ from functools import reduce
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
+LOCALSTACK_ENDPOINT = "http://localhost:4566"
 
 
 def recursive_get(d, *keys):
@@ -230,6 +231,170 @@ def create_manifest(templates, token):
     return manifests, sandbox_id
 
 
+def choose_staging_experiments():
+    # Get list of experiments currently available in the platform
+    dynamodb = boto3.resource("dynamodb", endpoint_url=LOCALSTACK_ENDPOINT)
+    # table = dynamodb.Table("experiments-staging")
+    table = dynamodb.Table("experiments-development")
+    response = table.scan(
+        AttributesToGet=["experimentId", "experimentName"],
+        Limit=20,
+        ConsistentRead=True,
+    )
+
+    # Implement pagination if result contains more than 20 experiments
+    choices = [
+        {
+            "name": "{}{}".format(
+                props.get("experimentId").ljust(36), props.get("experimentName")
+            )
+        }
+        for props in response.get("Items")
+    ]
+
+    questions = [
+        {
+            "type": "checkbox",
+            "name": "staging_experiments",
+            "message": "Which experiment ids would you like to enable for the staging environment?",
+            "choices": choices,
+        }
+    ]
+
+    click.echo()
+
+    answers = prompt(questions)
+
+    try:
+        staging_experiments = set(
+            [
+                experiment_id.split(" ")[0]
+                for experiment_id in answers["staging_experiments"]
+            ]
+        )
+    except Exception:
+        exit(1)
+
+    return staging_experiments
+
+
+def create_staging_experiments(staging_experiments, sandbox_id):
+    # Create staging experiments as selected
+
+    click.echo("Copying items for new experiments...")
+
+    # Copy files
+    # s3 = boto3.client("s3")
+    s3 = boto3.client("s3", endpoint_url=LOCALSTACK_ENDPOINT)
+
+    source_buckets = [
+        "processed-matrix-staging",
+        "biomage-source-staging",
+    ]
+
+    source_buckets = [
+        "processed-matrix-development",
+        "biomage-source-development",
+    ]
+
+    file_copy_retries = []
+
+    for bucket in source_buckets:
+        exp_files = s3.list_objects_v2(Bucket=bucket)
+
+        if exp_files.get("KeyCount") == 0:
+            click.echo(f"No objects found in {bucket}, skipping bucket")
+            continue
+
+        for obj in exp_files.get("Contents"):
+
+            experiment_id = obj["Key"].split("/")[0]
+
+            source = {"Bucket": bucket, "Key": obj["Key"]}
+
+            target = {
+                "Bucket": bucket,
+                "Key": obj["Key"].replace(
+                    experiment_id, f"{sandbox_id}-{experiment_id}"
+                ),
+            }
+            click.echo(
+                f"Copying from {source['Bucket']}/{source['Key']} to "
+                f"{target['Bucket']}/{target['Key']}"
+            )
+
+            try:
+                s3.copy_object(
+                    CopySource=source,
+                    Bucket=target["Bucket"],
+                    Key=target["Key"],
+                )
+            except Exception as e:
+                click.echo(
+                    f"failed to copy object {source['Bucket']}/{source['Key']} \
+                    with exception: \n {e}"
+                )
+                file_copy_retries.append(source)
+
+    # Copy DynamoDB entries
+    # dynamodb = boto3.client("dynamodb")
+    dynamodb = boto3.client("dynamodb", endpoint_url=LOCALSTACK_ENDPOINT)
+
+    click.echo("Copying records for new experiments...")
+
+    dynamodb_retries = []
+
+    # source_tables = ["experiments-staging", "samples-staging"]
+    source_tables = ["experiments-development", "samples-development"]
+
+    request_items = {}
+
+    for table in source_tables:
+        request_items[table] = {
+            "Keys": [
+                {"experimentId": {"S": experiment_id}}
+                for experiment_id in staging_experiments
+            ]
+        }
+
+    response = dynamodb.batch_get_item(RequestItems=request_items)
+    click.echo("Copying DynamoDB records for new experiments...")
+
+    # Modify responses
+    insert_items = {}
+    for table, records in response.get("Responses").items():
+        insert_items[table] = [
+            {
+                "PutRequest": {
+                    "Item": {
+                        **record,
+                        "experimentId": {
+                            "S": f"{sandbox_id}-{record['experimentId']['S']}",
+                        },
+                    }
+                }
+            }
+            for record in records
+        ]
+
+    try:
+        dynamodb.batch_write_item(RequestItems=insert_items)
+
+        click.echo(f"Successfully copied records in tables {', '.join(source_tables)}:")
+        click.echo(
+            "\n".join(
+                [
+                    f"from {experiment_id} to {sandbox_id}-{experiment_id}"
+                    for experiment_id in staging_experiments
+                ]
+            )
+        )
+    except Exception as e:
+        click.echo(f"Failed inserting records: {e}")
+
+    print("complete")
+
+
 @click.command()
 @click.argument("deployments", nargs=-1)
 @click.option(
@@ -249,6 +414,13 @@ def stage(token, org, deployments):
     """
     Deploys a custom staging environment.
     """
+
+    # enable experiments in staging
+    staging_experiments = choose_staging_experiments()
+
+    # Creating staging experiments
+    create_staging_experiments(staging_experiments, "TEST")
+    exit(0)
 
     # generate templats
     templates = compile_requirements(org, deployments)
