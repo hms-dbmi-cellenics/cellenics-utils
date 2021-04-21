@@ -16,7 +16,6 @@ from functools import reduce
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
-LOCALSTACK_ENDPOINT = "http://localhost:4566"
 
 
 def recursive_get(d, *keys):
@@ -233,9 +232,8 @@ def create_manifest(templates, token):
 
 def choose_staging_experiments():
     # Get list of experiments currently available in the platform
-    dynamodb = boto3.resource("dynamodb", endpoint_url=LOCALSTACK_ENDPOINT)
-    # table = dynamodb.Table("experiments-staging")
-    table = dynamodb.Table("experiments-development")
+    dynamodb = boto3.resource("dynamodb")
+    table = dynamodb.Table("experiments-staging")
     response = table.scan(
         AttributesToGet=["experimentId", "experimentName"],
         Limit=20,
@@ -284,17 +282,11 @@ def create_staging_experiments(staging_experiments, sandbox_id):
     click.echo("Copying items for new experiments...")
 
     # Copy files
-    # s3 = boto3.client("s3")
-    s3 = boto3.client("s3", endpoint_url=LOCALSTACK_ENDPOINT)
+    s3 = boto3.client("s3")
 
     source_buckets = [
         "processed-matrix-staging",
         "biomage-source-staging",
-    ]
-
-    source_buckets = [
-        "processed-matrix-development",
-        "biomage-source-development",
     ]
 
     file_copy_retries = []
@@ -337,15 +329,11 @@ def create_staging_experiments(staging_experiments, sandbox_id):
                 file_copy_retries.append(source)
 
     # Copy DynamoDB entries
-    # dynamodb = boto3.client("dynamodb")
-    dynamodb = boto3.client("dynamodb", endpoint_url=LOCALSTACK_ENDPOINT)
+    dynamodb = boto3.client("dynamodb")
 
     click.echo("Copying records for new experiments...")
 
-    dynamodb_retries = []
-
-    # source_tables = ["experiments-staging", "samples-staging"]
-    source_tables = ["experiments-development", "samples-development"]
+    source_tables = ["experiments-staging", "samples-staging"]
 
     request_items = {}
 
@@ -392,8 +380,6 @@ def create_staging_experiments(staging_experiments, sandbox_id):
     except Exception as e:
         click.echo(f"Failed inserting records: {e}")
 
-    print("complete")
-
 
 @click.command()
 @click.argument("deployments", nargs=-1)
@@ -415,17 +401,16 @@ def stage(token, org, deployments):
     Deploys a custom staging environment.
     """
 
-    # enable experiments in staging
-    staging_experiments = choose_staging_experiments()
-
-    # Creating staging experiments
-    create_staging_experiments(staging_experiments, "TEST")
-    exit(0)
-
     # generate templats
     templates = compile_requirements(org, deployments)
     manifest, sandbox_id = create_manifest(templates, token)
     manifest = base64.b64encode(manifest.encode()).decode()
+
+    # enable experiments in staging
+    staging_experiments = choose_staging_experiments()
+
+    # Creating staging experiments
+    create_staging_experiments(staging_experiments, sandbox_id)
 
     # get (secret) access keys
     session = boto3.Session()
