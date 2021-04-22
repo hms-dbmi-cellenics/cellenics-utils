@@ -124,7 +124,11 @@ to remove your deployment.
 
 #### *removing staging resources*
 
-Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging failes.
+Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging fails. To clean up the staged data manually, run 
+
+    python3 biomage unstage my-sandbox-id --resources-only
+
+to remove the staged resources.
 
 ### experiment
 

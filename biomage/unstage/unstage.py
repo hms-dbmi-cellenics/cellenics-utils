@@ -248,5 +248,6 @@ def unstage(token, org, resources_only, sandbox_id):
         )
     )
 
+    click.echo()
     click.echo("Deleting resources used in staging environment...")
     remove_staging_resources(sandbox_id)
