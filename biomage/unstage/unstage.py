@@ -161,10 +161,20 @@ def remove_staging_resources(sandbox_id):
     default="biomage-ltd",
     help="The GitHub organization to perform the operation in.",
 )
-def unstage(token, org, sandbox_id):
+@click.option(
+    "--resources-only",
+    is_flag=True,
+    help="Only delete resources. Use to remove resources if staging in CI fails.",
+)
+def unstage(token, org, resources_only, sandbox_id):
     """
     Removes a custom staging environment.
     """
+
+    if resources_only:
+        click.echo("Deleting resources used in staging environment...")
+        remove_staging_resources(sandbox_id)
+        exit(0)
 
     if not check_if_exists(org, sandbox_id):
         click.echo()
