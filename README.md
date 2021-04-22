@@ -97,6 +97,10 @@ and `worker` as found under `master`.
 
 The utility will launch an interactive wizard to guide you through creating your environment.
 
+#### *isolated staging environments*
+
+The option to create isolated staging environments is provided during the interactive wizard. Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, you'll still have to [manually unstage copied resources](#removing-staging-resources). 
+
 #### Pinning
 
 Pinning is a feature of the utility. When you pin a deployment, you ensure that no changes made
@@ -117,6 +121,10 @@ previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/s
     python3 biomage unstage my-sandbox-id
 
 to remove your deployment.
+
+#### *removing staging resources*
+
+Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging failes.
 
 ### experiment
 

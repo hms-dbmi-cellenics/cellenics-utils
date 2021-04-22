@@ -33,15 +33,18 @@ def remove_staging_resources(sandbox_id):
         for experiment_id in staging_experiments.get("Items")
     ]
 
+    if len(staging_experiments) == 0:
+        return
+
     staging_tables = [
         table
         for table in dynamodb.list_tables().get("TableNames")
         if re.match(".*-staging", table)
     ]
 
-    records_to_delete = {}
-
     for table in staging_tables:
+
+        records_to_delete = {}
 
         # Check if table's meta requires something else other than experiment_id
         key_schema = (

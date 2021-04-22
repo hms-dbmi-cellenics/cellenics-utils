@@ -245,8 +245,8 @@ def choose_staging_experiments():
 
     choices = [
         {
-            "name": "{}{}".format(
-                props.get("experimentId").ljust(36), props.get("experimentName")
+            "name": "{} {}".format(
+                props.get("experimentId").ljust(40), props.get("experimentName")
             ),
             "checked": props.get("experimentId") in default_enabled_experiments,
         }
@@ -360,8 +360,6 @@ def create_staging_experiments(staging_experiments, sandbox_id):
 
     click.echo("Copying DynamoDB records for new experiments...")
 
-    request_items = {}
-
     for table in source_tables:
         click.echo(f"Copying records in table {table}")
 
@@ -427,6 +425,12 @@ def stage(token, org, deployments):
     # enable experiments in staging
     staging_experiments = choose_staging_experiments()
 
+    if len(staging_experiments) == 0:
+        click.echo(
+            "No staging environment chosen. "
+            "Skipping creation of isolated staging environment."
+        )
+
     # get (secret) access keys
     session = boto3.Session()
     credentials = session.get_credentials()
@@ -473,8 +477,8 @@ def stage(token, org, deployments):
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
 
-    # Creating staging experiments
-    create_staging_experiments(staging_experiments, sandbox_id)
+    if len(staging_experiments) > 0:
+        create_staging_experiments(staging_experiments, sandbox_id)
 
     click.echo()
     click.echo(
@@ -494,21 +498,23 @@ def stage(token, org, deployments):
         )
     )
 
-    click.echo(
-        click.style(
-            "✔️ Staging-specific experiments are available at :",
-            fg="green",
-            bold=True,
-        )
-    )
-
-    click.echo(
-        click.style(
-            "\n".join(
-                [
-                    f"- https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{experiment_id}/data-processing"
-                    for experiment_id in staging_experiments
-                ]
+    if len(staging_experiments) > 0:
+        click.echo()
+        click.echo(
+            click.style(
+                "✔️ Staging-specific experiments are available at :",
+                fg="green",
+                bold=True,
             )
         )
-    )
+
+        click.echo(
+            click.style(
+                "\n".join(
+                    [
+                        f"- https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
+                        for experiment_id in staging_experiments
+                    ]
+                )
+            )
+        )
