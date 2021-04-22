@@ -33,11 +33,15 @@ def remove_staging_resources(sandbox_id):
         for experiment_id in staging_experiments.get("Items")
     ]
 
-    source_tables = dynamodb.list_tables().get("TableNames")
+    staging_tables = [
+        table
+        for table in dynamodb.list_tables().get("TableNames")
+        if re.match(".*-staging", table)
+    ]
 
     records_to_delete = {}
 
-    for table in source_tables:
+    for table in staging_tables:
 
         # Check if table's meta requires something else other than experiment_id
         key_schema = (
@@ -48,7 +52,6 @@ def remove_staging_resources(sandbox_id):
 
         # If need sort key to delete, then query for all keys
         if len(key_schema) > 1:
-
             sort_key = key_schema[1].get("AttributeName")
             key_projection = f"experimentId, {sort_key}"
 
@@ -87,25 +90,28 @@ def remove_staging_resources(sandbox_id):
             except Exception as e:
                 click.echo(f"Failed to delete from DynamoDB: {e}")
 
-            click.echo()
-
-    click.echo("DynamoDB entries successfully deleted")
+    click.echo(
+        click.style(
+            "Staging records successfully deleted from DynamoDB.", fg="green", bold=True
+        )
+    )
     click.echo()
 
     # Remove staging files
     click.echo("Removing staging files from S3")
     s3 = boto3.client("s3")
 
-    source_buckets = [name["Name"] for name in s3.list_buckets().get("Buckets")]
+    staging_buckets = [
+        name["Name"]
+        for name in s3.list_buckets().get("Buckets")
+        if re.match(".*-staging", name["Name"])
+    ]
 
-    for bucket in source_buckets:
-
-        click.echo(f"Checking for files in bucket {bucket}...")
+    for bucket in staging_buckets:
 
         files_to_delete = s3.list_objects_v2(Bucket=bucket)
 
         if files_to_delete.get("KeyCount") == 0:
-            click.echo(f"No files found in bucket {bucket}, continuing")
             continue
 
         files_to_delete = [
@@ -115,7 +121,6 @@ def remove_staging_resources(sandbox_id):
         ]
 
         if len(files_to_delete) == 0:
-            click.echo(f"No staging files found in bucket {bucket}, continuing")
             continue
 
         try:
@@ -133,7 +138,11 @@ def remove_staging_resources(sandbox_id):
             click.echo("Failed to delete files" "\n".join(files_to_delete))
             click.echo(f"from {bucket} with exception : {e}")
 
-    click.echo("Staging files successfully deleted")
+    click.echo(
+        click.style(
+            "Staging files successfully deleted from S3.", fg="green", bold=True
+        )
+    )
     click.echo()
 
 
@@ -157,16 +166,16 @@ def unstage(token, org, sandbox_id):
     Removes a custom staging environment.
     """
 
-    if not check_if_exists(org, sandbox_id):
-        click.echo()
-        click.echo(
-            click.style(
-                f"✖️ Staging sandbox with ID `{sandbox_id}` could not be found.",
-                fg="red",
-                bold=True,
-            )
-        )
-        exit(1)
+    # if not check_if_exists(org, sandbox_id):
+    #     click.echo()
+    #     click.echo(
+    #         click.style(
+    #             f"✖️ Staging sandbox with ID `{sandbox_id}` could not be found.",
+    #             fg="red",
+    #             bold=True,
+    #         )
+    #     )
+    #     exit(1)
 
     # get (secret) access keys
     session = boto3.Session()
@@ -200,24 +209,26 @@ def unstage(token, org, sandbox_id):
     if not answers["delete"]:
         exit(1)
 
-    g = Github(token)
-    o = g.get_organization(org)
-    r = o.get_repo("iac")
+    # g = Github(token)
+    # o = g.get_organization(org)
+    # r = o.get_repo("iac")
 
-    wf = None
-    for workflow in r.get_workflows():
-        if workflow.name == "Remove a staging environment":
-            wf = str(workflow.id)
+    # wf = None
+    # for workflow in r.get_workflows():
+    #     if workflow.name == "Remove a staging environment":
+    #         wf = str(workflow.id)
 
-    wf = r.get_workflow(wf)
+    # wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
-        ref="master",
-        inputs={"sandbox-id": sandbox_id, "secrets": secrets},
-    )
+    # wf.create_dispatch(
+    #     ref="master",
+    #     inputs={"sandbox-id": sandbox_id, "secrets": secrets},
+    # )
 
-    click.echo("Deleting resources used in staging environment")
+    click.echo("Deleting resources used in staging environment...")
     remove_staging_resources(sandbox_id)
+
+    exit(0)
 
     click.echo()
     click.echo(

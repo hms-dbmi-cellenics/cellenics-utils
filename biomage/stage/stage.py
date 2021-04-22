@@ -241,24 +241,34 @@ def choose_staging_experiments():
     )
 
     # Implement pagination if result contains more than 20 experiments
+    default_enabled_experiments = ["e52b39624588791a7889e39c617f669e"]
+
     choices = [
         {
             "name": "{}{}".format(
                 props.get("experimentId").ljust(36), props.get("experimentName")
-            )
+            ),
+            "checked": props.get("experimentId") in default_enabled_experiments,
         }
         for props in response.get("Items")
     ]
 
+    click.echo()
+    click.echo(click.style("Isolate staging environment.", fg="yellow", bold=True))
+    click.echo(
+        "To provide isolation, files and records from existing experimentIds "
+        "will be copied and renamed under unique experimentIds.\nYou can use these "
+        "scoped resources to test your changes. Be mindful, that creating\n"
+        "isolated environmetns involve copying resources in AWS."
+    )
     questions = [
         {
             "type": "checkbox",
             "name": "staging_experiments",
-            "message": "Which experiment ids would you like to enable for the staging environment?",
+            "message": "Which experiments would you like to enable for the staging environment?",
             "choices": choices,
         }
     ]
-
     click.echo()
 
     answers = prompt(questions)
@@ -279,6 +289,7 @@ def choose_staging_experiments():
 def create_staging_experiments(staging_experiments, sandbox_id):
     # Create staging experiments as selected
 
+    click.echo()
     click.echo("Copying items for new experiments...")
 
     # Copy files
@@ -292,93 +303,98 @@ def create_staging_experiments(staging_experiments, sandbox_id):
     file_copy_retries = []
 
     for bucket in source_buckets:
-        exp_files = s3.list_objects_v2(Bucket=bucket)
+        for experiment_id in staging_experiments:
+            exp_files = s3.list_objects_v2(Bucket=bucket, Prefix=experiment_id)
 
-        if exp_files.get("KeyCount") == 0:
-            click.echo(f"No objects found in {bucket}, skipping bucket")
-            continue
+            if exp_files.get("KeyCount") == 0:
+                click.echo(f"No objects found in {bucket}, skipping bucket")
+                continue
 
-        for obj in exp_files.get("Contents"):
+            for obj in exp_files.get("Contents"):
 
-            experiment_id = obj["Key"].split("/")[0]
+                experiment_id = obj["Key"].split("/")[0]
 
-            source = {"Bucket": bucket, "Key": obj["Key"]}
+                source = {"Bucket": bucket, "Key": obj["Key"]}
 
-            target = {
-                "Bucket": bucket,
-                "Key": obj["Key"].replace(
-                    experiment_id, f"{sandbox_id}-{experiment_id}"
-                ),
-            }
-            click.echo(
-                f"Copying from {source['Bucket']}/{source['Key']} to "
-                f"{target['Bucket']}/{target['Key']}"
-            )
+                target = {
+                    "Bucket": bucket,
+                    "Key": obj["Key"].replace(
+                        experiment_id, f"{sandbox_id}-{experiment_id}"
+                    ),
+                }
 
-            try:
-                s3.copy_object(
-                    CopySource=source,
-                    Bucket=target["Bucket"],
-                    Key=target["Key"],
-                )
-            except Exception as e:
-                click.echo(
-                    f"failed to copy object {source['Bucket']}/{source['Key']} \
-                    with exception: \n {e}"
-                )
-                file_copy_retries.append(source)
+                try:
+                    # Skip copying if object exists
+                    s3.head_object(
+                        Bucket=bucket, Key=target["Key"], IfMatch=obj["ETag"]
+                    )
+
+                except Exception:
+
+                    try:
+                        click.echo(
+                            f"Copying from {source['Bucket']}/{source['Key']} to "
+                            f"{target['Bucket']}/{target['Key']}"
+                        )
+
+                        s3.copy_object(
+                            CopySource=source,
+                            Bucket=target["Bucket"],
+                            Key=target["Key"],
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"failed to copy object {source['Bucket']}/{source['Key']} \
+                            with exception: \n {e}"
+                        )
+                        file_copy_retries.append(source)
+
+    click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
+    click.echo()
 
     # Copy DynamoDB entries
     dynamodb = boto3.client("dynamodb")
-
-    click.echo("Copying records for new experiments...")
-
     source_tables = ["experiments-staging", "samples-staging"]
+
+    click.echo("Copying DynamoDB records for new experiments...")
 
     request_items = {}
 
     for table in source_tables:
-        request_items[table] = {
-            "Keys": [
-                {"experimentId": {"S": experiment_id}}
-                for experiment_id in staging_experiments
-            ]
-        }
+        click.echo(f"Copying records in {table}")
 
-    response = dynamodb.batch_get_item(RequestItems=request_items)
-    click.echo("Copying DynamoDB records for new experiments...")
+        for experiment_id in staging_experiments:
+            items = dynamodb.query(
+                TableName=table,
+                KeyConditionExpression="experimentId = :experiment_id",
+                ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
+            ).get("Items")
 
-    # Modify responses
-    insert_items = {}
-    for table, records in response.get("Responses").items():
-        insert_items[table] = [
-            {
-                "PutRequest": {
-                    "Item": {
-                        **record,
-                        "experimentId": {
-                            "S": f"{sandbox_id}-{record['experimentId']['S']}",
-                        },
+            items_to_insert = {}
+            items_to_insert[table] = [
+                {
+                    "PutRequest": {
+                        "Item": {
+                            **item,
+                            "experimentId": {
+                                "S": f"{sandbox_id}-{item['experimentId']['S']}",
+                            },
+                        }
                     }
                 }
-            }
-            for record in records
-        ]
+                for item in items
+            ]
 
-    try:
-        dynamodb.batch_write_item(RequestItems=insert_items)
+            try:
+                dynamodb.batch_write_item(RequestItems=items_to_insert)
 
-        click.echo(f"Successfully copied records in tables {', '.join(source_tables)}:")
-        click.echo(
-            "\n".join(
-                [
-                    f"from {experiment_id} to {sandbox_id}-{experiment_id}"
-                    for experiment_id in staging_experiments
-                ]
-            )
-        )
-    except Exception as e:
-        click.echo(f"Failed inserting records: {e}")
+            except Exception as e:
+                click.echo(f"Failed inserting records: {e}")
+
+    click.echo(
+        click.style("DynamoDB records successfully copied.", fg="green", bold=True)
+    )
+    click.echo()
 
 
 @click.command()
@@ -411,6 +427,8 @@ def stage(token, org, deployments):
 
     # Creating staging experiments
     create_staging_experiments(staging_experiments, sandbox_id)
+
+    exit(0)
 
     # get (secret) access keys
     session = boto3.Session()
@@ -473,5 +491,25 @@ def stage(token, org, deployments):
             f"https://ui-{sandbox_id}.scp-staging.biomage.net/",
             fg="green",
             bold=True,
+        )
+    )
+
+    click.echo(
+        click.style(
+            "Staging-specific experiments are available at :",
+            fg="yellow",
+            bold=True,
+        )
+    )
+
+    click.echo(
+        click.style(
+            "\n".join(
+                [
+                    "Staging-scoped experiments are available at "
+                    f"https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{experiment_id}/data-processing"
+                    for experiment_id in staging_experiments
+                ]
+            )
         )
     )
