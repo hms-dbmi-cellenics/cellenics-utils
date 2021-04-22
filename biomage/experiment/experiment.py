@@ -1,18 +1,21 @@
-import itertools
 import copy
+import itertools
 from pprint import pprint
 
-import click
 import boto3
+import click
 from botocore.exceptions import ClientError
 from deepdiff import DeepDiff
 from PyInquirer import prompt
+
+from .get import get
+from .pull import pull
 
 
 @click.group()
 def experiment():
     """
-    Work with Cellscope experiment settings
+    Manage  Cellscope experiment data and settings.
     """
     pass
 
@@ -46,8 +49,8 @@ def experiment_item_summary(item, env_name):
 
 
 @click.command()
-@click.argument("experimentid")
-def compare(experimentid):
+@click.argument("experiment_id")
+def compare(experiment_id):
     """
     Compares an experiment's information accross environments
     """
@@ -83,7 +86,7 @@ def compare(experimentid):
         for table_name, table in tables.items():
             db_table = dynamodb.Table(f"{table_name}-{env_name}")
             try:
-                record = table["query"](db_table, experimentid)
+                record = table["query"](db_table, experiment_id)
                 if record:
                     env_values["dynamoDB"][table_name] = table["summary"](
                         record, env_name
@@ -96,7 +99,7 @@ def compare(experimentid):
         for bucket_name in buckets.keys():
             env_values["s3"][bucket_name] = {}
             for s3_object in s3.list_objects(
-                Bucket=f"{bucket_name}-{env_name}", Prefix=experimentid
+                Bucket=f"{bucket_name}-{env_name}", Prefix=experiment_id
             ).get("Contents", []):
                 file_name = s3_object["Key"].split("/", 1)[1]
                 env_values["s3"][bucket_name][file_name] = {
@@ -163,6 +166,10 @@ def compare(experimentid):
             )
         if len(available) >= 2:
             for env1, env2 in itertools.combinations(available, 2):
+                # this relies on this script changing the local file modified date to
+                # that of its remote counterpart, otherwise it will always fail as the
+                # S3 modification date (upload time) will always differ from the local
+                # file modified date (download time)
                 diff = DeepDiff(
                     environments[env1]["s3"][bucket_name],
                     environments[env2]["s3"][bucket_name],
@@ -218,3 +225,5 @@ def compare(experimentid):
 
 
 experiment.add_command(compare)
+experiment.add_command(pull)
+experiment.add_command(get)
