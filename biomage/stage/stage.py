@@ -361,7 +361,7 @@ def create_staging_experiments(staging_experiments, sandbox_id):
     request_items = {}
 
     for table in source_tables:
-        click.echo(f"Copying records in {table}")
+        click.echo(f"Copying records in table {table}")
 
         for experiment_id in staging_experiments:
             items = dynamodb.query(
@@ -425,11 +425,6 @@ def stage(token, org, deployments):
     # enable experiments in staging
     staging_experiments = choose_staging_experiments()
 
-    # Creating staging experiments
-    create_staging_experiments(staging_experiments, sandbox_id)
-
-    exit(0)
-
     # get (secret) access keys
     session = boto3.Session()
     credentials = session.get_credentials()
@@ -476,6 +471,9 @@ def stage(token, org, deployments):
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
 
+    # Creating staging experiments
+    create_staging_experiments(staging_experiments, sandbox_id)
+
     click.echo()
     click.echo(
         click.style(
@@ -496,8 +494,8 @@ def stage(token, org, deployments):
 
     click.echo(
         click.style(
-            "Staging-specific experiments are available at :",
-            fg="yellow",
+            "✔️ Staging-specific experiments are available at :",
+            fg="green",
             bold=True,
         )
     )
@@ -506,8 +504,7 @@ def stage(token, org, deployments):
         click.style(
             "\n".join(
                 [
-                    "Staging-scoped experiments are available at "
-                    f"https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{experiment_id}/data-processing"
+                    f"- https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{experiment_id}/data-processing"
                     for experiment_id in staging_experiments
                 ]
             )

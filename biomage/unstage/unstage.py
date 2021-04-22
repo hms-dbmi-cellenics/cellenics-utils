@@ -166,16 +166,16 @@ def unstage(token, org, sandbox_id):
     Removes a custom staging environment.
     """
 
-    # if not check_if_exists(org, sandbox_id):
-    #     click.echo()
-    #     click.echo(
-    #         click.style(
-    #             f"✖️ Staging sandbox with ID `{sandbox_id}` could not be found.",
-    #             fg="red",
-    #             bold=True,
-    #         )
-    #     )
-    #     exit(1)
+    if not check_if_exists(org, sandbox_id):
+        click.echo()
+        click.echo(
+            click.style(
+                f"✖️ Staging sandbox with ID `{sandbox_id}` could not be found.",
+                fg="red",
+                bold=True,
+            )
+        )
+        exit(1)
 
     # get (secret) access keys
     session = boto3.Session()
@@ -209,26 +209,21 @@ def unstage(token, org, sandbox_id):
     if not answers["delete"]:
         exit(1)
 
-    # g = Github(token)
-    # o = g.get_organization(org)
-    # r = o.get_repo("iac")
+    g = Github(token)
+    o = g.get_organization(org)
+    r = o.get_repo("iac")
 
-    # wf = None
-    # for workflow in r.get_workflows():
-    #     if workflow.name == "Remove a staging environment":
-    #         wf = str(workflow.id)
+    wf = None
+    for workflow in r.get_workflows():
+        if workflow.name == "Remove a staging environment":
+            wf = str(workflow.id)
 
-    # wf = r.get_workflow(wf)
+    wf = r.get_workflow(wf)
 
-    # wf.create_dispatch(
-    #     ref="master",
-    #     inputs={"sandbox-id": sandbox_id, "secrets": secrets},
-    # )
-
-    click.echo("Deleting resources used in staging environment...")
-    remove_staging_resources(sandbox_id)
-
-    exit(0)
+    wf.create_dispatch(
+        ref="master",
+        inputs={"sandbox-id": sandbox_id, "secrets": secrets},
+    )
 
     click.echo()
     click.echo(
@@ -239,3 +234,6 @@ def unstage(token, org, sandbox_id):
             bold=True,
         )
     )
+
+    click.echo("Deleting resources used in staging environment...")
+    remove_staging_resources(sandbox_id)
