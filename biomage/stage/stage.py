@@ -254,7 +254,9 @@ def choose_staging_experiments():
     ]
 
     click.echo()
-    click.echo(click.style("Isolate staging environment.", fg="yellow", bold=True))
+    click.echo(
+        click.style("Create isolated staging environment.", fg="yellow", bold=True)
+    )
     click.echo(
         "To provide isolation, files and records from existing experimentIds "
         "will be copied and renamed under unique experimentIds.\nYou can use these "
