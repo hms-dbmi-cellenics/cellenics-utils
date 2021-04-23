@@ -12,8 +12,11 @@ After cloning the repository, do the following (might require **sudo** in some d
 
     make install
 
+You can verify that the command has been successfully installed with:
 
-You should be able to access `biomage-utils` by typing:
+    make test
+
+If the test was successful, you should be able to access `biomage-utils` by typing:
 
     biomage
 
