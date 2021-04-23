@@ -99,7 +99,18 @@ The utility will launch an interactive wizard to guide you through creating your
 
 #### *isolated staging environments*
 
-The option to create isolated staging environments is provided during the interactive wizard. Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, you'll still have to [manually unstage copied resources](#removing-staging-resources). 
+The option to create isolated staging environments is provided during the interactive wizard. Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, **you are recommended to stage with the same sandbox ID** that was used previously. If you'd like to use a different sandbox ID, [unstage copied resources](#removing-staging-resources) to remove existing staged resources before staging using a new sandbox ID. 
+
+
+During the creation of isolated staging environments, the following files are copied in these S3 buckets:
+
+    biomage-source-staging
+    processed-matrix-staging
+
+Records in the following DynamoDB tables are copied:
+
+    experiments-staging
+    samples-staging
 
 #### Pinning
 

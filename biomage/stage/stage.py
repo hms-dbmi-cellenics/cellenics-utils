@@ -105,7 +105,27 @@ def get_latest_master_sha(chart, token):
     raise Exception("Invalid repository supplied.")
 
 
-def get_sandbox_id(templates, manifests):
+def get_all_experiments():
+    table = boto3.resource("dynamodb").Table("experiments-staging")
+    response = table.scan(
+        AttributesToGet=["experimentId", "experimentName"],
+        ConsistentRead=True,
+    )
+
+    experiment_ids = response.get("Items")
+
+    while last_key := response.get("LastEvaluatedKey"):
+        response = table.scan(
+            AttributesToGet=["experimentId", "experimentName"],
+            ConsistentRead=True,
+            ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
+        )
+        experiment_ids += response.get("Items")
+
+    return experiment_ids
+
+
+def get_sandbox_id(templates, manifests, all_experiments):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
@@ -146,13 +166,22 @@ def get_sandbox_id(templates, manifests):
         click.echo()
         sandbox_id = prompt(questions)
         sandbox_id = sandbox_id["sandbox_id"]
-        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
+
+        if sandbox_id in [experiment["experimentId"] for experiment in all_experiments]:
+            click.echo(
+                click.style(
+                    "Your ID is the same with the name of an experiment. "
+                    "Please use another name",
+                    fg="red",
+                )
+            )
+        elif SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
             return sandbox_id
         else:
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
-def create_manifest(templates, token):
+def create_manifest(templates, token, all_experiments):
     # Ask about which releases to pin.
     click.echo()
     click.echo(
@@ -188,6 +217,9 @@ def create_manifest(templates, token):
     pins = prompt(questions)
     try:
         pins = set(pins["pins"])
+        click.echo("Pinned repositories:")
+        click.echo("\n".join(f"• {pin}" for pin in pins))
+
     except Exception:
         exit(1)
 
@@ -224,68 +256,101 @@ def create_manifest(templates, token):
     manifests = yaml.dump_all(manifests)
 
     # Write sandbox ID
-    sandbox_id = get_sandbox_id(templates, manifests)
+    sandbox_id = get_sandbox_id(templates, manifests, all_experiments)
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
 
     return manifests, sandbox_id
 
 
-def choose_staging_experiments():
+def choose_staging_experiments(sandbox_id, all_experiments):
     # Get list of experiments currently available in the platform
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table("experiments-staging")
-    response = table.scan(
-        AttributesToGet=["experimentId", "experimentName"],
-        Limit=20,
-        ConsistentRead=True,
-    )
-
-    # Implement pagination if result contains more than 20 experiments
-    default_enabled_experiments = ["e52b39624588791a7889e39c617f669e"]
-
-    choices = [
-        {
-            "name": "{} {}".format(
-                props.get("experimentId").ljust(40), props.get("experimentName")
-            ),
-            "checked": props.get("experimentId") in default_enabled_experiments,
-        }
-        for props in response.get("Items")
-    ]
-
     click.echo()
     click.echo(
         click.style("Create isolated staging environment.", fg="yellow", bold=True)
     )
     click.echo(
         "To provide isolation, files and records from existing experimentIds "
-        "will be copied and renamed under unique experimentIds.\nYou can use these "
-        "scoped resources to test your changes. Be mindful, that creating\n"
-        "isolated environmetns involve copying resources in AWS."
+        "will be copied and renamed under unique experimentIds.\n"
+        "You can use these scoped resources to test your changes. "
+        "Be mindful, that creating isolated environments create resources in AWS."
     )
+
+    staged_experiments = [
+        experiment
+        for experiment in all_experiments
+        if re.match(f"^{sandbox_id}-*", experiment["experimentId"])
+    ]
+
+    excluded_experiment_ids = [
+        experiment["experimentId"].replace(f"{sandbox_id}-", "")
+        for experiment in staged_experiments
+    ]
+
+    excluded_experiment_ids += [
+        experiment["experimentId"] for experiment in staged_experiments
+    ]
+
+    unstaged_experiments = [
+        experiment
+        for experiment in all_experiments
+        if experiment["experimentId"] not in excluded_experiment_ids
+    ]
+
+    if len(staged_experiments) > 0:
+        click.echo()
+        click.echo(f"Staged environment(s) exists for the sandbox_id {sandbox_id}:")
+        click.echo(
+            "\n".join(
+                [f"• {experiment['experimentId']}" for experiment in staged_experiments]
+            )
+        )
+        click.echo()
+
+    choices = [
+        {
+            "name": "{} {}".format(
+                experiment["experimentId"].ljust(40), experiment["experimentName"]
+            ),
+        }
+        for experiment in unstaged_experiments
+    ]
+
+    # Implement pagination if result contains more than 20 experiments
+    # if len(unstaged_experiments) > 20:
+    #     page = 0
     questions = [
         {
             "type": "checkbox",
-            "name": "staging_experiments",
+            "name": "experiments_to_stage",
             "message": "Which experiments would you like to enable for the staging environment?",
             "choices": choices,
         }
     ]
-    click.echo()
-
     answers = prompt(questions)
 
+    click.echo()
     try:
-        staging_experiments = set(
+        experiment_ids_to_stage = set(
             [
                 experiment_id.split(" ")[0]
-                for experiment_id in answers["staging_experiments"]
+                for experiment_id in answers["experiments_to_stage"]
             ]
         )
+
+        click.echo()
+        click.echo("Chosen experiments to stage:")
+        click.echo(
+            "\n".join(f"• {experiment_id}" for experiment_id in experiment_ids_to_stage)
+        )
+
     except Exception:
         exit(1)
 
-    return staging_experiments
+    staged_experiment_ids = [
+        experiment["experimentId"] for experiment in staged_experiments
+    ]
+
+    return experiment_ids_to_stage, staged_experiment_ids
 
 
 def create_staging_experiments(staging_experiments, sandbox_id):
@@ -352,7 +417,6 @@ def create_staging_experiments(staging_experiments, sandbox_id):
                         file_copy_retries.append(source)
 
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
-    click.echo()
 
     # Copy DynamoDB entries
     dynamodb = boto3.client("dynamodb")
@@ -419,13 +483,18 @@ def stage(token, org, deployments):
 
     # generate templats
     templates = compile_requirements(org, deployments)
-    manifest, sandbox_id = create_manifest(templates, token)
+
+    all_experiments = get_all_experiments()
+
+    manifest, sandbox_id = create_manifest(templates, token, all_experiments)
     manifest = base64.b64encode(manifest.encode()).decode()
 
     # enable experiments in staging
-    staging_experiments = choose_staging_experiments()
+    experiment_ids_to_stage, staged_experiment_ids = choose_staging_experiments(
+        sandbox_id, all_experiments
+    )
 
-    if len(staging_experiments) == 0:
+    if len(experiment_ids_to_stage) == 0:
         click.echo(
             "No staging environment chosen. "
             "Skipping creation of isolated staging environment."
@@ -461,24 +530,24 @@ def stage(token, org, deployments):
     if not answers["create"]:
         exit(1)
 
-    g = Github(token)
-    o = g.get_organization(org)
-    r = o.get_repo("iac")
+    # g = Github(token)
+    # o = g.get_organization(org)
+    # r = o.get_repo("iac")
 
-    wf = None
-    for workflow in r.get_workflows():
-        if workflow.name == "Deploy a staging environment":
-            wf = str(workflow.id)
+    # wf = None
+    # for workflow in r.get_workflows():
+    #     if workflow.name == "Deploy a staging environment":
+    #         wf = str(workflow.id)
 
-    wf = r.get_workflow(wf)
+    # wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
-        ref="master",
-        inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
-    )
+    # wf.create_dispatch(
+    #     ref="master",
+    #     inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
+    # )
 
-    if len(staging_experiments) > 0:
-        create_staging_experiments(staging_experiments, sandbox_id)
+    if len(experiment_ids_to_stage) > 0:
+        create_staging_experiments(experiment_ids_to_stage, sandbox_id)
 
     click.echo()
     click.echo(
@@ -498,7 +567,7 @@ def stage(token, org, deployments):
         )
     )
 
-    if len(staging_experiments) > 0:
+    if len(staged_experiment_ids) > 0:
         click.echo()
         click.echo(
             click.style(
@@ -509,12 +578,13 @@ def stage(token, org, deployments):
         )
 
         click.echo(
-            click.style(
-                "\n".join(
-                    [
-                        f"- https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
-                        for experiment_id in staging_experiments
+            "\n".join(
+                [
+                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
+                    for experiment_id in [
+                        *staged_experiment_ids,
+                        *experiment_ids_to_stage,
                     ]
-                )
+                ]
             )
         )

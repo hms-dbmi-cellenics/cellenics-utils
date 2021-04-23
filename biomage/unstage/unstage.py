@@ -21,19 +21,19 @@ def remove_staging_resources(sandbox_id):
     # Remove staging records
     dynamodb = boto3.client("dynamodb")
 
-    staging_experiments = dynamodb.scan(
+    staged_experiments = dynamodb.scan(
         TableName="experiments-staging",
         ProjectionExpression="experimentId",
         FilterExpression="begins_with(experimentId, :sandbox_id)",
         ExpressionAttributeValues={":sandbox_id": {"S": sandbox_id}},
     )
 
-    staging_experiments = [
+    staged_experiments = [
         experiment_id["experimentId"]["S"]
-        for experiment_id in staging_experiments.get("Items")
+        for experiment_id in staged_experiments.get("Items")
     ]
 
-    if len(staging_experiments) == 0:
+    if len(staged_experiments) == 0:
         return
 
     staging_tables = [
@@ -46,52 +46,59 @@ def remove_staging_resources(sandbox_id):
 
         records_to_delete = {}
 
-        # Check if table's meta requires something else other than experiment_id
+        # Deleting records from DynamoDB requires the primaryKey.
+        # if the table's PK is made up of partitionKey & sortKey,
+        # Then search with partitionKey and iterate through all the records
         key_schema = (
             dynamodb.describe_table(TableName=table).get("Table").get("KeySchema")
         )
 
-        key_projection = "exprimentId"
-
-        # If need sort key to delete, then query for all keys
         if len(key_schema) > 1:
             sort_key = key_schema[1].get("AttributeName")
-            key_projection = f"experimentId, {sort_key}"
-
-            for experiment_id in staging_experiments:
+            for experiment_id in staged_experiments:
 
                 # Query table for all keys
                 items_to_delete = dynamodb.query(
                     TableName=table,
-                    ProjectionExpression=key_projection,
+                    ProjectionExpression=f"experimentId, {sort_key}",
                     KeyConditionExpression="experimentId = :experiment_id",
                     ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
                 ).get("Items")
 
-                for item in items_to_delete:
+                records_to_delete[table] = [
+                    {
+                        "DeleteRequest": {
+                            "Key": {
+                                "experimentId": {"S": experiment_id},
+                                sort_key: {"S": item[sort_key]},
+                            }
+                        }
+                    }
+                    for item in items_to_delete
+                ]
+                # for item in items_to_delete:
 
-                    # construct delete key
-                    delete_key = {"experimentId": {"S": experiment_id}}
-                    delete_key[sort_key] = item[sort_key]
+                #     # construct delete key
+                #     delete_key = {"experimentId": {"S": experiment_id}}
+                #     delete_key[sort_key] = item[sort_key]
 
-                    # Delete
-                    try:
-                        dynamodb.delete_item(TableName=table, Key=delete_key)
-                    except Exception as e:
-                        click.echo(f"Failed to delete from DynamoDB: {e}")
+                #     # Delete
+                # try:
+                #     dynamodb.delete_item(TableName=table, Key=delete_key)
+                # except Exception as e:
+                #     click.echo(f"Failed to delete from DynamoDB: {e}")
 
         else:
-            # delete
             records_to_delete[table] = [
                 {"DeleteRequest": {"Key": {"experimentId": {"S": experiment_id}}}}
-                for experiment_id in staging_experiments
+                for experiment_id in staged_experiments
             ]
 
-            try:
-                dynamodb.batch_write_item(RequestItems=records_to_delete)
-                click.echo(f"Successfully deleted records from table {table}")
-            except Exception as e:
-                click.echo(f"Failed to delete from DynamoDB: {e}")
+        try:
+            dynamodb.batch_write_item(RequestItems=records_to_delete)
+            click.echo(f"Successfully deleted records from table {table}")
+        except Exception as e:
+            click.echo(f"Failed to delete from DynamoDB: {e}")
 
     click.echo(
         click.style(
