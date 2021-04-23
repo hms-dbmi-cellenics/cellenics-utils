@@ -14,7 +14,7 @@ def list_bucket_files(bucket):
     "origin",
     default="production",
 )
-def get(origin):
+def ls(origin):
     """
     Get all available experiments in the bucket 'biomage-source-{origin} in S3.
     """

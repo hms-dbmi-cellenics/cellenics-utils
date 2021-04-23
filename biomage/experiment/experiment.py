@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 from deepdiff import DeepDiff
 from PyInquirer import prompt
 
-from .get import get
+from .ls import ls
 from .pull import pull
 
 
@@ -226,4 +226,4 @@ def compare(experiment_id):
 
 experiment.add_command(compare)
 experiment.add_command(pull)
-experiment.add_command(get)
+experiment.add_command(ls)
