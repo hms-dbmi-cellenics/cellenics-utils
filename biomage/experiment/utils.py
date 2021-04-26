@@ -71,7 +71,7 @@ def set_modified_date(file_location, date):
 
 
 def get_local_S3_path(key):
-    return os.path.join(DATA_LOCATION, key + ".gz")
+    return os.path.join(DATA_LOCATION, key)
 
 
 def is_modified(obj, key):
@@ -95,8 +95,8 @@ def is_modified(obj, key):
     return False
 
 
-def download_S3_obj(s3_obj, key):
-    local_file = get_local_S3_path(key)
+def download_S3_obj(s3_obj, key, filepath):
+    local_file = get_local_S3_path(filepath)
     # try to create experiment folder, ignores if already exists (same as mkdir -p)
     Path(os.path.dirname(local_file)).mkdir(parents=True, exist_ok=True)
 
