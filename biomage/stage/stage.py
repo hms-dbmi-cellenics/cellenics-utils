@@ -263,6 +263,118 @@ def create_manifest(templates, token, all_experiments):
     return manifests, sandbox_id
 
 
+def select_experiments(
+    experiments,
+    experiments_per_page=10,
+    previous_text="<< previous <<",
+    next_text=">> next >>",
+    done_text="== done ==",
+):
+
+    chosen_experiments = []
+
+    if len(experiments) <= experiments_per_page:
+
+        choices = [
+            {
+                "name": "{} {}".format(
+                    experiment["experimentId"][:40].ljust(40),
+                    experiment["experimentName"],
+                ),
+            }
+            for experiment in experiments
+        ]
+
+        questions = [
+            {
+                "type": "checkbox",
+                "name": "experiments_to_stage",
+                "message": "Which experiments would you like to enable for the staging environment?",
+                "choices": choices,
+            }
+        ]
+
+        chosen_experiments = prompt(questions)["experiments_to_stage"]
+
+    else:
+
+        max_page = math.ceil(len(experiments) / experiments_per_page)
+        current_page = 0
+        done = False
+
+        while not done:
+
+            idx_start = experiments_per_page * current_page
+            idx_end = (current_page + 1) * experiments_per_page
+
+            choices = [
+                {
+                    "name": "{} {}".format(
+                        experiment["experimentId"].ljust(40),
+                        experiment["experimentName"],
+                    ),
+                    "checked": experiment["experimentId"] in chosen_experiments,
+                }
+                for experiment in experiments[idx_start:idx_end]
+            ]
+
+            # build choice options according to position in page
+            if current_page > 0:
+                choices = [{"name": previous_text}] + choices
+
+            if current_page < max_page - 1:
+                choices += [{"name": next_text}]
+
+            choices += [{"name": done_text}]
+
+            questions = [
+                {
+                    "type": "checkbox",
+                    "name": "experiments_to_stage",
+                    "message": "Which experiments would you like to enable for the staging environment?\n"
+                    "Choose 'done' to exit",
+                    "choices": choices,
+                }
+            ]
+
+            answers = prompt(questions)["experiments_to_stage"]
+            page_action = None
+
+            # Check if any of the pagination options are selected
+            if previous_text in answers:
+                answers.remove(previous_text)
+                page_action = "previous"
+
+            if next_text in answers:
+                answers.remove(next_text)
+                page_action = "next"
+
+            if done_text in answers:
+                answers.remove(done_text)
+                page_action = "done"
+
+            chosen_experiments = set(
+                [
+                    *chosen_experiments,
+                    *[experiment.split(" ")[0] for experiment in answers],
+                ]
+            )
+
+            # Switch according to chosen action
+            if page_action == "next":
+                current_page += 1
+            elif page_action == "previous":
+                current_page -= 1
+            elif page_action == "done":
+                break
+
+    chosen_experiment_ids = [
+        experiment_id.split(" ")[0] for experiment_id in chosen_experiments
+    ]
+
+    return chosen_experiment_ids
+
+
 def choose_staging_experiments(sandbox_id, all_experiments):
     # Get list of experiments currently available in the platform
     click.echo()
@@ -305,115 +417,14 @@ def choose_staging_experiments(sandbox_id, all_experiments):
         )
         click.echo()
 
-    # Implement pagination if result contains more than experiments_per_page number of experiments
-
-    chosen_experiments = []
-    experiments_per_page = 10
-
-    if len(unstaged_experiments) > experiments_per_page:
-
-        max_page = math.ceil(len(unstaged_experiments) / experiments_per_page)
-        page = 0
-        done = False
-        previous_text = "<< previous <<"
-        next_text = ">> next >>"
-        done_text = "== done =="
-
-        while not done:
-
-            idx_start = experiments_per_page * page
-            idx_end = (page + 1) * experiments_per_page
-
-            choices = [
-                {
-                    "name": "{} {}".format(
-                        experiment["experimentId"].ljust(40),
-                        experiment["experimentName"],
-                    ),
-                    "checked": experiment["experimentId"] in chosen_experiments,
-                }
-                for experiment in unstaged_experiments[idx_start:idx_end]
-            ]
-
-            if page > 0:
-                choices = [{"name": previous_text}] + choices
-
-            if page < max_page - 1:
-                choices += [{"name": next_text}]
-
-            choices += [{"name": done_text}]
-
-            questions = [
-                {
-                    "type": "checkbox",
-                    "name": "experiments_to_stage",
-                    "message": "Which experiments would you like to enable for the staging environment?\n"
-                    "Choose 'done' to exit",
-                    "choices": choices,
-                }
-            ]
-
-            answers = prompt(questions)["experiments_to_stage"]
-            page_action = None
-
-            if previous_text in answers:
-                answers.remove(previous_text)
-                page_action = "previous"
-
-            if next_text in answers:
-                answers.remove(next_text)
-                page_action = "next"
-
-            if done_text in answers:
-                answers.remove(done_text)
-                page_action = "done"
-
-            chosen_experiments = set(
-                [
-                    *chosen_experiments,
-                    *[experiment.split(" ")[0] for experiment in answers],
-                ]
-            )
-
-            if page_action == "next":
-                page += 1
-            elif page_action == "previous":
-                page -= 1
-            elif page_action == "done":
-                break
-
-    else:
-
-        choices = [
-            {
-                "name": "{} {}".format(
-                    experiment["experimentId"][:40].ljust(40),
-                    experiment["experimentName"],
-                ),
-            }
-            for experiment in unstaged_experiments
-        ]
-
-        questions = [
-            {
-                "type": "checkbox",
-                "name": "experiments_to_stage",
-                "message": "Which experiments would you like to enable for the staging environment?",
-                "choices": choices,
-            }
-        ]
-
-        chosen_experiments = prompt(questions)["experiments_to_stage"]
+    chosen_experiments = select_experiments(unstaged_experiments)
 
     click.echo()
     try:
-        experiment_ids_to_stage = set(
-            [experiment_id.split(" ")[0] for experiment_id in chosen_experiments]
-        )
 
         click.echo("Experiments chosen to be staged:")
         click.echo(
-            "\n".join(f"• {experiment_id}" for experiment_id in experiment_ids_to_stage)
+            "\n".join(f"• {experiment_id}" for experiment_id in chosen_experiments)
         )
 
     except Exception:
@@ -423,7 +434,7 @@ def choose_staging_experiments(sandbox_id, all_experiments):
         experiment["experimentId"] for experiment in staged_experiments
     ]
 
-    return experiment_ids_to_stage, staged_experiment_ids
+    return chosen_experiments, staged_experiment_ids
 
 
 def create_staging_experiments(staging_experiments, sandbox_id):
