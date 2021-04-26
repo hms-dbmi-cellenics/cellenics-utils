@@ -113,6 +113,8 @@ Records in the following DynamoDB tables are copied:
     experiments-staging
     samples-staging
 
+These configurations are read from `config.yaml`
+
 #### Pinning
 
 Pinning is a feature of the utility. When you pin a deployment, you ensure that no changes made
