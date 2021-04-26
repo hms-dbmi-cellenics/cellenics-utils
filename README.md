@@ -140,6 +140,7 @@ Isolated staging environments copies files and records to create a scoped stagin
 
     python3 biomage unstage my-sandbox-id --resources-only
 
+To manually delete files and records, look through all `*-staging` DynamoDB tables and S3 buckets for records and files prefixed with `my-sandbox-id`.
 
 ### experiment
 
