@@ -12,6 +12,7 @@ import boto3
 import click
 import requests
 import yaml
+from botocore.exceptions import ClientError
 from github import Github
 from PyInquirer import prompt
 
@@ -126,7 +127,7 @@ def get_all_experiments(source_table="experiments-staging"):
             ConsistentRead=True,
             ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
         )
-        experiment_ids += response.get("Items")
+        experiment_ids = [*experiment_ids, *response.get("Items")]
 
     return experiment_ids
 
@@ -264,6 +265,7 @@ def create_manifest(templates, token, all_experiments):
     # Write sandbox ID
     sandbox_id = get_sandbox_id(templates, manifests, all_experiments)
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
+    manifests = base64.b64encode(manifests.encode()).decode()
 
     return manifests, sandbox_id
 
@@ -303,7 +305,10 @@ def paginate_experiments(
             }
         ]
 
-        chosen_experiments = prompt(questions)["experiments_to_stage"]
+        chosen_experiments = [
+            experiment.split(" ")[0]
+            for experiment in prompt(questions)["experiments_to_stage"]
+        ]
 
     else:
 
@@ -329,12 +334,12 @@ def paginate_experiments(
 
             # build choice options according to position in page
             if current_page > 0:
-                choices = [{"name": previous_text}] + choices
+                choices = [{"name": previous_text}, *choices]
 
             if current_page < max_page - 1:
-                choices += [{"name": next_text}]
+                choices = [*choices, {"name": next_text}]
 
-            choices += [{"name": done_text}]
+            choices = [*choices, {"name": done_text}]
 
             questions = [
                 {
@@ -377,11 +382,94 @@ def paginate_experiments(
             elif page_action == "done":
                 break
 
-    chosen_experiment_ids = [
-        experiment_id.split(" ")[0] for experiment_id in chosen_experiments
-    ]
+    return chosen_experiments
 
-    return chosen_experiment_ids
+
+def check_file_etag(target, etag):
+    """
+    Copy s3 files in a bucket under a prefix
+    """
+    same_etag = False
+
+    try:
+        s3 = boto3.client("s3")
+        s3.head_object(Bucket=target["Bucket"], Key=target["Key"], IfMatch=etag)
+        same_etag = True
+    except ClientError as err:
+        if err.response['ResponseMetadata']['HTTPStatusCode'] not in [412, 404]:
+            raise
+
+    return same_etag
+
+
+def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
+    """
+    Copy s3 files in a bucket under a prefix
+    """
+    s3 = boto3.client("s3")
+    exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
+
+    for obj in exp_files.get("Contents"):
+
+        experiment_id = obj["Key"].split("/")[0]
+
+        source = {"Bucket": source_bucket, "Key": obj["Key"]}
+
+        target = {
+            "Bucket": target_bucket,
+            "Key": obj["Key"].replace(experiment_id, f"{sandbox_id}-{experiment_id}"),
+        }
+
+        if not check_file_etag(target, obj["ETag"]):
+            try:
+                click.echo(
+                    f"Copying from {source['Bucket']}/{source['Key']} to "
+                    f"{target['Bucket']}/{target['Key']}"
+                )
+
+                s3.copy_object(
+                    CopySource=source,
+                    Bucket=target["Bucket"],
+                    Key=target["Key"],
+                )
+            except Exception as e:
+                click.echo(
+                    f"failed to copy object {source['Bucket']}/{source['Key']} \
+                    with exception: \n {e}"
+                )
+
+
+def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_table):
+    """
+    Copy dynamodBD records for an experiment id
+    """
+    dynamodb = boto3.client("dynamodb")
+    for experiment_id in staging_experiments:
+        items = dynamodb.query(
+            TableName=source_table,
+            KeyConditionExpression="experimentId = :experiment_id",
+            ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
+        ).get("Items")
+
+        items_to_insert = {}
+        items_to_insert[target_table] = [
+            {
+                "PutRequest": {
+                    "Item": {
+                        **item,
+                        "experimentId": {
+                            "S": f"{sandbox_id}-{item['experimentId']['S']}",
+                        },
+                    }
+                }
+            }
+            for item in items
+        ]
+
+        try:
+            dynamodb.batch_write_item(RequestItems=items_to_insert)
+        except Exception as e:
+            click.echo(f"Failed inserting records: {e}")
 
 
 def select_staging_experiments(sandbox_id, all_experiments, config):
@@ -408,9 +496,12 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     # Exclude experiments with the pattern {sandbox_id}-{experiment_id}
     # and the associated experiment_id to prevent double staging.
     excluded_experiment_ids = [
-        experiment["experimentId"].replace(f"{sandbox_id}-", "")
-        for experiment in staged_experiments
-    ] + [experiment["experimentId"] for experiment in staged_experiments]
+        *[
+            experiment["experimentId"].replace(f"{sandbox_id}-", "")
+            for experiment in staged_experiments
+        ],
+        *[experiment["experimentId"] for experiment in staged_experiments],
+    ]
 
     unstaged_experiments = [
         experiment
@@ -431,15 +522,8 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     chosen_experiments = paginate_experiments(unstaged_experiments)
 
     click.echo()
-    try:
-
-        click.echo("Experiments chosen to be staged:")
-        click.echo(
-            "\n".join(f"• {experiment_id}" for experiment_id in chosen_experiments)
-        )
-
-    except Exception:
-        exit(1)
+    click.echo("Experiments chosen to be staged:")
+    click.echo("\n".join(f"• {experiment_id}" for experiment_id in chosen_experiments))
 
     staged_experiment_ids = [
         experiment["experimentId"] for experiment in staged_experiments
@@ -456,94 +540,24 @@ def create_staging_experiments(staging_experiments, sandbox_id, config):
     click.echo("Copying items for new experiments...")
 
     # Copy files
-    s3 = boto3.client("s3")
+    for source_bucket in config["source-buckets"]:
+        target_bucket = source_bucket.replace("production", "staging")
 
-    file_copy_retries = []
-
-    for bucket in config["source-buckets"]:
         for experiment_id in staging_experiments:
-            exp_files = s3.list_objects_v2(Bucket=bucket, Prefix=experiment_id)
-
-            if exp_files.get("KeyCount") == 0:
-                click.echo(f"No objects found in {bucket}, skipping bucket")
-                continue
-
-            for obj in exp_files.get("Contents"):
-
-                experiment_id = obj["Key"].split("/")[0]
-
-                source = {"Bucket": bucket, "Key": obj["Key"]}
-
-                target = {
-                    "Bucket": bucket,
-                    "Key": obj["Key"].replace(
-                        experiment_id, f"{sandbox_id}-{experiment_id}"
-                    ),
-                }
-
-                try:
-                    # Skip copying if object exists
-                    s3.head_object(
-                        Bucket=bucket, Key=target["Key"], IfMatch=obj["ETag"]
-                    )
-
-                except Exception:
-
-                    try:
-                        click.echo(
-                            f"Copying from {source['Bucket']}/{source['Key']} to "
-                            f"{target['Bucket']}/{target['Key']}"
-                        )
-
-                        s3.copy_object(
-                            CopySource=source,
-                            Bucket=target["Bucket"],
-                            Key=target["Key"],
-                        )
-                    except Exception as e:
-                        click.echo(
-                            f"failed to copy object {source['Bucket']}/{source['Key']} \
-                            with exception: \n {e}"
-                        )
-                        file_copy_retries.append(source)
+            copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
 
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
     click.echo()
 
     # Copy DynamoDB entries
-    dynamodb = boto3.client("dynamodb")
-
     click.echo("Copying DynamoDB records for new experiments...")
+    for source_table in config["source-tables"]:
+        target_table = source_table.replace("production", "staging")
 
-    for table in config["source-tables"]:
-        click.echo(f"Copying records in table {table}...")
-
-        for experiment_id in staging_experiments:
-            items = dynamodb.query(
-                TableName=table,
-                KeyConditionExpression="experimentId = :experiment_id",
-                ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
-            ).get("Items")
-
-            items_to_insert = {}
-            items_to_insert[table] = [
-                {
-                    "PutRequest": {
-                        "Item": {
-                            **item,
-                            "experimentId": {
-                                "S": f"{sandbox_id}-{item['experimentId']['S']}",
-                            },
-                        }
-                    }
-                }
-                for item in items
-            ]
-
-            try:
-                dynamodb.batch_write_item(RequestItems=items_to_insert)
-            except Exception as e:
-                click.echo(f"Failed inserting records: {e}")
+        click.echo(f"Copying records from {source_table} to table {target_table}...")
+        copy_dynamodb_records(
+            sandbox_id, staging_experiments, source_table, target_table
+        )
 
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)
@@ -578,19 +592,18 @@ def stage(token, org, deployments):
     with open("config.yaml") as config_file:
         config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
 
-    all_experiments = get_all_experiments(config["experiments-table"])
+    all_experiments = get_all_experiments(config["production-experiments-table"])
 
     manifest, sandbox_id = create_manifest(templates, token, all_experiments)
-    manifest = base64.b64encode(manifest.encode()).decode()
 
-    # enable experiments in staging
+    print("select staging experiments")
     experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
         sandbox_id, all_experiments, config
     )
 
     if len(experiment_ids_to_stage) == 0:
         click.echo(
-            "No staging environment chosen. "
+            "No experiments chosen. "
             "Skipping creation of isolated staging environment."
         )
 
@@ -624,21 +637,21 @@ def stage(token, org, deployments):
     if not answers["create"]:
         exit(1)
 
-    g = Github(token)
-    o = g.get_organization(org)
-    r = o.get_repo("iac")
+    # g = Github(token)
+    # o = g.get_organization(org)
+    # r = o.get_repo("iac")
 
-    wf = None
-    for workflow in r.get_workflows():
-        if workflow.name == "Deploy a staging environment":
-            wf = str(workflow.id)
+    # wf = None
+    # for workflow in r.get_workflows():
+    #     if workflow.name == "Deploy a staging environment":
+    #         wf = str(workflow.id)
 
-    wf = r.get_workflow(wf)
+    # wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
-        ref="master",
-        inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
-    )
+    # wf.create_dispatch(
+    #     ref="master",
+    #     inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
+    # )
 
     if len(experiment_ids_to_stage) > 0:
         create_staging_experiments(experiment_ids_to_stage, sandbox_id, config)

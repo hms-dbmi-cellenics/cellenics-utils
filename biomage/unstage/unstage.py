@@ -30,7 +30,7 @@ def delete_staging_records(sandbox_id, config):
     click.echo("Removing staging records from DynamoDB")
     dynamodb = boto3.client("dynamodb")
     staged_experiments = dynamodb.scan(
-        TableName=config["experiments-table"],
+        TableName=config["staging-experiments-table"],
         ProjectionExpression="experimentId",
         FilterExpression="begins_with(experimentId, :sandbox_id)",
         ExpressionAttributeValues={":sandbox_id": {"S": sandbox_id}},
@@ -43,7 +43,7 @@ def delete_staging_records(sandbox_id, config):
 
     if len(staged_experiments) == 0:
         click.echo(
-            f"No scoped experiments registered in table {config['experiments-table']}"
+            f"No scoped experiments registered in table {config['staging-experiments-table']}"
         )
         click.echo()
         return
@@ -134,10 +134,10 @@ def delete_staging_files(sandbox_id, config):
 
     for bucket in all_staging_buckets:
 
-        files_to_delete = s3.list_objects_v2(Bucket=bucket)
+        files_to_delete = s3.list_objects_v2(Bucket=bucket, Prefix=f"{sandbox_id}-")
 
         if files_to_delete.get("KeyCount") == 0:
-            click.echo(f"No files to delete in bucket {bucket}, skipping bucket...")
+            click.echo(f"No files in bucket {bucket}, skipping bucket...")
             continue
 
         files_to_delete = [
@@ -177,14 +177,12 @@ def remove_staging_resources(sandbox_id, config):
     """
     Remove staged resources under sandbox_id
     """
-
-    click.echo()
     click.echo("Deleting resources used in staging environment...")
     delete_staging_records(sandbox_id, config)
     delete_staging_files(sandbox_id, config)
 
     click.echo(
-        click.style("Staging resources successfully removed.", fg="green", bold=True)
+        click.style("Staging environments successfully removed.", fg="green", bold=True)
     )
     click.echo()
 
@@ -204,12 +202,7 @@ def remove_staging_resources(sandbox_id, config):
     default="biomage-ltd",
     help="The GitHub organization to perform the operation in.",
 )
-@click.option(
-    "--resources-only",
-    is_flag=True,
-    help="Only delete resources. Use to remove resources if staging in CI fails.",
-)
-def unstage(token, org, resources_only, sandbox_id):
+def unstage(token, org, sandbox_id):
     """
     Removes a custom staging environment.
     """
@@ -219,77 +212,75 @@ def unstage(token, org, resources_only, sandbox_id):
     with open("config.yaml") as config_file:
         config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
 
-    if resources_only:
-        remove_staging_resources(sandbox_id, config)
-        exit(0)
+    if check_if_exists(org, sandbox_id):
+        # get (secret) access keys
+        session = boto3.Session()
+        credentials = session.get_credentials()
+        credentials = credentials.get_frozen_credentials()
 
-    if not check_if_exists(org, sandbox_id):
+        credentials = {
+            "access_key": credentials.access_key,
+            "secret_key": credentials.secret_key,
+            "github_api_token": token,
+        }
+
+        # encrypt (secret) access keys
+        kms = boto3.client("kms")
+        secrets = kms.encrypt(
+            KeyId="alias/iac-secret-key", Plaintext=json.dumps(credentials).encode()
+        )
+        secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
+
+        questions = [
+            {
+                "type": "confirm",
+                "name": "delete",
+                "default": False,
+                "message": "Are you sure you want to remove the sandbox "
+                f"with ID `{sandbox_id}`. This cannot be undone.",
+            }
+        ]
+        click.echo()
+        answers = prompt(questions)
+        if not answers["delete"]:
+            exit(1)
+
+        g = Github(token)
+        o = g.get_organization(org)
+        r = o.get_repo("iac")
+
+        wf = None
+        for workflow in r.get_workflows():
+            if workflow.name == "Remove a staging environment":
+                wf = str(workflow.id)
+
+        wf = r.get_workflow(wf)
+
+        wf.create_dispatch(
+            ref="master",
+            inputs={"sandbox-id": sandbox_id, "secrets": secrets},
+        )
+
         click.echo()
         click.echo(
             click.style(
-                f"✖️ Staging sandbox with ID `{sandbox_id}` could not be found.",
-                fg="red",
+                "✔️ Removal submitted. You can check your progress at "
+                f"https://github.com/{org}/iac/actions",
+                fg="green",
                 bold=True,
             )
         )
-        exit(1)
 
-    # get (secret) access keys
-    session = boto3.Session()
-    credentials = session.get_credentials()
-    credentials = credentials.get_frozen_credentials()
-
-    credentials = {
-        "access_key": credentials.access_key,
-        "secret_key": credentials.secret_key,
-        "github_api_token": token,
-    }
-
-    # encrypt (secret) access keys
-    kms = boto3.client("kms")
-    secrets = kms.encrypt(
-        KeyId="alias/iac-secret-key", Plaintext=json.dumps(credentials).encode()
-    )
-    secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
-
-    questions = [
-        {
-            "type": "confirm",
-            "name": "delete",
-            "default": False,
-            "message": "Are you sure you want to remove the sandbox "
-            f"with ID `{sandbox_id}`. This cannot be undone.",
-        }
-    ]
-    click.echo()
-    answers = prompt(questions)
-    if not answers["delete"]:
-        exit(1)
-
-    g = Github(token)
-    o = g.get_organization(org)
-    r = o.get_repo("iac")
-
-    wf = None
-    for workflow in r.get_workflows():
-        if workflow.name == "Remove a staging environment":
-            wf = str(workflow.id)
-
-    wf = r.get_workflow(wf)
-
-    wf.create_dispatch(
-        ref="master",
-        inputs={"sandbox-id": sandbox_id, "secrets": secrets},
-    )
-
-    click.echo()
-    click.echo(
-        click.style(
-            "✔️ Removal submitted. You can check your progress at "
-            f"https://github.com/{org}/iac/actions",
-            fg="green",
-            bold=True,
+    else:
+        click.echo()
+        click.echo(
+            click.style(
+                f"Staging sandbox with ID `{sandbox_id}` could not be found."
+                "Proceeding with the removal of staged resources.",
+                fg="yellow",
+                bold=True,
+            )
         )
-    )
 
+    click.echo()
     remove_staging_resources(sandbox_id, config)

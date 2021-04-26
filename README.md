@@ -74,7 +74,7 @@ they are for the AWS CLI.
 
 You can run:
 
-    python3 biomage rotate-ci
+    biomage rotate-ci
 
 and the script should take care of the rest.
 
@@ -92,11 +92,11 @@ The default deployments for all `stage` commands is `ui`, `api`, `worker`. If yo
 deploy a different version of these, you can specify that manually. Then, at the bare minimum,
 you can run:
 
-    python3 biomage stage
+    biomage stage
 
 If you wish to test changes to you made to the API available under pull request 25, you can run:
 
-    python3 biomage stage api/25
+    biomage stage api/25
 
 This will compose a *sandbox* comprising `api` as found under pull request `25`, as well as `ui`
 and `worker` as found under `master`.
@@ -105,19 +105,21 @@ The utility will launch an interactive wizard to guide you through creating your
 
 #### *isolated staging environments*
 
-The option to create isolated staging environments is provided during creation of stagign environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolate your staging environment from changes made by others.
+The option to create isolated staging environments is provided during the creation of the staging environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolates your staging environment from changes made by others.
 
-Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, **you are recommended to stage with the same sandbox ID that failed**. Existing records and files that have successfully been staged will appear in the wizard. If you decide to use a different sandbox ID, [unstage copied resources](#removing-staging-resources) to remove existing staged resources before staging using a new sandbox ID. 
+Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully. 
 
-During the creation of isolated staging environments, the following files are copied in these S3 buckets:
+If your deployment fails, **you are recommended to use the same sandbox Id that have failed**. The wizard will detect existing staging environemtns and display created experimentIds. If you decide to use a different sandbox ID, [unstage](#unstage) your environment before staging using a new sandbox ID.
 
-    biomage-source-staging
-    processed-matrix-staging
+During the creation of isolated staging environments, the following files are copied in these S3 buckets into their staging counterpart:
 
-Records in the following DynamoDB tables are copied:
+    biomage-source-production
+    processed-matrix-production
 
-    experiments-staging
-    samples-staging
+Records in the following DynamoDB tables are copied into their staging counterparts:
+
+    experiments-production
+    samples-production
 
 These configurations are read from `config.yaml`
 
@@ -138,18 +140,9 @@ as these are commonly the branches that a developer would push features to mid-d
 Removes a staging environment. You must specify the sandbox ID of the staging environment deployed
 previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/staging). Then, run
 
-    python3 biomage unstage my-sandbox-id
+    biomage unstage my-sandbox-id
 
-to remove your deployment.
-
-#### *removing staging resources*
-
-Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging fails, leaving orphaned copied files and records in database. To clean up these files and records, run 
-
-    python3 biomage unstage my-sandbox-id --resources-only
-
-To manually delete files and records, look through all `*-staging` DynamoDB tables and S3 buckets for records and files prefixed with `my-sandbox-id`.
-
+to remove your deployment and delete staged environment.
 ### experiment
 
 Manages experiment's data and configuration. See `biomage experiment --help` for more details.
@@ -174,5 +167,5 @@ Example: list experiment files in `production`:
 
 Compares experiment settings accros development/staging/production environments. **Note** it needs inframock running in order to work.
 
-    python3 biomage experiment compare my-experiment-id
+    biomage experiment compare my-experiment-id
 
