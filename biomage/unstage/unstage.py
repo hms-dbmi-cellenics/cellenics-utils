@@ -27,6 +27,7 @@ def delete_staging_records(sandbox_id, config):
     # Get all experiments under a specific staging ID
     # Does not handle DynamoDB scan pination, so result is
     # limited to 20 experiments prefixed with 'sandbox_id'
+    click.echo("Removing staging records from DynamoDB")
     dynamodb = boto3.client("dynamodb")
     staged_experiments = dynamodb.scan(
         TableName=config["experiments-table"],
@@ -35,12 +36,13 @@ def delete_staging_records(sandbox_id, config):
         ExpressionAttributeValues={":sandbox_id": {"S": sandbox_id}},
     )
 
-    staged_experiment_ids = [
+    staged_experiments = [
         experiment_id["experimentId"]["S"]
         for experiment_id in staged_experiments.get("Items")
     ]
 
-    if len(staged_experiment_ids) == 0:
+    if len(staged_experiments) == 0:
+        click.echo("No records to delete from table {table}")
         return
 
     all_staging_tables = [
@@ -51,7 +53,7 @@ def delete_staging_records(sandbox_id, config):
 
     # Generate records and create multiple
     for table in all_staging_tables:
-        records_to_delete = {}
+        records_to_delete = {table: []}
 
         # Deleting records from DynamoDB requires the primaryKey.
         # if the table's PK is made up of partitionKey & sortKey,
@@ -75,8 +77,6 @@ def delete_staging_records(sandbox_id, config):
                 if len(items_to_delete) == 0:
                     break
 
-                records_to_delete[table] = []
-
                 for item in items_to_delete:
                     records_to_delete[table].append(
                         {
@@ -85,7 +85,7 @@ def delete_staging_records(sandbox_id, config):
                                     "experimentId": {
                                         "S": experiment_id,
                                     },
-                                    sort_key: {"S": item[sort_key]},
+                                    sort_key: item[sort_key],
                                 }
                             }
                         }
