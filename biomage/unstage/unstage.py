@@ -42,7 +42,10 @@ def delete_staging_records(sandbox_id, config):
     ]
 
     if len(staged_experiments) == 0:
-        click.echo("No records to delete from table {table}")
+        click.echo(
+            f"No scoped experiments registered in table {config['experiments-table']}"
+        )
+        click.echo()
         return
 
     all_staging_tables = [
