@@ -1,18 +1,19 @@
+import base64
+import hashlib
+import json
+import math
+import os
+import re
+from collections import namedtuple
+from functools import reduce
+
+import anybase32
+import boto3
 import click
 import requests
-import json
 import yaml
-import hashlib
-import anybase32
-import base64
-import boto3
-import re
-import os
-import math
-from collections import namedtuple
-from PyInquirer import prompt
 from github import Github
-from functools import reduce
+from PyInquirer import prompt
 
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
@@ -107,6 +108,10 @@ def get_latest_master_sha(chart, token):
 
 
 def get_all_experiments(source_table="experiments-staging"):
+    """
+    Function to get all experiments from a source_table.
+    This function handles pagination of results returned by DynamoDB scan.
+    """
     table = boto3.resource("dynamodb").Table(source_table)
     response = table.scan(
         AttributesToGet=["experimentId", "experimentName"],
@@ -139,7 +144,7 @@ def get_sandbox_id(templates, manifests, all_experiments):
     )
 
     fragments = (
-        re.sub(r'[^\w\s]','', os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
+        re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
         pr_ids if pr_ids else manifest_hash,
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
@@ -263,13 +268,17 @@ def create_manifest(templates, token, all_experiments):
     return manifests, sandbox_id
 
 
-def select_experiments(
+def paginate_experiments(
     experiments,
     experiments_per_page=10,
     previous_text="<< previous <<",
     next_text=">> next >>",
     done_text="== done ==",
 ):
+    """
+    Helper function to paginate list of experiments to choose for function.
+    This function returns a list of experiment ids, without the accompanying exepriment names
+    """
 
     chosen_experiments = []
 
@@ -376,7 +385,9 @@ def select_experiments(
 
 
 def select_staging_experiments(sandbox_id, all_experiments, config):
-    # Get list of experiments currently available in the platform
+    """
+    Present a dialogue to the user to select staging experiments
+    """
     click.echo()
     click.echo(
         click.style("Create isolated staging environment.", fg="yellow", bold=True)
@@ -417,7 +428,7 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
         )
         click.echo()
 
-    chosen_experiments = select_experiments(unstaged_experiments)
+    chosen_experiments = paginate_experiments(unstaged_experiments)
 
     click.echo()
     try:
@@ -438,8 +449,9 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
 
 
 def create_staging_experiments(staging_experiments, sandbox_id, config):
-
-    # Create staging experiments as selected
+    """
+    Create staging experiments from a list of experiment ids in staging_experiments
+    """
     click.echo()
     click.echo("Copying items for new experiments...")
 

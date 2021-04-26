@@ -1,12 +1,13 @@
+import base64
+import json
+import re
+
+import boto3
 import click
 import requests
-import boto3
-import json
-import base64
-import re
 import yaml
-from PyInquirer import prompt
 from github import Github
+from PyInquirer import prompt
 
 
 def check_if_exists(org, sandbox_id):
@@ -19,7 +20,13 @@ def check_if_exists(org, sandbox_id):
 
 
 def delete_staging_records(sandbox_id, config):
-    # Remove staging records
+    """
+    Deletes resources staged under sandbox_id
+    """
+
+    # Get all experiments under a specific staging ID
+    # Does not handle DynamoDB scan pination, so result is
+    # limited to 20 experiments prefixed with 'sandbox_id'
     dynamodb = boto3.client("dynamodb")
     staged_experiments = dynamodb.scan(
         TableName=config["experiments-table"],
@@ -28,12 +35,12 @@ def delete_staging_records(sandbox_id, config):
         ExpressionAttributeValues={":sandbox_id": {"S": sandbox_id}},
     )
 
-    staged_experiments = [
+    staged_experiment_ids = [
         experiment_id["experimentId"]["S"]
         for experiment_id in staged_experiments.get("Items")
     ]
 
-    if len(staged_experiments) == 0:
+    if len(staged_experiment_ids) == 0:
         return
 
     all_staging_tables = [
@@ -42,12 +49,13 @@ def delete_staging_records(sandbox_id, config):
         if re.match(".*-staging", table)
     ]
 
+    # Generate records and create multiple
     for table in all_staging_tables:
         records_to_delete = {}
 
         # Deleting records from DynamoDB requires the primaryKey.
         # if the table's PK is made up of partitionKey & sortKey,
-        # Then search by partitionKey and iterate through all the records
+        # will have to iterate over all the sortKeys to add as delete parameter
         key_schema = (
             dynamodb.describe_table(TableName=table).get("Table").get("KeySchema")
         )
@@ -108,7 +116,10 @@ def delete_staging_records(sandbox_id, config):
 
 
 def delete_staging_files(sandbox_id, config):
-    # Remove staging files
+    """
+    Remove files staged prefixed by sandbox_id
+    """
+
     click.echo("Removing staging files from S3")
     s3 = boto3.client("s3")
 
@@ -160,6 +171,9 @@ def delete_staging_files(sandbox_id, config):
 
 
 def remove_staging_resources(sandbox_id, config):
+    """
+    Remove staged resources under sandbox_id
+    """
 
     click.echo()
     click.echo("Deleting resources used in staging environment...")
