@@ -65,28 +65,17 @@ def remove_staging_resources(sandbox_id):
                     ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
                 ).get("Items")
 
-                records_to_delete[table] = [
-                    {
-                        "DeleteRequest": {
-                            "Key": {
-                                "experimentId": {"S": experiment_id},
-                                sort_key: {"S": item[sort_key]},
-                            }
-                        }
-                    }
-                    for item in items_to_delete
-                ]
-                # for item in items_to_delete:
+                if len(items_to_delete) == 0:
+                    break
 
-                #     # construct delete key
-                #     delete_key = {"experimentId": {"S": experiment_id}}
-                #     delete_key[sort_key] = item[sort_key]
+                for item in items_to_delete:
+                    delete_key = {"experimentId": {"S": experiment_id}}
+                    delete_key[sort_key] = item[sort_key]
 
-                #     # Delete
-                # try:
-                #     dynamodb.delete_item(TableName=table, Key=delete_key)
-                # except Exception as e:
-                #     click.echo(f"Failed to delete from DynamoDB: {e}")
+                    try:
+                        dynamodb.delete_item(TableName=table, Key=delete_key)
+                    except Exception as e:
+                        click.echo(f"Failed to delete from table {table}: {e}")
 
         else:
             records_to_delete[table] = [
@@ -94,11 +83,12 @@ def remove_staging_resources(sandbox_id):
                 for experiment_id in staged_experiments
             ]
 
-        try:
-            dynamodb.batch_write_item(RequestItems=records_to_delete)
-            click.echo(f"Successfully deleted records from table {table}")
-        except Exception as e:
-            click.echo(f"Failed to delete from DynamoDB: {e}")
+            try:
+                dynamodb.batch_write_item(RequestItems=records_to_delete)
+            except Exception as e:
+                click.echo(f"Failed to delete from table {table}: {e}")
+
+        click.echo(f"Records successfully deleted from table {table}")
 
     click.echo(
         click.style(
@@ -183,6 +173,7 @@ def unstage(token, org, resources_only, sandbox_id):
 
     if resources_only:
         click.echo("Deleting resources used in staging environment...")
+        click.echo()
         remove_staging_resources(sandbox_id)
         exit(0)
 

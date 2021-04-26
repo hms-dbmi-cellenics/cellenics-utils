@@ -8,6 +8,7 @@ import base64
 import boto3
 import re
 import os
+import math
 from collections import namedtuple
 from PyInquirer import prompt
 from github import Github
@@ -281,14 +282,12 @@ def choose_staging_experiments(sandbox_id, all_experiments):
         if re.match(f"^{sandbox_id}-*", experiment["experimentId"])
     ]
 
+    # Exclude experiments with the pattern {sandbox_id}-{experiment_id}
+    # and the associated experiment_id to prevent double staging.
     excluded_experiment_ids = [
         experiment["experimentId"].replace(f"{sandbox_id}-", "")
         for experiment in staged_experiments
-    ]
-
-    excluded_experiment_ids += [
-        experiment["experimentId"] for experiment in staged_experiments
-    ]
+    ] + [experiment["experimentId"] for experiment in staged_experiments]
 
     unstaged_experiments = [
         experiment
@@ -306,39 +305,113 @@ def choose_staging_experiments(sandbox_id, all_experiments):
         )
         click.echo()
 
-    choices = [
-        {
-            "name": "{} {}".format(
-                experiment["experimentId"].ljust(40), experiment["experimentName"]
-            ),
-        }
-        for experiment in unstaged_experiments
-    ]
+    # Implement pagination if result contains more than experiments_per_page number of experiments
 
-    # Implement pagination if result contains more than 20 experiments
-    # if len(unstaged_experiments) > 20:
-    #     page = 0
-    questions = [
-        {
-            "type": "checkbox",
-            "name": "experiments_to_stage",
-            "message": "Which experiments would you like to enable for the staging environment?",
-            "choices": choices,
-        }
-    ]
-    answers = prompt(questions)
+    chosen_experiments = []
+    experiments_per_page = 10
+
+    if len(unstaged_experiments) > experiments_per_page:
+
+        max_page = math.ceil(len(unstaged_experiments) / experiments_per_page)
+        page = 0
+        done = False
+        previous_text = "<< previous <<"
+        next_text = ">> next >>"
+        done_text = "== done =="
+
+        while not done:
+
+            idx_start = experiments_per_page * page
+            idx_end = (page + 1) * experiments_per_page
+
+            choices = [
+                {
+                    "name": "{} {}".format(
+                        experiment["experimentId"].ljust(40),
+                        experiment["experimentName"],
+                    ),
+                    "checked": experiment["experimentId"] in chosen_experiments,
+                }
+                for experiment in unstaged_experiments[idx_start:idx_end]
+            ]
+
+            if page > 0:
+                choices = [{"name": previous_text}] + choices
+
+            if page < max_page - 1:
+                choices += [{"name": next_text}]
+
+            choices += [{"name": done_text}]
+
+            questions = [
+                {
+                    "type": "checkbox",
+                    "name": "experiments_to_stage",
+                    "message": "Which experiments would you like to enable for the staging environment?\n"
+                    "Choose 'done' to exit",
+                    "choices": choices,
+                }
+            ]
+
+            answers = prompt(questions)["experiments_to_stage"]
+            page_action = None
+
+            if previous_text in answers:
+                answers.remove(previous_text)
+                page_action = "previous"
+
+            if next_text in answers:
+                answers.remove(next_text)
+                page_action = "next"
+
+            if done_text in answers:
+                answers.remove(done_text)
+                page_action = "done"
+
+            chosen_experiments = set(
+                [
+                    *chosen_experiments,
+                    *[experiment.split(" ")[0] for experiment in answers],
+                ]
+            )
+
+            if page_action == "next":
+                page += 1
+            elif page_action == "previous":
+                page -= 1
+            elif page_action == "done":
+                break
+
+    else:
+
+        choices = [
+            {
+                "name": "{} {}".format(
+                    experiment["experimentId"][:40].ljust(40),
+                    experiment["experimentName"],
+                ),
+            }
+            for experiment in unstaged_experiments
+        ]
+
+        questions = [
+            {
+                "type": "checkbox",
+                "name": "experiments_to_stage",
+                "message": "Which experiments would you like to enable for the staging environment?",
+                "choices": choices,
+            }
+        ]
+
+        chosen_experiments = prompt(questions)["experiments_to_stage"]
 
     click.echo()
     try:
         experiment_ids_to_stage = set(
-            [
-                experiment_id.split(" ")[0]
-                for experiment_id in answers["experiments_to_stage"]
-            ]
+            [experiment_id.split(" ")[0] for experiment_id in chosen_experiments]
         )
 
-        click.echo()
-        click.echo("Chosen experiments to stage:")
+        click.echo("Experiments chosen to be staged:")
         click.echo(
             "\n".join(f"• {experiment_id}" for experiment_id in experiment_ids_to_stage)
         )
@@ -417,6 +490,7 @@ def create_staging_experiments(staging_experiments, sandbox_id):
                         file_copy_retries.append(source)
 
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
+    click.echo()
 
     # Copy DynamoDB entries
     dynamodb = boto3.client("dynamodb")
@@ -451,6 +525,7 @@ def create_staging_experiments(staging_experiments, sandbox_id):
 
             try:
                 dynamodb.batch_write_item(RequestItems=items_to_insert)
+                click.echo("Records copied")
 
             except Exception as e:
                 click.echo(f"Failed inserting records: {e}")
@@ -458,7 +533,6 @@ def create_staging_experiments(staging_experiments, sandbox_id):
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)
     )
-    click.echo()
 
 
 @click.command()
@@ -530,21 +604,21 @@ def stage(token, org, deployments):
     if not answers["create"]:
         exit(1)
 
-    # g = Github(token)
-    # o = g.get_organization(org)
-    # r = o.get_repo("iac")
+    g = Github(token)
+    o = g.get_organization(org)
+    r = o.get_repo("iac")
 
-    # wf = None
-    # for workflow in r.get_workflows():
-    #     if workflow.name == "Deploy a staging environment":
-    #         wf = str(workflow.id)
+    wf = None
+    for workflow in r.get_workflows():
+        if workflow.name == "Deploy a staging environment":
+            wf = str(workflow.id)
 
-    # wf = r.get_workflow(wf)
+    wf = r.get_workflow(wf)
 
-    # wf.create_dispatch(
-    #     ref="master",
-    #     inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
-    # )
+    wf.create_dispatch(
+        ref="master",
+        inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
+    )
 
     if len(experiment_ids_to_stage) > 0:
         create_staging_experiments(experiment_ids_to_stage, sandbox_id)
@@ -567,7 +641,9 @@ def stage(token, org, deployments):
         )
     )
 
-    if len(staged_experiment_ids) > 0:
+    available_experiments = [*staged_experiment_ids, *experiment_ids_to_stage]
+
+    if len(available_experiments) > 0:
         click.echo()
         click.echo(
             click.style(
@@ -581,10 +657,7 @@ def stage(token, org, deployments):
             "\n".join(
                 [
                     f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
-                    for experiment_id in [
-                        *staged_experiment_ids,
-                        *experiment_ids_to_stage,
-                    ]
+                    for experiment_id in available_experiments
                 ]
             )
         )
