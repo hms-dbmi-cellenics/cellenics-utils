@@ -14,7 +14,7 @@ MKFILE_DIR := $(dir $(MKFILE_PATH))
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
-install: ## Creates venv, and adds biomage as system command
+install: clean ## Creates venv, and adds biomage as system command
 	@echo "Creating virtual env and installing dependencies..."
 	@python3 -m venv venv
 	@venv/bin/pip3 install -r requirements.txt
