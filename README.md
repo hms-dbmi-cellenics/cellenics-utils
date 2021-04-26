@@ -99,8 +99,9 @@ The utility will launch an interactive wizard to guide you through creating your
 
 #### *isolated staging environments*
 
-The option to create isolated staging environments is provided during the interactive wizard. Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, **you are recommended to stage with the same sandbox ID** that was used previously. If you'd like to use a different sandbox ID, [unstage copied resources](#removing-staging-resources) to remove existing staged resources before staging using a new sandbox ID. 
+The option to create isolated staging environments is provided during creation of stagign environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolate your staging environment from changes made by others.
 
+Isolated staging environment is done by creating new experiments using data from existing experiments. Data and record is copied independently from the creation of staging environments. Therefore, in the event of failure, **you are recommended to stage with the same sandbox ID that failed**. Existing records and files that have successfully been staged will appear in the wizard. If you decide to use a different sandbox ID, [unstage copied resources](#removing-staging-resources) to remove existing staged resources before staging using a new sandbox ID. 
 
 During the creation of isolated staging environments, the following files are copied in these S3 buckets:
 
@@ -135,11 +136,10 @@ to remove your deployment.
 
 #### *removing staging resources*
 
-Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging fails. To clean up the staged data manually, run 
+Isolated staging environments copies files and records to create a scoped staging environment. Sometimes, staging fails, leaving orphaned copied files and records in database. To clean up these files and records, run 
 
     python3 biomage unstage my-sandbox-id --resources-only
 
-to remove the staged resources.
 
 ### experiment
 
