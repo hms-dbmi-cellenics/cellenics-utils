@@ -106,8 +106,8 @@ def get_latest_master_sha(chart, token):
     raise Exception("Invalid repository supplied.")
 
 
-def get_all_experiments():
-    table = boto3.resource("dynamodb").Table("experiments-staging")
+def get_all_experiments(source_table="experiments-staging"):
+    table = boto3.resource("dynamodb").Table(source_table)
     response = table.scan(
         AttributesToGet=["experimentId", "experimentName"],
         ConsistentRead=True,
@@ -375,7 +375,7 @@ def select_experiments(
     return chosen_experiment_ids
 
 
-def choose_staging_experiments(sandbox_id, all_experiments):
+def select_staging_experiments(sandbox_id, all_experiments, config):
     # Get list of experiments currently available in the platform
     click.echo()
     click.echo(
@@ -437,23 +437,18 @@ def choose_staging_experiments(sandbox_id, all_experiments):
     return chosen_experiments, staged_experiment_ids
 
 
-def create_staging_experiments(staging_experiments, sandbox_id):
-    # Create staging experiments as selected
+def create_staging_experiments(staging_experiments, sandbox_id, config):
 
+    # Create staging experiments as selected
     click.echo()
     click.echo("Copying items for new experiments...")
 
     # Copy files
     s3 = boto3.client("s3")
 
-    source_buckets = [
-        "processed-matrix-staging",
-        "biomage-source-staging",
-    ]
-
     file_copy_retries = []
 
-    for bucket in source_buckets:
+    for bucket in config["source-buckets"]:
         for experiment_id in staging_experiments:
             exp_files = s3.list_objects_v2(Bucket=bucket, Prefix=experiment_id)
 
@@ -505,12 +500,11 @@ def create_staging_experiments(staging_experiments, sandbox_id):
 
     # Copy DynamoDB entries
     dynamodb = boto3.client("dynamodb")
-    source_tables = ["experiments-staging", "samples-staging"]
 
     click.echo("Copying DynamoDB records for new experiments...")
 
-    for table in source_tables:
-        click.echo(f"Copying records in table {table}")
+    for table in config["source-tables"]:
+        click.echo(f"Copying records in table {table}...")
 
         for experiment_id in staging_experiments:
             items = dynamodb.query(
@@ -536,8 +530,6 @@ def create_staging_experiments(staging_experiments, sandbox_id):
 
             try:
                 dynamodb.batch_write_item(RequestItems=items_to_insert)
-                click.echo("Records copied")
-
             except Exception as e:
                 click.echo(f"Failed inserting records: {e}")
 
@@ -569,14 +561,19 @@ def stage(token, org, deployments):
     # generate templats
     templates = compile_requirements(org, deployments)
 
-    all_experiments = get_all_experiments()
+    # Read configuration
+    config = None
+    with open("config.yaml") as config_file:
+        config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
+
+    all_experiments = get_all_experiments(config["experiments-table"])
 
     manifest, sandbox_id = create_manifest(templates, token, all_experiments)
     manifest = base64.b64encode(manifest.encode()).decode()
 
     # enable experiments in staging
-    experiment_ids_to_stage, staged_experiment_ids = choose_staging_experiments(
-        sandbox_id, all_experiments
+    experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
+        sandbox_id, all_experiments, config
     )
 
     if len(experiment_ids_to_stage) == 0:
@@ -632,7 +629,7 @@ def stage(token, org, deployments):
     )
 
     if len(experiment_ids_to_stage) > 0:
-        create_staging_experiments(experiment_ids_to_stage, sandbox_id)
+        create_staging_experiments(experiment_ids_to_stage, sandbox_id, config)
 
     click.echo()
     click.echo(

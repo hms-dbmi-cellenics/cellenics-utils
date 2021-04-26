@@ -1,0 +1,9 @@
+source-tables:
+  - "experiments-staging"
+  - "samples-staging"
+
+source-buckets:
+  - "processed-matrix-staging"
+  - "biomage-source-staging"
+
+experiments-table: "experiments-staging"

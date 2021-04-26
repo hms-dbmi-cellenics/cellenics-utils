@@ -4,6 +4,7 @@ import boto3
 import json
 import base64
 import re
+import yaml
 from PyInquirer import prompt
 from github import Github
 
@@ -17,12 +18,11 @@ def check_if_exists(org, sandbox_id):
     return 200 <= r.status_code < 300
 
 
-def remove_staging_resources(sandbox_id):
+def delete_staging_records(sandbox_id, config):
     # Remove staging records
     dynamodb = boto3.client("dynamodb")
-
     staged_experiments = dynamodb.scan(
-        TableName="experiments-staging",
+        TableName=config["experiments-table"],
         ProjectionExpression="experimentId",
         FilterExpression="begins_with(experimentId, :sandbox_id)",
         ExpressionAttributeValues={":sandbox_id": {"S": sandbox_id}},
@@ -36,19 +36,18 @@ def remove_staging_resources(sandbox_id):
     if len(staged_experiments) == 0:
         return
 
-    staging_tables = [
+    all_staging_tables = [
         table
         for table in dynamodb.list_tables().get("TableNames")
         if re.match(".*-staging", table)
     ]
 
-    for table in staging_tables:
-
+    for table in all_staging_tables:
         records_to_delete = {}
 
         # Deleting records from DynamoDB requires the primaryKey.
         # if the table's PK is made up of partitionKey & sortKey,
-        # Then search with partitionKey and iterate through all the records
+        # Then search by partitionKey and iterate through all the records
         key_schema = (
             dynamodb.describe_table(TableName=table).get("Table").get("KeySchema")
         )
@@ -68,14 +67,23 @@ def remove_staging_resources(sandbox_id):
                 if len(items_to_delete) == 0:
                     break
 
-                for item in items_to_delete:
-                    delete_key = {"experimentId": {"S": experiment_id}}
-                    delete_key[sort_key] = item[sort_key]
+                records_to_delete[table] = []
 
-                    try:
-                        dynamodb.delete_item(TableName=table, Key=delete_key)
-                    except Exception as e:
-                        click.echo(f"Failed to delete from table {table}: {e}")
+                for item in items_to_delete:
+                    records_to_delete[table].append(
+                        {
+                            "DeleteRequest": {
+                                "Key": {
+                                    "experimentId": {
+                                        "S": experiment_id,
+                                    },
+                                    sort_key: {
+                                        "S" : item[sort_key]
+                                    }
+                                }
+                            }
+                        }
+                    )
 
         else:
             records_to_delete[table] = [
@@ -83,12 +91,11 @@ def remove_staging_resources(sandbox_id):
                 for experiment_id in staged_experiments
             ]
 
-            try:
-                dynamodb.batch_write_item(RequestItems=records_to_delete)
-            except Exception as e:
-                click.echo(f"Failed to delete from table {table}: {e}")
-
-        click.echo(f"Records successfully deleted from table {table}")
+        try:
+            dynamodb.batch_write_item(RequestItems=records_to_delete)
+            click.echo(f"Records successfully deleted from table {table}")
+        except Exception as e:
+            click.echo(f"Failed to delete from table {table}: {e}")
 
     click.echo(
         click.style(
@@ -97,21 +104,24 @@ def remove_staging_resources(sandbox_id):
     )
     click.echo()
 
+
+def delete_staging_files(sandbox_id, config):
     # Remove staging files
     click.echo("Removing staging files from S3")
     s3 = boto3.client("s3")
 
-    staging_buckets = [
+    all_staging_buckets = [
         name["Name"]
         for name in s3.list_buckets().get("Buckets")
         if re.match(".*-staging", name["Name"])
     ]
 
-    for bucket in staging_buckets:
+    for bucket in all_staging_buckets:
 
         files_to_delete = s3.list_objects_v2(Bucket=bucket)
 
         if files_to_delete.get("KeyCount") == 0:
+            click.echo(f"No files to delete in bucket {bucket}, skipping bucket...")
             continue
 
         files_to_delete = [
@@ -121,6 +131,7 @@ def remove_staging_resources(sandbox_id):
         ]
 
         if len(files_to_delete) == 0:
+            click.echo(f"No files to delete in bucket {bucket}, skipping bucket...")
             continue
 
         try:
@@ -142,6 +153,19 @@ def remove_staging_resources(sandbox_id):
         click.style(
             "Staging files successfully deleted from S3.", fg="green", bold=True
         )
+    )
+    click.echo()
+
+
+def remove_staging_resources(sandbox_id, config):
+
+    click.echo()
+    click.echo("Deleting resources used in staging environment...")
+    delete_staging_records(sandbox_id, config)
+    delete_staging_files(sandbox_id, config)
+
+    click.echo(
+        click.style("Staging resources successfully removed.", fg="green", bold=True)
     )
     click.echo()
 
@@ -171,10 +195,17 @@ def unstage(token, org, resources_only, sandbox_id):
     Removes a custom staging environment.
     """
 
+    # Read configuration
+    config = None
+    with open("config.yaml") as config_file:
+        config = list(
+            yaml.load_all(config_file, Loader=yaml.SafeLoader)
+        )[0]
+
+    print(config)
+
     if resources_only:
-        click.echo("Deleting resources used in staging environment...")
-        click.echo()
-        remove_staging_resources(sandbox_id)
+        remove_staging_resources(sandbox_id, config)
         exit(0)
 
     if not check_if_exists(org, sandbox_id):
@@ -246,6 +277,4 @@ def unstage(token, org, resources_only, sandbox_id):
         )
     )
 
-    click.echo()
-    click.echo("Deleting resources used in staging environment...")
-    remove_staging_resources(sandbox_id)
+    remove_staging_resources(sandbox_id, config)
