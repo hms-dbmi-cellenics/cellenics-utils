@@ -77,9 +77,7 @@ def delete_staging_records(sandbox_id, config):
                                     "experimentId": {
                                         "S": experiment_id,
                                     },
-                                    sort_key: {
-                                        "S" : item[sort_key]
-                                    }
+                                    sort_key: {"S": item[sort_key]},
                                 }
                             }
                         }
@@ -90,6 +88,10 @@ def delete_staging_records(sandbox_id, config):
                 {"DeleteRequest": {"Key": {"experimentId": {"S": experiment_id}}}}
                 for experiment_id in staged_experiments
             ]
+
+        if len(records_to_delete[table]) == 0:
+            click.echo(f"No records to delete in table {table}, skipping table...")
+            continue
 
         try:
             dynamodb.batch_write_item(RequestItems=records_to_delete)
@@ -198,11 +200,7 @@ def unstage(token, org, resources_only, sandbox_id):
     # Read configuration
     config = None
     with open("config.yaml") as config_file:
-        config = list(
-            yaml.load_all(config_file, Loader=yaml.SafeLoader)
-        )[0]
-
-    print(config)
+        config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
 
     if resources_only:
         remove_staging_resources(sandbox_id, config)
