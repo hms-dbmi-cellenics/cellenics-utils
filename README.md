@@ -8,15 +8,17 @@ infrastructure.
 Setup
 -----
 
-After cloning the repository, do the following:
+After cloning the repository, do the following (might require **sudo** in some distributions, and `pip` > 21.0.1):
 
-    python3 -m venv venv
-    source venv/bin/activate
-    pip3 install -r requirements.txt
+    make install
 
-You should be able to access `biomage-utils` by typing:
+You can verify that the command has been successfully installed with:
 
-    python3 biomage
+    make test
+
+If the test was successful, you should be able to access `biomage-utils` by typing:
+
+    biomage
 
 As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
 Token with full access to your account. You can generate one
@@ -28,23 +30,27 @@ supply it when required. Utilities can accept this token in two ways:
 
 For example:
 
-    GITHUB_API_TOKEN=mytoken python3 biomage stage
+    GITHUB_API_TOKEN=mytoken biomage stage
 
 or
 
-    python3 biomage stage -t mytoken
+    biomage stage -t mytoken
 
 Using the environment variable means you can put the token in your
 `.bashrc` or `.zshrc` file, thereby avoiding typing it again and again. You can
 then simply do:
 
-    python3 biomage stage
+    biomage stage
 
 ### Other Enviroment Variables
 
 * `BIOMAGE_NICK` is optional and used to override the `USER` environment variable
   as the first part of the name of the staging environments created by you:
   `${BIOMAGE_NICK:-${USER}}-...`.
+
+*  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
+to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
+
 
 Utilities
 ---------
@@ -54,7 +60,7 @@ Utilities
 Configures a repository using best practices. You can supply a repository name
 as in:
 
-    python3 biomage configure-repo ui
+    biomage configure-repo ui
 
 The script will ensure the repository is configured according to the current
 best practices for the repository. You can see more details about the
@@ -120,8 +126,27 @@ to remove your deployment.
 
 ### experiment
 
+Manages experiment's data and configuration. See `biomage experiment --help` for more details.
+
+#### experiment pull
+
+Downloads experiment data and config files from a given environment into `BIOMAGE_DATA_PATH/experiment_id/`. See `biomage experiment pull --help` for more information, parameters and default values.
+
+E.g. to download experiment `e52b39624588791a7889e39c617f669e` data from `production`:
+
+`biomage experiment pull production e52b39624588791a7889e39c617f669e`
+
+#### experiment get
+
+List available experiments data in a given environment. See `biomage experiment get --help` for more information, parameters and default values.
+
+Example: list experiment files in `production`:
+
+`biomage experiment get production`
+
 #### experiment compare
 
 Compares experiment settings accros development/staging/production environments. **Note** it needs inframock running in order to work.
 
     python3 biomage experiment compare my-experiment-id
+
