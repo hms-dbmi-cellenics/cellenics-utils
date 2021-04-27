@@ -18,7 +18,7 @@ You can verify that the command has been successfully installed with:
 
 If the test was successful, you should be able to access `biomage-utils` by typing:
 
-    biomage
+    biomage --help
 
 As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
 Token with full access to your account. You can generate one
