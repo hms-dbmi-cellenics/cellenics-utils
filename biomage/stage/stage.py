@@ -394,12 +394,12 @@ def same_object(target, source):
     try:
         s3 = boto3.client("s3")
         s3.head_object(
-            Bucket=target["Bucket"], Key=target["Key"], IfMatch=source["Etag"]
+            Bucket=target["Bucket"], Key=target["Key"], IfMatch=source["ETag"]
         )
         same_etag = True
     except ClientError as err:
         # HTTPError 404 is returned if the object doesn't exist
-        # HTTPError 412 is returned if the target's etag doesn't match with passed etag
+        # HTTPError 412 is returned if the target's ETag doesn't match with the source's ETag
         # as a consequence of using `IfMatch` in `s3.head_object()`
         if err.response["ResponseMetadata"]["HTTPStatusCode"] not in [412, 404]:
             raise
