@@ -54,9 +54,7 @@ def delete_staging_records(sandbox_id, config):
         if re.match(".*-staging", table)
     ]
 
-    # Generate records and create multiple
     for table in all_staging_tables:
-        records_to_delete = {table: []}
 
         # Deleting records from DynamoDB requires the primaryKey.
         # if the table's PK is made up of partitionKey & sortKey,
@@ -78,37 +76,42 @@ def delete_staging_records(sandbox_id, config):
                 ).get("Items")
 
                 if len(items_to_delete) == 0:
+                    click.echo(
+                        f"No records to delete in table {table}, skipping table..."
+                    )
                     break
 
                 for item in items_to_delete:
-                    records_to_delete[table].append(
-                        {
-                            "DeleteRequest": {
-                                "Key": {
-                                    "experimentId": {
-                                        "S": experiment_id,
-                                    },
-                                    sort_key: item[sort_key],
-                                }
-                            }
+                    try:
+
+                        key = {
+                            "experimentId": {
+                                "S": experiment_id,
+                            },
+                            sort_key: item[sort_key],
                         }
-                    )
+
+                        dynamodb.delete_item(
+                            TableName=table,
+                            Key=key,
+                        )
+                    except Exception as e:
+                        click.echo(
+                            f"Failed to delete record {key} from table {table}: {e}"
+                        )
 
         else:
-            records_to_delete[table] = [
-                {"DeleteRequest": {"Key": {"experimentId": {"S": experiment_id}}}}
-                for experiment_id in staged_experiments
-            ]
+            for experiment_id in staged_experiments:
 
-        if len(records_to_delete[table]) == 0:
-            click.echo(f"No records to delete in table {table}, skipping table...")
-            continue
+                key = {"Key": {"experimentId": {"S": experiment_id}}}
 
-        try:
-            dynamodb.batch_write_item(RequestItems=records_to_delete)
-            click.echo(f"Records successfully deleted from table {table}")
-        except Exception as e:
-            click.echo(f"Failed to delete from table {table}: {e}")
+                try:
+                    dynamodb.delete_item(
+                        TableName=table,
+                        Key=key,
+                    )
+                except Exception as e:
+                    click.echo(f"Failed to delete record {key} from table {table}: {e}")
 
     click.echo(
         click.style(
