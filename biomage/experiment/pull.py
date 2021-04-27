@@ -1,8 +1,15 @@
 import boto3
 import click
 
-from .utils import (PULL, Summary, download_S3_json, download_S3_rds,
-                    is_modified, load_cfg_file, save_cfg_file)
+from .utils import (
+    PULL,
+    Summary,
+    download_S3_json,
+    download_S3_rds,
+    is_modified,
+    load_cfg_file,
+    save_cfg_file,
+)
 
 CELLSETS_FILE = "mock_cell_sets.json"
 PLOTS_TABLES_FILE = "mock_plots_tables.json"
