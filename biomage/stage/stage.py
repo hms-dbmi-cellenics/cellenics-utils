@@ -1,17 +1,18 @@
+import base64
+import hashlib
+import json
+import os
+import re
+from collections import namedtuple
+from functools import reduce
+
+import anybase32
+import boto3
 import click
 import requests
-import json
 import yaml
-import hashlib
-import anybase32
-import base64
-import boto3
-import re
-import os
-from collections import namedtuple
-from PyInquirer import prompt
 from github import Github
-from functools import reduce
+from PyInquirer import prompt
 
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
@@ -118,7 +119,7 @@ def get_sandbox_id(templates, manifests):
     )
 
     fragments = (
-        re.sub(r'[^\w\s]','', os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
+        re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
         pr_ids if pr_ids else manifest_hash,
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]

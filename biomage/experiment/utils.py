@@ -95,12 +95,24 @@ def is_modified(obj, key):
     return False
 
 
-def download_S3_obj(s3_obj, key, filepath):
+def download_S3_rds(s3_obj, key, filepath):
     local_file = get_local_S3_path(filepath)
+
     # try to create experiment folder, ignores if already exists (same as mkdir -p)
     Path(os.path.dirname(local_file)).mkdir(parents=True, exist_ok=True)
 
     with gzip.open(local_file, "wb") as f:
         f.write(s3_obj.get()["Body"].read())
+
+    set_modified_date(file_location=local_file, date=s3_obj.last_modified)
+
+
+def download_S3_json(s3_obj, key, filepath):
+    local_file = get_local_S3_path(filepath)
+
+    # try to create experiment folder, ignores if already exists (same as mkdir -p)
+    Path(os.path.dirname(local_file)).mkdir(parents=True, exist_ok=True)
+
+    s3_obj.download_file(local_file)
 
     set_modified_date(file_location=local_file, date=s3_obj.last_modified)

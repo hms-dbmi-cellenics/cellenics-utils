@@ -1,15 +1,33 @@
 import boto3
 import click
-from deepdiff import DeepDiff
 
 from .utils import (
     PULL,
     Summary,
-    download_S3_obj,
+    download_S3_json,
+    download_S3_rds,
     is_modified,
     load_cfg_file,
     save_cfg_file,
 )
+
+CELLSETS_FILE = "mock_cell_sets.json"
+PLOTS_TABLES_FILE = "mock_plots_tables.json"
+EXPERIMENTS_FILE = "mock_experiment.json"
+SAMPLES_FILE = "mock_samples.json"
+RDS_FILE = "r.rds"
+
+SAMPLES_TABLE = "samples"
+EXPERIMENTS_TABLE = "experiments"
+
+
+def download_S3_obj(s3_obj, key, filepath):
+    if RDS_FILE in filepath:
+        download_S3_rds(s3_obj, key, filepath)
+    elif CELLSETS_FILE in filepath:
+        download_S3_json(s3_obj, key, filepath)
+    else:
+        raise ValueError(f"unexpected file: {filepath}")
 
 
 def download_if_modified(bucket, key, filepath):
@@ -55,7 +73,7 @@ def update_config_if_needed(filepath, table_name, experiment_id):
         remote_cfg = remove_key(remote_cfg, "pipeline")
 
     # if the local config was not found or it's different from the remote => update
-    if not found or DeepDiff(local_cfg, remote_cfg):
+    if not found or local_cfg != remote_cfg:
         save_cfg_file(remote_cfg, filepath)
         Summary.add_changed_file(filepath)
 
@@ -63,8 +81,8 @@ def update_config_if_needed(filepath, table_name, experiment_id):
 def update_configs(experiment_id, origin):
     # config pairs like: (local file name, remote table name)
     configs = [
-        ("mock_experiment.json", "experiments"),
-        ("mock_samples.json", "samples"),
+        (EXPERIMENTS_FILE, EXPERIMENTS_TABLE),
+        (SAMPLES_FILE, SAMPLES_TABLE),
     ]
 
     for file_name, table_name in configs:
@@ -75,7 +93,7 @@ def update_configs(experiment_id, origin):
     # plots and tables config has key issues (references that do no
     # exist locally), for now just create an empty json
     empty_plots_tables = {"records": []}
-    filepath = f"{experiment_id}/mock_plots_tables.json"
+    filepath = f"{experiment_id}/{PLOTS_TABLES_FILE}"
     save_cfg_file(empty_plots_tables, filepath)
     Summary.add_changed_file(filepath)
 
@@ -102,13 +120,15 @@ def pull(experiment_id, origin):
     """
 
     Summary.set_command(cmd=PULL, origin=origin, experiment_id=experiment_id)
+
     bucket = f"biomage-source-{origin}"
-    file = f"{experiment_id}/r.rds"
+    file = f"{experiment_id}/{RDS_FILE}"
     dst_file = file + ".gz"
-    # download_if_modified(bucket=bucket, key=file, filepath=dst_file)
+    download_if_modified(bucket=bucket, key=file, filepath=dst_file)
 
     bucket = f"cell-sets-{origin}"
-    dst_file = f"{experiment_id}/mock_cell_sets.json"
+    dst_file = f"{experiment_id}/{CELLSETS_FILE}"
+
     # the name of the cell sets file in S3 is just the experiment ID
     download_if_modified(bucket=bucket, key=experiment_id, filepath=dst_file)
 
