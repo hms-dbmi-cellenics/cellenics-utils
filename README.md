@@ -136,13 +136,13 @@ E.g. to download experiment `e52b39624588791a7889e39c617f669e` data from `produc
 
 `biomage experiment pull production e52b39624588791a7889e39c617f669e`
 
-#### experiment get
+#### experiment ls
 
-List available experiments data in a given environment. See `biomage experiment get --help` for more information, parameters and default values.
+List available experiments data in a given environment. See `biomage experiment ls --help` for more information, parameters and default values.
 
 Example: list experiment files in `production`:
 
-`biomage experiment get production`
+`biomage experiment ls production`
 
 #### experiment compare
 
