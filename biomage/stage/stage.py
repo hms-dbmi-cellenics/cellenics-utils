@@ -462,6 +462,14 @@ def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_
                     "PutRequest": {
                         "Item": {
                             **item,
+                            # Some keys pointing to ARN in production has to be
+                            # reset because they can't be accessed in staging
+                            "pipeline": {
+                                "M" : {
+                                    "stateMachineArn": {"S" : ""},
+                                    "executionArn": {"S" : ""},
+                                }
+                            },
                             "experimentId": {
                                 "S": f"{sandbox_id}-{item['experimentId']['S']}",
                             },
