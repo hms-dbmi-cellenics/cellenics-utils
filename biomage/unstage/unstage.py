@@ -103,7 +103,7 @@ def delete_staging_records(sandbox_id, config):
         else:
             for experiment_id in staged_experiments:
 
-                key = {"Key": {"experimentId": {"S": experiment_id}}}
+                key = {"experimentId": {"S": experiment_id}}
 
                 try:
                     dynamodb.delete_item(
