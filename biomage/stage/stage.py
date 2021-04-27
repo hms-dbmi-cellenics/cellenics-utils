@@ -385,18 +385,23 @@ def paginate_experiments(
     return chosen_experiments
 
 
-def check_file_etag(target, etag):
+def same_object(target, source):
     """
-    Copy s3 files in a bucket under a prefix
+    Check if a target object is the same with source object by comparing their etags.
     """
     same_etag = False
 
     try:
         s3 = boto3.client("s3")
-        s3.head_object(Bucket=target["Bucket"], Key=target["Key"], IfMatch=etag)
+        s3.head_object(
+            Bucket=target["Bucket"], Key=target["Key"], IfMatch=source["Etag"]
+        )
         same_etag = True
     except ClientError as err:
-        if err.response['ResponseMetadata']['HTTPStatusCode'] not in [412, 404]:
+        # HTTPError 404 is returned if the object doesn't exist
+        # HTTPError 412 is returned if the target's etag doesn't match with passed etag
+        # as a consequence of using `IfMatch` in `s3.head_object()`
+        if err.response["ResponseMetadata"]["HTTPStatusCode"] not in [412, 404]:
             raise
 
     return same_etag
@@ -420,7 +425,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
             "Key": obj["Key"].replace(experiment_id, f"{sandbox_id}-{experiment_id}"),
         }
 
-        if not check_file_etag(target, obj["ETag"]):
+        if not same_object(target, obj):
             try:
                 click.echo(
                     f"Copying from {source['Bucket']}/{source['Key']} to "
@@ -451,7 +456,6 @@ def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_
             ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
         ).get("Items")
 
-        items_to_insert = {}
         items_to_insert[target_table] = [
             {
                 "PutRequest": {
@@ -630,6 +634,7 @@ def stage(token, org, deployments):
             "type": "confirm",
             "name": "create",
             "message": "Are you sure you want to create this deployment?",
+            "default": False,
         }
     ]
     click.echo()
@@ -637,21 +642,21 @@ def stage(token, org, deployments):
     if not answers["create"]:
         exit(1)
 
-    # g = Github(token)
-    # o = g.get_organization(org)
-    # r = o.get_repo("iac")
+    g = Github(token)
+    o = g.get_organization(org)
+    r = o.get_repo("iac")
 
-    # wf = None
-    # for workflow in r.get_workflows():
-    #     if workflow.name == "Deploy a staging environment":
-    #         wf = str(workflow.id)
+    wf = None
+    for workflow in r.get_workflows():
+        if workflow.name == "Deploy a staging environment":
+            wf = str(workflow.id)
 
-    # wf = r.get_workflow(wf)
+    wf = r.get_workflow(wf)
 
-    # wf.create_dispatch(
-    #     ref="master",
-    #     inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
-    # )
+    wf.create_dispatch(
+        ref="master",
+        inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
+    )
 
     if len(experiment_ids_to_stage) > 0:
         create_staging_experiments(experiment_ids_to_stage, sandbox_id, config)

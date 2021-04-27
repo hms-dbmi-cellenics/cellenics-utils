@@ -10,7 +10,7 @@ from github import Github
 from PyInquirer import prompt
 
 
-def check_if_exists(org, sandbox_id):
+def check_if_sandbox_exists(org, sandbox_id):
     url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging/{sandbox_id}.yaml"  # noqa: E501
 
     s = requests.Session()
@@ -25,7 +25,7 @@ def delete_staging_records(sandbox_id, config):
     """
 
     # Get all experiments under a specific staging ID
-    # Does not handle DynamoDB scan pination, so result is
+    # Does not handle DynamoDB scan pagination, so result is
     # limited to 20 experiments prefixed with 'sandbox_id'
     click.echo("Removing staging records from DynamoDB")
     dynamodb = boto3.client("dynamodb")
@@ -212,7 +212,7 @@ def unstage(token, org, sandbox_id):
     with open("config.yaml") as config_file:
         config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
 
-    if check_if_exists(org, sandbox_id):
+    if check_if_sandbox_exists(org, sandbox_id):
         # get (secret) access keys
         session = boto3.Session()
         credentials = session.get_credentials()
