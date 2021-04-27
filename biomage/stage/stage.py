@@ -385,6 +385,32 @@ def paginate_experiments(
     return chosen_experiments
 
 
+def modified_records(item, target_table, config):
+    """
+    Return modified records.
+    This function should return spreadable dictionary
+    """
+
+    if target_table == config["staging-experiments-table"]:
+        return {
+            # Rewrite pipeline details in experiments-table
+            # metadata to pipeline ARN in production environment
+            "meta": {
+                "M": {
+                    **item["meta"]["M"],
+                    "pipeline": {
+                        "M": {
+                            "stateMachineArn": {"S": ""},
+                            "executionArn": {"S": ""},
+                        }
+                    },
+                }
+            }
+        }
+
+    return {}
+
+
 def same_object(target, source):
     """
     Check if a target object is the same with source object by comparing their etags.
@@ -444,7 +470,9 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
                 )
 
 
-def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_table):
+def copy_dynamodb_records(
+    sandbox_id, staging_experiments, source_table, target_table, config
+):
     """
     Copy dynamodBD records for an experiment id
     """
@@ -462,14 +490,7 @@ def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_
                     "PutRequest": {
                         "Item": {
                             **item,
-                            # Some keys pointing to ARN in production has to be
-                            # reset because they can't be accessed in staging
-                            "pipeline": {
-                                "M" : {
-                                    "stateMachineArn": {"S" : ""},
-                                    "executionArn": {"S" : ""},
-                                }
-                            },
+                            **modified_records(item, target_table, config),
                             "experimentId": {
                                 "S": f"{sandbox_id}-{item['experimentId']['S']}",
                             },
@@ -570,7 +591,7 @@ def create_staging_experiments(staging_experiments, sandbox_id, config):
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
         copy_dynamodb_records(
-            sandbox_id, staging_experiments, source_table, target_table
+            sandbox_id, staging_experiments, source_table, target_table, config
         )
 
     click.echo(
