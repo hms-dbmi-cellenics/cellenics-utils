@@ -14,9 +14,10 @@
 Your changes will be ready for merging after each of the steps below have been completed:
 
 ### Testing
+- [ ] New commands have been added to Makefile/test
 - [ ] Unit tests written
-- [ ] Tested locally with Inframock (with latest production data downloaded with biomage experiment pull)
-- [ ] Deployed to staging
+- [ ] Run make test
+- [ ] Test any modified command
 
 To set up easy local testing with inframock, follow the instructions here: https://github.com/biomage-ltd/inframock
 To deploy to the staging environment, follow the instructions here: https://github.com/biomage-ltd/biomage-utils
@@ -29,10 +30,7 @@ Is all relevant documentation updated to reflect the proposed changes in this PR
 
 ### Approvers
 - [ ] Approved by a member of the core engineering team
-- [ ] (UX changes) Approved by vickymorrison (this is her username, tag her if you need approval)
 
-### Just before merging:
-- [ ] After the PR is approved, the `unstage` script in here: https://github.com/biomage-ltd/biomage-utils is executed. This script cleans up your deployment to staging
 
 ### Optional
 - [ ] Photo of a cute animal attached to this PR
