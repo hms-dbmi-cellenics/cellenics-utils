@@ -456,19 +456,21 @@ def copy_dynamodb_records(sandbox_id, staging_experiments, source_table, target_
             ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
         ).get("Items")
 
-        items_to_insert[target_table] = [
-            {
-                "PutRequest": {
-                    "Item": {
-                        **item,
-                        "experimentId": {
-                            "S": f"{sandbox_id}-{item['experimentId']['S']}",
-                        },
+        items_to_insert = {
+            target_table: [
+                {
+                    "PutRequest": {
+                        "Item": {
+                            **item,
+                            "experimentId": {
+                                "S": f"{sandbox_id}-{item['experimentId']['S']}",
+                            },
+                        }
                     }
                 }
-            }
-            for item in items
-        ]
+                for item in items
+            ]
+        }
 
         try:
             dynamodb.batch_write_item(RequestItems=items_to_insert)
