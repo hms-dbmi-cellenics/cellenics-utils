@@ -121,7 +121,7 @@ def get_all_experiments(source_table="experiments-staging"):
 
     experiment_ids = response.get("Items")
 
-    while last_key := response.get("LastEvaluatedKey"):
+    while last_key == response.get("LastEvaluatedKey"):
         response = table.scan(
             AttributesToGet=["experimentId", "experimentName"],
             ConsistentRead=True,
