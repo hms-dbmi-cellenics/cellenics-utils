@@ -157,11 +157,8 @@ E.g. to download experiment `e52b39624588791a7889e39c617f669e` data from `produc
 
 #### experiment ls
 
-List available experiments data in a given environment. See `biomage experiment ls --help` for more information, parameters and default values.
+List available data in a S3 bucket or DynamoDB table. See `biomage experiment ls --help` for more information, parameters and default values.
 
-Example: list experiment files in `production`:
-
-`biomage experiment ls production`
 
 #### experiment compare
 
