@@ -143,6 +143,7 @@ previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/s
     biomage unstage my-sandbox-id
 
 to remove your deployment and delete staged environment.
+
 ### experiment
 
 Manages experiment's data and configuration. See `biomage experiment --help` for more details.
@@ -169,3 +170,9 @@ Compares experiment settings accros development/staging/production environments.
 
     biomage experiment compare my-experiment-id
 
+### release
+
+Creates new releases from develop branches.
+
+`biomage release 0.0.1` -> creates a new release with tag 0.0.1, will ask for systems to be released.
+`biomage release 0.0.1 --all` -> creates a new release for all repos (ui, api, pipeline, worker) with tag 0.0.1.

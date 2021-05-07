@@ -4,6 +4,7 @@ from rotate_ci import rotate_ci
 from stage import stage
 from unstage import unstage
 from experiment import experiment
+from release import release
 
 
 @click.group()
@@ -18,6 +19,7 @@ main.add_command(rotate_ci.rotate_ci)
 main.add_command(stage.stage)
 main.add_command(unstage.unstage)
 main.add_command(experiment.experiment)
+main.add_command(release.release)
 
 if __name__ == "__main__":
     main()
