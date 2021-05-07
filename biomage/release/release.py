@@ -34,12 +34,12 @@ def prompt_repos_to_release():
 
     return answers["repos"]
 
-def release_confirmed(repos, release):
+def release_confirmed(repos):
     questions = [
         {
             "type": "confirm",
             "name": "create",
-            "message": f"Create release version {release} for repositories {repos}?",
+            "message": f"Create release version for repositories {repos}?",
             "default": False,
         }
     ]
@@ -67,12 +67,8 @@ def get_release_workflow(token):
     required=True,
     help="A GitHub Personal Access Token with the required permissions.",
 )
-@click.argument(
-    "release",
-    required=True,
-)
 @click.option('--all', is_flag=True, help="Release all repositories")
-def release(token, release, all):
+def release(token, all):
     """
     Creates a new release.
     """
@@ -85,7 +81,7 @@ def release(token, release, all):
         click.echo("No repositories selected, exiting release process.")
         exit(1)
     
-    if not release_confirmed(repos, release):
+    if not release_confirmed(repos):
         exit(1)
 
 
@@ -94,14 +90,14 @@ def release(token, release, all):
     for repo in repos:
         wf.create_dispatch(
             ref="master",
-            inputs={"repo": repo, "release": release},
+            inputs={"repo": repo},
         )
 
-    click.echo(
-        click.style(
-            f"✔️ Release {release} creation submitted. You can check your progress at "
-            f"https://github.com/{ORG}/iac/actions",
-            fg="green",
-            bold=True,
+        click.echo(
+            click.style(
+                f"✔️ Release creation for {repo} submitted. You can check your progress at "
+                f"https://github.com/{ORG}/iac/actions",
+                fg="green",
+                bold=True,
+            )
         )
-    )

@@ -14,6 +14,7 @@ def configure(r, token):
         allow_merge_commit=False,
         allow_rebase_merge=False,
         delete_branch_on_merge=True,
+        default_branch="develop",
     )
     master = r.get_branch("master")
     master.edit_protection(
@@ -25,6 +26,17 @@ def configure(r, token):
         contexts=[],
     )
     master.add_required_signatures()
+
+    develop = r.get_branch("develop")
+    develop.edit_protection(
+        user_push_restrictions=[],
+        team_push_restrictions=[],
+        required_approving_review_count=1,
+        enforce_admins=True,
+        strict=True,
+        contexts=[],
+    )
+    develop.add_required_signatures()
 
 
 @click.command()
