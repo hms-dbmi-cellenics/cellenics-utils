@@ -8,6 +8,7 @@ import requests
 import yaml
 from github import Github
 from PyInquirer import prompt
+from utils.config import get_config
 
 
 def check_if_sandbox_exists(org, sandbox_id):
@@ -211,9 +212,7 @@ def unstage(token, org, sandbox_id):
     """
 
     # Read configuration
-    config = None
-    with open("config.yaml") as config_file:
-        config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
+    config = get_config()
 
     if check_if_sandbox_exists(org, sandbox_id):
         # get (secret) access keys
