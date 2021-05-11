@@ -45,10 +45,23 @@ class Summary(object):
 
 
 def save_cfg_file(dictionary, dst_file):
+    def serialize_sets(obj):
+        if isinstance(obj, set):
+            return list(obj)
+        return obj
+
     with open(os.path.join(DATA_LOCATION, dst_file), "w") as f:
         # We sort & indent the result to make it easier to inspect & debug the files
         # neither sorting nor indentation is used to check if two confis are equal
-        f.write(json.dumps(dictionary, use_decimal=True, indent=4, sort_keys=True))
+        f.write(
+            json.dumps(
+                dictionary,
+                use_decimal=True,
+                indent=4,
+                sort_keys=True,
+                default=serialize_sets,
+            )
+        )
 
 
 # If the config file was found => retun  (config file, true)
