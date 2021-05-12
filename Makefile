@@ -46,6 +46,7 @@ test: ## Tests that biomage cmd & subcommand are available
 	biomage rotate-ci --help > /dev/null
 	biomage stage --help > /dev/null
 	biomage unstage --help > /dev/null
+	biomage release --help > /dev/null
 	@echo "    [✓]\n"
 
 clean: ## Cleans up temporary files
