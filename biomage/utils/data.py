@@ -29,11 +29,14 @@ def modified_records(item, target_table, config):
     return {}
 
 
-def same_object(target, source):
+def definitely_equal(target, source):
     """
-    Check if a target object is the same with source object by comparing their etags.
-    NOTE: two objects might still be equal and have different etag
-    The method is useful to avoid copying again objects that are definitely
+    Returns if 2 objects are equal. Only positive return values are reliable. Two objects might be equal
+    and return false due to a number of reasons like:
+    * We can't reliably use etags for object comparison
+    * If there's any exception trying to get the target bucket, we'll just return false.
+
+    The method is only useful to avoid copying again objects that are definitely
     equal.
     """
     same_etag = False
@@ -44,12 +47,9 @@ def same_object(target, source):
             Bucket=target["Bucket"], Key=target["Key"], IfMatch=source["ETag"]
         )
         same_etag = True
-    except ClientError as err:
-        # HTTPError 404 is returned if the object doesn't exist
-        # HTTPError 412 is returned if the target's ETag doesn't match with the source's ETag
-        # as a consequence of using `IfMatch` in `s3.head_object()`
-        if err.response["ResponseMetadata"]["HTTPStatusCode"] not in [412, 404]:
-            raise
+    except ClientError:
+        # if there's any exception assume the comparison failed a return false (which can be a false negative or a true negative)
+        pass
 
     return same_etag
 
@@ -72,7 +72,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
             "Key": obj["Key"].replace(experiment_id, f"{sandbox_id}-{experiment_id}"),
         }
 
-        if not same_object(target, obj):
+        if not definitely_equal(target, obj):
             click.echo(
                 f"Copying from {source['Bucket']}/{source['Key']} to "
                 f"{target['Bucket']}/{target['Key']}"
