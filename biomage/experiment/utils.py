@@ -67,11 +67,12 @@ def save_cfg_file(dictionary, dst_file):
 # If the config file was found => retun  (config file, true)
 # Otherwise => (None, False)
 def load_cfg_file(file):
-    try:
+    filepath = os.path.join(DATA_LOCATION, file)
+    if os.path.exists(filepath) and not os.path.getsize(filepath) == 0:
         with open(os.path.join(DATA_LOCATION, file)) as f:
             return json.loads(f.read(), use_decimal=True), True
-    except FileNotFoundError:
-        return None, False
+
+    return None, False
 
 
 def set_modified_date(file_location, date):
