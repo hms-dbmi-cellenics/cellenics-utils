@@ -107,7 +107,7 @@ def get_latest_iac_commit_sha(chart, token):
     repo = org.get_repo(repo)
 
     for ref in repo.get_git_refs():
-        if ref.ref == f"refs/heads/master":
+        if ref.ref == "refs/heads/master":
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
