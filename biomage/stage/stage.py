@@ -6,6 +6,7 @@ import os
 import re
 from collections import namedtuple
 from functools import reduce
+from operator import itemgetter
 
 import anybase32
 import boto3
@@ -129,6 +130,7 @@ def get_all_experiments(source_table="experiments-staging"):
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
 
+    experiment_ids.sort(key=itemgetter("experimentId"))
     return experiment_ids
 
 
