@@ -28,7 +28,7 @@ def recursive_get(d, *keys):
 
 def download_templates(org, repo, ref):
     if ref:
-        template = "refs-pull-{ref}-merge.yaml"
+        template = f"refs-pull-{ref}-merge.yaml"
     else:
         template = f"refs-heads-{base_branch}.yaml"
 
