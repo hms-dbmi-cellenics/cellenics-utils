@@ -21,23 +21,29 @@ SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
 
+DEFAULT_BRANCH = "develop"
+
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
 def download_templates(org, repo, ref):
+    # If no pull request ID was specified in the command.
     if not ref:
-        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-heads-master.yaml"  # noqa: E501
+        template = f"refs-heads-{DEFAULT_BRANCH}.yaml"
     else:
-        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-pull-{ref}-merge.yaml"  # noqa: E501
+        template = f"refs-pull-{ref}-merge.yaml"
+
+    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/{template}"
 
     s = requests.Session()
     r = s.get(url)
-
     Deployment = namedtuple("Deployment", ["ref", "url", "status", "text"])
 
-    return Deployment(ref=ref or "master", url=url, status=r.status_code, text=r.text)
+    return Deployment(
+        ref=ref or DEFAULT_BRANCH, url=url, status=r.status_code, text=r.text
+    )
 
 
 def compile_requirements(org, deployments):
@@ -94,16 +100,30 @@ def compile_requirements(org, deployments):
     return templates
 
 
-def get_latest_master_sha(chart, token):
+def get_branch_ref(chart, token, return_sha=False):
+    """
+    Get a reference to a branch given the chart information (git, path, ref)
+    supplied.
+
+    If return_sha is True, this returns the SHA at the head of the default
+    branch. If it is False, it returns the name of the default branch.
+    """
+
+    # A `git` reference can be git@github.com:biomage-ltd/iac
+    # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
     org, repo = path[1].split("/")
 
     g = Github(token)
     org = g.get_organization(org)
     repo = org.get_repo(repo)
+    default_branch = repo.default_branch
+
+    if not return_sha:
+        return default_branch
 
     for ref in repo.get_git_refs():
-        if ref.ref == "refs/heads/master":
+        if ref.ref == f"refs/heads/{default_branch}":
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
@@ -203,10 +223,10 @@ def create_manifest(templates, token, all_experiments):
     click.echo(
         "The sandbox will not be affected by any future changes made to pinned "
         "deployments. For example, if you pin `ui`,\n"
-        "no new changes made to the `master` branch of the `ui` repository "
+        f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` repository "
         "will propagate to your sandbox after it’s created.\n"
-        "By default, only deployments sourced from the `master` branch are pinned, "
-        "deployments using branches you are\n"
+        f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
+        "are pinned, deployments using branches you are\n"
         "likely to be testing (e.g. pull requests) are not."
     )
     questions = [
@@ -215,7 +235,7 @@ def create_manifest(templates, token, all_experiments):
             "name": "pins",
             "message": "Which deployments would you like to pin?",
             "choices": [
-                {"name": name, "checked": props.ref == "master"}
+                {"name": name, "checked": props.ref == DEFAULT_BRANCH}
                 for name, props in templates.items()
             ],
         }
@@ -253,11 +273,13 @@ def create_manifest(templates, token, all_experiments):
             # pin chart version if pinning is on
             if recursive_get(document, "spec", "chart", "ref"):
                 if name in pins:
-                    document["spec"]["chart"]["ref"] = get_latest_master_sha(
-                        document["spec"]["chart"], token
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"], token, return_sha=True
                     )
                 else:
-                    document["spec"]["chart"]["ref"] = "master"
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"], token, return_sha=False
+                    )
 
             manifests.append(document)
 
