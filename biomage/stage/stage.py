@@ -19,7 +19,6 @@ from PyInquirer import prompt
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
-base_branch = "develop"
 
 
 def recursive_get(d, *keys):
@@ -27,21 +26,17 @@ def recursive_get(d, *keys):
 
 
 def download_templates(org, repo, ref):
-    if ref:
-        template = "refs-pull-{ref}-merge.yaml"
+    if not ref:
+        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-heads-master.yaml"  # noqa: E501
     else:
-        template = f"refs-heads-{base_branch}.yaml"
-
-    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/{template}"
+        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-pull-{ref}-merge.yaml"  # noqa: E501
 
     s = requests.Session()
     r = s.get(url)
 
     Deployment = namedtuple("Deployment", ["ref", "url", "status", "text"])
 
-    return Deployment(
-        ref=ref or base_branch, url=url, status=r.status_code, text=r.text
-    )
+    return Deployment(ref=ref or "master", url=url, status=r.status_code, text=r.text)
 
 
 def compile_requirements(org, deployments):
@@ -98,7 +93,7 @@ def compile_requirements(org, deployments):
     return templates
 
 
-def get_latest_iac_commit_sha(chart, token):
+def get_latest_master_sha(chart, token):
     path = chart["git"].split(":")
     org, repo = path[1].split("/")
 
@@ -141,12 +136,11 @@ def get_sandbox_id(templates, manifests, all_experiments):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
-
     pr_ids = "-".join(
         [
             f"{repo}{opts.ref}"
             for repo, opts in templates.items()
-            if opts.ref != base_branch
+            if opts.ref != "master"
         ]
     )
 
@@ -208,9 +202,9 @@ def create_manifest(templates, token, all_experiments):
     click.echo(
         "The sandbox will not be affected by any future changes made to pinned "
         "deployments. For example, if you pin `ui`,\n"
-        f"no new changes made to the {base_branch} branch of the `ui` repository "
+        "no new changes made to the `master` branch of the `ui` repository "
         "will propagate to your sandbox after it’s created.\n"
-        f"By default, only deployments sourced from the {base_branch} branch are pinned, "
+        "By default, only deployments sourced from the `master` branch are pinned, "
         "deployments using branches you are\n"
         "likely to be testing (e.g. pull requests) are not."
     )
@@ -220,7 +214,7 @@ def create_manifest(templates, token, all_experiments):
             "name": "pins",
             "message": "Which deployments would you like to pin?",
             "choices": [
-                {"name": name, "checked": props.ref == base_branch}
+                {"name": name, "checked": props.ref == "master"}
                 for name, props in templates.items()
             ],
         }
@@ -245,6 +239,7 @@ def create_manifest(templates, token, all_experiments):
     # value depending on the pinning request.
     for name, template in templates.items():
         documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
+
         for document in documents:
             # disable automatic image fetching if pinning is on
             if recursive_get(
@@ -257,11 +252,11 @@ def create_manifest(templates, token, all_experiments):
             # pin chart version if pinning is on
             if recursive_get(document, "spec", "chart", "ref"):
                 if name in pins:
-                    document["spec"]["chart"]["ref"] = get_latest_iac_commit_sha(
+                    document["spec"]["chart"]["ref"] = get_latest_master_sha(
                         document["spec"]["chart"], token
                     )
                 else:
-                    document["spec"]["chart"]["ref"] = base_branch
+                    document["spec"]["chart"]["ref"] = "master"
 
             manifests.append(document)
 
@@ -688,6 +683,7 @@ def stage(token, org, deployments):
             wf = str(workflow.id)
 
     wf = r.get_workflow(wf)
+
     wf.create_dispatch(
         ref="master",
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
