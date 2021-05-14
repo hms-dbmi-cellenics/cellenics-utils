@@ -21,23 +21,33 @@ SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
 
+DEFAULT_BRANCH = "develop"
+
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
 def download_templates(org, repo, ref):
-    if not ref:
-        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-heads-master.yaml"  # noqa: E501
+    # If no pull request ID was specified in the command.
+    if isinstance(ref, int):
+        template = f"refs-pull-{ref}-merge.yaml"
+    elif isinstance(ref, str):
+        template = f"refs-heads-{ref}.yaml"
+    elif not ref:
+        template = f"refs-heads-{DEFAULT_BRANCH}.yaml"
     else:
-        url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/refs-pull-{ref}-merge.yaml"  # noqa: E501
+        raise Exception("Ref must be integer, string, or None.")
+
+    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/{template}"
 
     s = requests.Session()
     r = s.get(url)
-
     Deployment = namedtuple("Deployment", ["ref", "url", "status", "text"])
 
-    return Deployment(ref=ref or "master", url=url, status=r.status_code, text=r.text)
+    return Deployment(
+        ref=ref or DEFAULT_BRANCH, url=url, status=r.status_code, text=r.text
+    )
 
 
 def compile_requirements(org, deployments):
@@ -47,10 +57,15 @@ def compile_requirements(org, deployments):
 
     for deployment in deployments:
         try:
-            repo, pr_id = deployment.split("/", 1)
-            repo_to_ref[repo] = int(pr_id)
-        except Exception:
+            repo, ref = deployment.split("/", 1)
+        except ValueError:
             repo_to_ref[deployment] = None
+            continue
+
+        try:
+            repo_to_ref[repo] = int(ref)
+        except ValueError:
+            repo_to_ref[repo] = ref
 
     templates = {}
     for repo, ref in repo_to_ref.items():
@@ -91,10 +106,24 @@ def compile_requirements(org, deployments):
         )
         exit(1)
 
-    return templates
+    return templates, repo_to_ref
 
 
-def get_latest_master_sha(chart, token):
+def get_branch_ref(chart, token, ref=None, return_sha=False):
+    """
+    Get a reference to a branch given the chart information (git, path, ref)
+    supplied.
+
+    `ref` can be an integer (referring to a pull request, e.g. `api/22`), a
+    string (referring to a branch, e.g. `api/master`) or Null, which indicates
+    the default branch for the repository specified.
+
+    If return_sha is True, this returns the SHA at the head of the default
+    branch. If it is False, it returns the name of the default branch.
+    """
+
+    # A `git` reference can be git@github.com:biomage-ltd/iac
+    # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
     org, repo = path[1].split("/")
 
@@ -102,8 +131,23 @@ def get_latest_master_sha(chart, token):
     org = g.get_organization(org)
     repo = org.get_repo(repo)
 
+    target_branch = None
+    if isinstance(ref, int):
+        target_branch = f"refs/pull/{ref}/head"
+    elif isinstance(ref, str):
+        target_branch = f"refs/heads/{ref}"
+    else:
+        ref = repo.default_branch
+        target_branch = f"refs/heads/{repo.default_branch}"
+
+    # if no specific reference was specified (e.g. `api` instead of `api/22`)
+    # and no SHA was requested, return the name of the branch
+    if not return_sha:
+        return target_branch
+
     for ref in repo.get_git_refs():
-        if ref.ref == "refs/heads/master":
+        print(ref.ref)
+        if ref.ref == target_branch:
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
@@ -189,7 +233,8 @@ def get_sandbox_id(templates, manifests, all_experiments):
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
-def create_manifest(templates, token, all_experiments):
+def create_manifest(templates, token, repo_to_ref, all_experiments):
+
     # Ask about which releases to pin.
     click.echo()
     click.echo(
@@ -203,10 +248,10 @@ def create_manifest(templates, token, all_experiments):
     click.echo(
         "The sandbox will not be affected by any future changes made to pinned "
         "deployments. For example, if you pin `ui`,\n"
-        "no new changes made to the `master` branch of the `ui` repository "
+        f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` repository "
         "will propagate to your sandbox after it’s created.\n"
-        "By default, only deployments sourced from the `master` branch are pinned, "
-        "deployments using branches you are\n"
+        f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
+        "are pinned, deployments using branches you are\n"
         "likely to be testing (e.g. pull requests) are not."
     )
     questions = [
@@ -215,7 +260,7 @@ def create_manifest(templates, token, all_experiments):
             "name": "pins",
             "message": "Which deployments would you like to pin?",
             "choices": [
-                {"name": name, "checked": props.ref == "master"}
+                {"name": name, "checked": props.ref == DEFAULT_BRANCH}
                 for name, props in templates.items()
             ],
         }
@@ -253,15 +298,25 @@ def create_manifest(templates, token, all_experiments):
             # pin chart version if pinning is on
             if recursive_get(document, "spec", "chart", "ref"):
                 if name in pins:
-                    document["spec"]["chart"]["ref"] = get_latest_master_sha(
-                        document["spec"]["chart"], token
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"],
+                        token,
+                        ref=repo_to_ref[name],
+                        return_sha=True,
                     )
                 else:
-                    document["spec"]["chart"]["ref"] = "master"
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"],
+                        token,
+                        ref=repo_to_ref[name],
+                        return_sha=False,
+                    )
 
             manifests.append(document)
 
     manifests = yaml.dump_all(manifests)
+
+    print(manifests)
 
     # Write sandbox ID
     sandbox_id = get_sandbox_id(templates, manifests, all_experiments)
@@ -468,13 +523,15 @@ def stage(token, org, deployments):
     """
 
     # generate templats
-    templates = compile_requirements(org, deployments)
+    templates, repo_to_ref = compile_requirements(org, deployments)
 
     config = get_config()
 
     all_experiments = get_all_experiments(config["production-experiments-table"])
 
-    manifest, sandbox_id = create_manifest(templates, token, all_experiments)
+    manifest, sandbox_id = create_manifest(
+        templates, token, repo_to_ref=repo_to_ref, all_experiments=all_experiments
+    )
 
     print("select staging experiments")
     experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
