@@ -1,6 +1,18 @@
 import boto3
 import click
 
+from utils.constants import (
+    CELLSETS_FILE,
+    DEFAULT_EXPERIMENT_ID,
+    EXPERIMENTS_FILE,
+    EXPERIMENTS_TABLE,
+    PLOTS_TABLES_FILE,
+    PRODUCTION,
+    RDS_FILE,
+    SAMPLES_FILE,
+    SAMPLES_TABLE,
+)
+
 from .utils import (
     PULL,
     Summary,
@@ -10,15 +22,6 @@ from .utils import (
     load_cfg_file,
     save_cfg_file,
 )
-
-CELLSETS_FILE = "mock_cell_sets.json"
-PLOTS_TABLES_FILE = "mock_plots_tables.json"
-EXPERIMENTS_FILE = "mock_experiment.json"
-SAMPLES_FILE = "mock_samples.json"
-RDS_FILE = "r.rds"
-
-SAMPLES_TABLE = "samples"
-EXPERIMENTS_TABLE = "experiments"
 
 
 def download_S3_obj(s3_obj, key, filepath):
@@ -101,39 +104,43 @@ def update_configs(experiment_id, origin):
 
 
 @click.command()
-@click.argument(
-    "origin",
-    default="production",
-)
-@click.argument(
-    "experiment_id",
-    default="e52b39624588791a7889e39c617f669e",
+@click.option(
+    "-e",
+    "--experiment_id",
     required=False,
+    default=DEFAULT_EXPERIMENT_ID,
+    help="Experiment ID to be copied.",
 )
-def pull(experiment_id, origin):
+@click.option(
+    "-i",
+    "--input_env",
+    required=False,
+    default=PRODUCTION,
+    help="Input environment to pull the data from.",
+)
+def pull(experiment_id, input_env):
     """
     Downloads experiment data and config files from a given environment.\n
 
-    [EXPERIMENT_ID]: experiment to get (default: e52b39624588791a7889e39c617f669e)
-
-    [ORIGIN]: environmnent to fetch the data from (default: production)
+    E.g.:
+    biomage experiment pull -i staging -e e52b39624588791a7889e39c617f669e
 
     Works only with r.rds datasets.\n
     """
 
-    Summary.set_command(cmd=PULL, origin=origin, experiment_id=experiment_id)
+    Summary.set_command(cmd=PULL, origin=input_env, experiment_id=experiment_id)
 
-    bucket = f"biomage-source-{origin}"
+    bucket = f"biomage-source-{input_env}"
     file = f"{experiment_id}/{RDS_FILE}"
     dst_file = file + ".gz"
     download_if_modified(bucket=bucket, key=file, filepath=dst_file)
 
-    bucket = f"cell-sets-{origin}"
+    bucket = f"cell-sets-{input_env}"
     dst_file = f"{experiment_id}/{CELLSETS_FILE}"
 
     # the name of the cell sets file in S3 is just the experiment ID
     download_if_modified(bucket=bucket, key=experiment_id, filepath=dst_file)
 
-    update_configs(experiment_id, origin)
+    update_configs(experiment_id, input_env)
 
     Summary.report_changes()

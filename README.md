@@ -174,5 +174,11 @@ Compares experiment settings accros development/staging/production environments.
 
 Creates new releases from develop branches.
 
-`biomage release 0.0.1` -> creates a new release with tag 0.0.1, will ask for systems to be released.
-`biomage release 0.0.1 --all` -> creates a new release for all repos (ui, api, pipeline, worker) with tag 0.0.1.
+`biomage release` -> creates a new release asking for systems to be released.
+`biomage release --all` -> creates a new release for all repos (ui, api, pipeline, worker).
+
+#### experiment copy
+
+Copies one experiment information from a given env to another. See `biomage experiment copy --help` for more details.
+
+`biomage experiment copy --experiment_id=e52b39624588791a7889e39c617f669e --sandbox_id=default`

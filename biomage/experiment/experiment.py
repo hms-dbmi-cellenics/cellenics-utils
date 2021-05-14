@@ -8,6 +8,9 @@ from botocore.exceptions import ClientError
 from deepdiff import DeepDiff
 from PyInquirer import prompt
 
+from utils.constants import DEVELOPMENT, PRODUCTION, STAGING
+
+from .copy import copy
 from .ls import ls
 from .pull import pull
 
@@ -56,16 +59,16 @@ def compare(experiment_id):
     """
 
     environments = {
-        "development": {
+        DEVELOPMENT: {
             "endpoint_url": "http://localhost:4566",
             "s3": {},
             "dynamoDB": {},
         },
-        "staging": {
+        STAGING: {
             "s3": {},
             "dynamoDB": {},
         },
-        "production": {
+        PRODUCTION: {
             "s3": {},
             "dynamoDB": {},
         },
@@ -227,3 +230,4 @@ def compare(experiment_id):
 experiment.add_command(compare)
 experiment.add_command(pull)
 experiment.add_command(ls)
+experiment.add_command(copy)

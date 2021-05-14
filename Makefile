@@ -43,6 +43,7 @@ test: ## Tests that biomage cmd & subcommand are available
 	biomage experiment pull --help > /dev/null
 	biomage experiment ls --help > /dev/null
 	biomage experiment compare --help > /dev/null
+	biomage experiment copy --help > /dev/null
 	biomage rotate-ci --help > /dev/null
 	biomage stage --help > /dev/null
 	biomage unstage --help > /dev/null
