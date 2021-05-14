@@ -1,6 +1,8 @@
 import boto3
 import click
 
+from utils.constants import PRODUCTION
+
 
 def list_bucket_files(bucket):
     s3 = boto3.client("s3")  # low-level functional API
@@ -12,7 +14,7 @@ def list_bucket_files(bucket):
 @click.command()
 @click.argument(
     "origin",
-    default="production",
+    default=PRODUCTION,
 )
 def ls(origin):
     """

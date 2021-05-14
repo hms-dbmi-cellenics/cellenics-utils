@@ -2,6 +2,8 @@ import boto3
 import click
 from botocore.exceptions import ClientError
 
+from utils.constants import PRODUCTION, STAGING
+
 
 def modified_records(item, target_table, config):
     """
@@ -128,7 +130,7 @@ def copy_dynamodb_records(
 
 
 def copy_experiments_to(
-    experiments, sandbox_id, config, origin="production", destination="staging"
+    experiments, sandbox_id, config, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into destination env.

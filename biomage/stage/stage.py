@@ -285,7 +285,8 @@ def paginate_experiments(
 ):
     """
     Helper function to paginate list of experiments to choose for function.
-    This function returns a list of experiment ids, without the accompanying exepriment names
+    This function returns a list of experiment ids, without the accompanying experiment
+    names
     """
 
     chosen_experiments = []
