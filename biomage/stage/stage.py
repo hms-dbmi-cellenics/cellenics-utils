@@ -174,6 +174,7 @@ def get_all_experiments(source_table="experiments-staging"):
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
 
+    experiment_ids.sort(key=lambda x: x["experimentId"])
     return experiment_ids
 
 
