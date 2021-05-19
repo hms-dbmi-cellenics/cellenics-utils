@@ -5,7 +5,6 @@ import re
 import boto3
 import click
 import requests
-import yaml
 from github import Github
 from PyInquirer import prompt
 from utils.config import get_config

@@ -98,7 +98,7 @@ def compile_requirements(org, deployments):
         click.echo()
         click.echo(
             click.style(
-                "✖️ Not all deployment files could be found. "
+                "✖️ Not all de6ent files could be found. "
                 "Check the URLs and status codes printed above and try again.",
                 fg="red",
                 bold=True,
@@ -109,12 +109,14 @@ def compile_requirements(org, deployments):
     return templates, repo_to_ref
 
 
-def get_branch_ref(chart, token, ref=None, return_sha=False):
+def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     """
     Get a reference to a branch given the chart information (git, path, ref)
     supplied.
 
-    `ref` can be an integer (referring to a pull request, e.g. `api/22`), a
+
+    `repo_to_ref` is a dictionary where each key is a repo and the value
+     can be an integer (referring to a pull request, e.g. `api/22`), a
     string (referring to a branch, e.g. `api/master`) or Null, which indicates
     the default branch for the repository specified.
 
@@ -125,11 +127,18 @@ def get_branch_ref(chart, token, ref=None, return_sha=False):
     # A `git` reference can be git@github.com:biomage-ltd/iac
     # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
-    org, repo = path[1].split("/")
+    org, repo_name = path[1].split("/")
 
     g = Github(token)
     org = g.get_organization(org)
-    repo = org.get_repo(repo)
+    repo = org.get_repo(repo_name)
+
+    # We set the reference here according to the chart repo, not the repo
+    # to be released to avoid pointing to invalid references for repos whose
+    # charts are in IAC.
+    ref = None
+    if repo_name in repo_to_ref:
+        ref = repo_to_ref[repo_name]
 
     target_branch = None
     if isinstance(ref, int):
@@ -146,7 +155,6 @@ def get_branch_ref(chart, token, ref=None, return_sha=False):
         return target_branch
 
     for ref in repo.get_git_refs():
-        print(ref.ref)
         if ref.ref == target_branch:
             return ref.object.sha
 
@@ -301,22 +309,20 @@ def create_manifest(templates, token, repo_to_ref, all_experiments):
                     document["spec"]["chart"]["ref"] = get_branch_ref(
                         document["spec"]["chart"],
                         token,
-                        ref=repo_to_ref[name],
+                        repo_to_ref=repo_to_ref,
                         return_sha=True,
                     )
                 else:
                     document["spec"]["chart"]["ref"] = get_branch_ref(
                         document["spec"]["chart"],
                         token,
-                        ref=repo_to_ref[name],
+                        repo_to_ref=repo_to_ref,
                         return_sha=False,
                     )
 
             manifests.append(document)
 
     manifests = yaml.dump_all(manifests)
-
-    print(manifests)
 
     # Write sandbox ID
     sandbox_id = get_sandbox_id(templates, manifests, all_experiments)
