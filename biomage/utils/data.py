@@ -33,8 +33,8 @@ def modified_records(item, target_table, config):
 
 def definitely_equal(target, source):
     """
-    Returns if 2 objects are equal. Only positive return values are reliable. Two objects might be equal
-    and return false due to a number of reasons like:
+    Returns if 2 objects are equal. Only positive return values are reliable. Two
+    objects might be equal and return false due to a number of reasons like:
     * We can't reliably use etags for object comparison
     * If there's any exception trying to get the target bucket, we'll just return false.
 
@@ -50,7 +50,8 @@ def definitely_equal(target, source):
         )
         same_etag = True
     except ClientError:
-        # if there's any exception assume the comparison failed a return false (which can be a false negative or a true negative)
+        # if there's any exception assume the comparison failed a return false
+        #  (which can be a false negative or a true negative)
         pass
 
     return same_etag
@@ -133,7 +134,8 @@ def copy_experiments_to(
     experiments, sandbox_id, config, origin=PRODUCTION, destination=STAGING
 ):
     """
-    Copy the list of experiment IDs in experiments from the origin env into destination env.
+    Copy the list of experiment IDs in experiments from the origin env into
+    destination env.
     """
     click.echo()
     click.echo("Copying items for new experiments...")
