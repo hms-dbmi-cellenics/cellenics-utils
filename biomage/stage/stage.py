@@ -194,7 +194,7 @@ def get_sandbox_id(templates, manifests, all_experiments):
         [
             f"{repo}{opts.ref}"
             for repo, opts in templates.items()
-            if opts.ref != "master"
+            if opts.ref != "develop"
         ]
     )
 
