@@ -98,7 +98,7 @@ def compile_requirements(org, deployments):
         click.echo()
         click.echo(
             click.style(
-                "✖️ Not all de6ent files could be found. "
+                "✖️ Not all deployment files could be found. "
                 "Check the URLs and status codes printed above and try again.",
                 fg="red",
                 bold=True,

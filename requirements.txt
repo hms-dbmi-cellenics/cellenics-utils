@@ -15,3 +15,4 @@ cfn-flip
 anybase32
 deepdiff==5.2.3
 simplejson
+dynamodb-json
