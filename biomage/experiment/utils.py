@@ -1,9 +1,8 @@
 import gzip
+import json
 import os
 import time
 from pathlib import Path
-
-import simplejson as json
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 PULL = "PULL"
@@ -45,23 +44,10 @@ class Summary(object):
 
 
 def save_cfg_file(dictionary, dst_file):
-    def serialize_sets(obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return obj
-
     with open(os.path.join(DATA_LOCATION, dst_file), "w") as f:
         # We sort & indent the result to make it easier to inspect & debug the files
         # neither sorting nor indentation is used to check if two confis are equal
-        f.write(
-            json.dumps(
-                dictionary,
-                use_decimal=True,
-                indent=4,
-                sort_keys=True,
-                default=serialize_sets,
-            )
-        )
+        json.dump(dictionary, f)
 
 
 # If the config file was found => retun  (config file, true)
@@ -70,7 +56,7 @@ def load_cfg_file(file):
     filepath = os.path.join(DATA_LOCATION, file)
     if os.path.exists(filepath) and not os.path.getsize(filepath) == 0:
         with open(os.path.join(DATA_LOCATION, file)) as f:
-            return json.loads(f.read(), use_decimal=True), True
+            return json.load(f), True
 
     return None, False
 
