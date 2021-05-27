@@ -60,11 +60,12 @@ def update_config_if_needed(filepath, table_name, experiment_id):
     """
     Filepath: experiment_id/filename
     """
-    dynamodb = boto3.resource("dynamodb")
 
     local_cfg, found = load_cfg_file(filepath)
-    remote_cfg = dynamodb.Table(table_name).get_item(
-        Key={"experimentId": experiment_id}
+
+    client = boto3.client("dynamodb")
+    remote_cfg = client.get_item(
+        TableName=table_name, Key={"experimentId": {"S": experiment_id}}
     )["Item"]
 
     # the "pipeline" field in experiment config has information about
@@ -76,8 +77,6 @@ def update_config_if_needed(filepath, table_name, experiment_id):
         remote_cfg = remove_key(remote_cfg, "pipeline")
 
     # if the local config was not found or it's different from the remote => update
-    # beware that due to serializing sets into lists, the comparison will always be
-    #  false for config files with sets (such as mock_experiment.json)
     if not found or local_cfg != remote_cfg:
         save_cfg_file(remote_cfg, filepath)
         Summary.add_changed_file(filepath)
