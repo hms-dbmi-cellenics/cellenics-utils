@@ -1,10 +1,8 @@
 name: Create a new release
+
 on: 
   workflow_dispatch:
     inputs:
-      repo:
-        description: 'Repo name to be released'
-        required: true
       version:
         description: 'The version you want to release.'
         required: true
