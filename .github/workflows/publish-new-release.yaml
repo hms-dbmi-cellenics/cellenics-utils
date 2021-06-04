@@ -20,7 +20,7 @@ jobs:
         name: Temporarily disable admin enforcement
         uses: benjefferies/branch-protection-bot@master
         with:
-          access-token: ${{ secrets.API_TOKEN_GITHUB }}
+          access-token: ${{ secrets.GITHUB_TOKEN }}
           enforce_admins: false
           branch: develop
           retries: 8
@@ -29,7 +29,7 @@ jobs:
         name: Temporarily disable admin enforcement
         uses: benjefferies/branch-protection-bot@master
         with:
-          access-token: ${{ secrets.API_TOKEN_GITHUB }}
+          access-token: ${{ secrets.GITHUB_TOKEN }}
           enforce_admins: false
           branch: master
           retries: 8
@@ -77,7 +77,7 @@ jobs:
         uses: benjefferies/branch-protection-bot@master
         if: always()
         with:
-          access-token: ${{ secrets.API_TOKEN_GITHUB }}
+          access-token: ${{ secrets.GITHUB_TOKEN }}
           enforce_admins: true
           retries: 8
           branch: master
@@ -87,7 +87,7 @@ jobs:
         uses: benjefferies/branch-protection-bot@master
         if: always()
         with:
-          access-token: ${{ secrets.API_TOKEN_GITHUB }}
+          access-token: ${{ secrets.GITHUB_TOKEN }}
           enforce_admins: true
           retries: 8
           branch: develop
