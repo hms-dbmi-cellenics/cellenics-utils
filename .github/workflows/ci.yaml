@@ -1,0 +1,14 @@
+name: Test biomage-utils
+on:
+  push:
+    branches:
+      - master
+jobs:
+  test:
+    name: Test biomage-utils
+    runs-on: ubuntu-20.04
+    steps:
+    - id: test
+      name: Run tests
+      run: |-
+        make test
