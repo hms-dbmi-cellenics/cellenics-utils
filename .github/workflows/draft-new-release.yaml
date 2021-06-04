@@ -12,23 +12,23 @@ jobs:
     name: ${{ format('Create release {0}', github.event.inputs.repo) }}
     runs-on: ubuntu-20.04
     steps:
-      - id: checkout-repo
-        name: ${{ format('Checking out {0} repo', github.event.inputs.repo) }}
+
+      - id: checkout
+        name: Check out source code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          repository: ${{ format('biomage-ltd/{0}', github.event.inputs.repo ) }}
-          token: ${{ secrets.API_TOKEN_GITHUB }}
 
       - id: create-release
         name: Create release branch
         run: git checkout -b release/${{ github.event.inputs.version }}
         
-        -name: Initialize mandatory git info
+      - id: initialize-git-info
+        name: Initialize mandatory git info
         run: git config user.name "Github Actions"
       
       - id: push-release
-      - name: Push new release branch
+        name: Push new release branch
         run: git push origin release/${{ github.event.inputs.version }}
 
       - id: create-pr
