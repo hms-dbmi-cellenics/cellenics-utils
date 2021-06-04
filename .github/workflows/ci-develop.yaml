@@ -13,6 +13,10 @@ jobs:
     name: Test biomage-utils
     runs-on: ubuntu-20.04
     steps:
+    - id: checkout
+      name: Check out source code
+      uses: actions/checkout@v2
+
     - id: test
       name: Run tests
       run: |-
