@@ -1,0 +1,23 @@
+name: Test biomage-utils
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+jobs:
+  test:
+    name: Test biomage-utils
+    runs-on: ubuntu-20.04
+    steps:
+    - id: checkout
+      name: Check out source code
+      uses: actions/checkout@v2
+
+    - id: test
+      name: Run tests
+      run: |-
+        make test
