@@ -3,11 +3,11 @@ on:
   push:
     branches:
       - develop
+      - 'release/**'
+      - 'hotfix/**'
   pull_request:
     branches:
       - develop
-      - 'release/**'
-      - 'hotfix/**'
 jobs:
   test:
     name: Test biomage-utils
