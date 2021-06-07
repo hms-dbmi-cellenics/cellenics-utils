@@ -50,6 +50,6 @@ jobs:
         with:
           head: master
           base: develop
-          title: Merge master into dev branch
+          title: Merge release ${{ env.RELEASE_VERSION }} from master into develop branch
           body: |
-            This PR merges the master branch back into develop.
+            This PR merges the master branch back into develop after the successful release ${{ env.RELEASE_VERSION }}.
