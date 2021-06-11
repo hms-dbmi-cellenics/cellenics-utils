@@ -14,8 +14,9 @@ import requests
 import yaml
 from github import Github
 from PyInquirer import prompt
-from utils.config import get_config
-from utils.data import copy_experiments_to
+
+from ..utils.config import get_config
+from ..utils.data import copy_experiments_to
 
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"

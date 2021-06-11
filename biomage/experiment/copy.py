@@ -2,9 +2,9 @@ import sys
 
 import click
 
-from utils.config import get_config
-from utils.constants import DEFAULT_SANDBOX, PRODUCTION, STAGING
-from utils.data import copy_experiments_to
+from ..utils.config import get_config
+from ..utils.constants import DEFAULT_SANDBOX, PRODUCTION, STAGING
+from ..utils.data import copy_experiments_to
 
 
 @click.command()

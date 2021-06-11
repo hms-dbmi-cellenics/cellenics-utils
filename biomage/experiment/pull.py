@@ -1,7 +1,7 @@
 import boto3
 import click
 
-from utils.constants import (
+from ..utils.constants import (
     CELLSETS_FILE,
     DEFAULT_EXPERIMENT_ID,
     EXPERIMENTS_FILE,

@@ -1,13 +1,15 @@
-import click
 from functools import reduce
-from botocore.config import Config
-import boto3
-from github import Github
 import json
-import requests
-import cfn_flip
 import time
-from utils import encrypt
+
+import cfn_flip
+import click
+import boto3
+import requests
+from botocore.config import Config
+from github import Github
+
+from ..utils import encrypt
 
 config = Config(
     region_name="eu-west-1",

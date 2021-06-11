@@ -7,7 +7,8 @@ import click
 import requests
 from github import Github
 from PyInquirer import prompt
-from utils.config import get_config
+
+from ..utils.config import get_config
 
 
 def check_if_sandbox_exists(org, sandbox_id):
