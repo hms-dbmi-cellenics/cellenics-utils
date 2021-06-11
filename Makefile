@@ -15,14 +15,13 @@ MKFILE_DIR := $(dir $(MKFILE_PATH))
 # Targets
 #--------------------------------------------------
 install: clean ## Creates venv, and adds biomage as system command
+	@echo "Building package"
+	@python3 setup.py sdist
+
 	@echo "Creating virtual env and installing dependencies..."
 	@python3 -m venv venv
 	@venv/bin/pip3 install --upgrade pip
-	@venv/bin/pip3 install -r requirements.txt
-	@echo "    [✓]\n"
-	@echo "Installing biomage into ${INSTALL_PATH}"
-	@printf '#!/bin/bash\n$(MKFILE_DIR)venv/bin/python3 $(MKFILE_DIR)biomage $$@\n' > ${INSTALL_PATH}/biomage
-	@chmod +x /usr/local/bin/biomage
+	@venv/bin/pip3 install dist/*.tar.gz
 	@echo "    [✓]\n"
 fmt: ## Formats python files
 	@echo "==> Formatting files..."
@@ -34,7 +33,7 @@ check: ## Checks code for linting/construct errors
 	@echo "    [✓]\n"
 
 test: ## Tests that biomage cmd & subcommand are available
-	@echo "==> Checking if biomge is in path..."
+	@echo "==> Checking if biomage is in path..."
 	biomage > /dev/null
 	@echo "    [✓]\n"
 	@echo "==> Checking if all subcommands are available..."
@@ -52,8 +51,8 @@ test: ## Tests that biomage cmd & subcommand are available
 
 clean: ## Cleans up temporary files
 	@echo "==> Cleaning up..."
+	@rm dist/*
 	@find . -name "*.pyc" -exec rm -f {} \;
-	@rm -r venv
 	@echo "    [✓]"
 	@echo ""
 
