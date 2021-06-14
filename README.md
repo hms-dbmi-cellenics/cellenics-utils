@@ -8,7 +8,7 @@ infrastructure.
 Setup
 -----
 
-After cloning the repository, do the following (might require **sudo** in some distributions, and `pip` > 21.0.1):
+After cloning the repository, do the following:
 
     make install
 
@@ -42,7 +42,7 @@ then simply do:
 
     biomage stage
 
-### Other Enviroment Variables
+### Other Environment Variables
 
 * `BIOMAGE_NICK` is optional and used to override the `USER` environment variable
   as the first part of the name of the staging environments created by you:
