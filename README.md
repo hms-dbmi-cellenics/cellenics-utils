@@ -21,7 +21,8 @@ If the test was successful, you should be able to access `biomage-utils` by typi
     biomage --help
 
 As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
-Token with full access to your account. You can generate one
+Token with full access to your account. This token should be given ALL scopes available. You can
+generate one
 [here](https://github.com/settings/tokens). Make sure you note down this and
 supply it when required. Utilities can accept this token in two ways:
 
