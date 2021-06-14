@@ -22,6 +22,10 @@ setup(
     url="https://github.com/biomage-ltd/biomage-utils",
 
     packages=find_packages(),
+    package_data={
+            "": ["config.yaml"],
+    },
+
     entry_points={
         "console_scripts": ["biomage = biomage.__main__:main"],
     },
