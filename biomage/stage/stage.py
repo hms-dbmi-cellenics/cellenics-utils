@@ -601,7 +601,8 @@ def stage(token, org, deployments):
     if not deploy_successful:
         click.echo(
             click.style(
-                "❌ Deployment failed. Does your account have the required permissions?",
+                "❌ Could not run workflow. Does your GitHub token have the required privileges? "
+                f"See https://github.com/{org}/biomage-utils#setup for more information.",
                 fg="red",
                 bold=True,
             )
