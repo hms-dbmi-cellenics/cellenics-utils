@@ -175,13 +175,15 @@ def get_all_experiments(source_table="experiments-staging"):
 
     experiment_ids = response.get("Items")
 
-    while last_key := response.get("LastEvaluatedKey"):
+    last_key = response.get("LastEvaluatedKey")
+    while last_key:
         response = table.scan(
             AttributesToGet=["experimentId", "experimentName"],
             ConsistentRead=True,
             ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
+        last_key = response.get("LastEvaluatedKey")
 
     experiment_ids.sort(key=lambda x: x["experimentId"])
     return experiment_ids
@@ -432,12 +434,7 @@ def paginate_experiments(
                 answers.remove(done_text)
                 page_action = "done"
 
-            chosen_experiments = set(
-                [
-                    *chosen_experiments,
-                    *[experiment.split(" ")[0] for experiment in answers],
-                ]
-            )
+            chosen_experiments = {*chosen_experiments, *[experiment.split(" ")[0] for experiment in answers]}
 
             # Switch according to chosen action
             if page_action == "next":
