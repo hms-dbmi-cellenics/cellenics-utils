@@ -174,13 +174,15 @@ def get_all_experiments(source_table="experiments-staging"):
 
     experiment_ids = response.get("Items")
 
-    while last_key := response.get("LastEvaluatedKey"):
+    last_key = response.get("LastEvaluatedKey")
+    while last_key:
         response = table.scan(
             AttributesToGet=["experimentId", "experimentName"],
             ConsistentRead=True,
             ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
+        last_key = response.get("LastEvaluatedKey")
 
     experiment_ids.sort(key=lambda x: x["experimentId"])
     return experiment_ids
@@ -569,6 +571,8 @@ def stage(token, org, deployments):
     )
     secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
 
+    print(secrets)
+
     questions = [
         {
             "type": "confirm",
@@ -593,10 +597,20 @@ def stage(token, org, deployments):
 
     wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
+    deploy_successful = wf.create_dispatch(
         ref="master",
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
+
+    if not deploy_successful:
+        click.echo(
+            click.style(
+                "❌ Deployment failed. Does your account have the required permissions?",
+                fg="red",
+                bold=True,
+            )
+        )
+        return
 
     if len(experiment_ids_to_stage) > 0:
         copy_experiments_to(experiment_ids_to_stage, sandbox_id, config)
