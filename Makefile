@@ -35,14 +35,19 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@sudo rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
 
-fmt: ## Formats python files
-	@echo "==> Formatting files..."
-	@black $(PYTHON_FILES)
-	@echo ""
+develop: ## Installs development dependencies
+	@echo "==> Installing development dependencies..."
+	@venv/bin/pip install -r dev-requirements.txt --quiet
+	@echo "    [✓]"
 
-check: ## Checks code for linting/construct errors
+fmt: develop ## Formats python files
+	@echo "==> Formatting files..."
+	@venv/bin/black $(PYTHON_FILES)
+	@echo "    [✓]"
+
+check: develop ## Checks code for linting/construct errors
 	@echo "==> Checking if files are well formatted..."
-	@flake8 $(PYTHON_FILES)
+	@venv/bin/flake8 $(PYTHON_FILES)
 	@echo "    [✓]"
 
 test: ## Tests that biomage cmd & subcommand are available
@@ -69,6 +74,6 @@ clean: ## Cleans up temporary files
 	@echo "    [✓]"
 	@echo ""
 
-.PHONY: install fmt check test clean help
+.PHONY: install uninstall develop fmt check test clean help
 help: ## Shows available targets
 	@fgrep -h "## " $(MAKEFILE_LIST) | fgrep -v fgrep | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-13s\033[0m %s\n", $$1, $$2}'

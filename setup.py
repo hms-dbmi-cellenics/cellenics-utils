@@ -1,9 +1,15 @@
-import setuptools
+from setuptools import setup, find_packages
 
 with open("README.md") as f:
     long_description = f.read()
 
-setuptools.setup(
+with open("requirements.txt") as f:
+    requirements = f.readlines()
+
+with open("dev-requirements.txt") as f:
+    dev_requirements = f.readlines()
+
+setup(
     name="biomage-utils",
     version="0.0.1",
 
@@ -15,26 +21,14 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/biomage-ltd/biomage-utils",
 
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     entry_points={
         "console_scripts": ["biomage = biomage.__main__:main"],
     },
 
-    python_requires=">=3.8",
-    install_requires=[
-        'click',
-        'requests',
-        'PyGithub',
-        'PyInquirer',
-        'boto3',
-        'cfn-flip',
-        'deepdiff',
-        'anybase32',
-    ],
+    python_requires=">=3.7",
+    install_requires=requirements,
     extras_require={
-        'dev': [
-            'flake8',
-            'black',
-        ]
-    }
+        'dev': dev_requirements,
+    },
 )
