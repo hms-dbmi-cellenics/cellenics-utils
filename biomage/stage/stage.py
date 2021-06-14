@@ -593,12 +593,12 @@ def stage(token, org, deployments):
 
     wf = r.get_workflow(wf)
 
-    deploy_successful = wf.create_dispatch(
+    workflow_started = wf.create_dispatch(
         ref="master",
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
 
-    if not deploy_successful:
+    if not workflow_started:
         click.echo(
             click.style(
                 "❌ Could not run workflow. Does your GitHub token have the required privileges? "
