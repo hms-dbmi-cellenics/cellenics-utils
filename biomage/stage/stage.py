@@ -174,15 +174,13 @@ def get_all_experiments(source_table="experiments-staging"):
 
     experiment_ids = response.get("Items")
 
-    last_key = response.get("LastEvaluatedKey")
-    while last_key:
+    while last_key := response.get("LastEvaluatedKey"):
         response = table.scan(
             AttributesToGet=["experimentId", "experimentName"],
             ConsistentRead=True,
             ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
-        last_key = response.get("LastEvaluatedKey")
 
     experiment_ids.sort(key=lambda x: x["experimentId"])
     return experiment_ids
@@ -570,8 +568,6 @@ def stage(token, org, deployments):
         KeyId="alias/iac-secret-key", Plaintext=json.dumps(credentials).encode()
     )
     secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
-
-    print(secrets)
 
     questions = [
         {
