@@ -8,31 +8,32 @@
 #--------------------------------------------------
 PYTHON_FILES?=$$(find biomage -name '*.py')
 ENTRY_POINT=/usr/bin/biomage
+OLD_ENTRY_POINT=/usr/local/bin/biomage
 
 # should point to biomage-utils root folder to link ./biomage python module & ./venv
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
 install: clean ## Creates venv, and adds biomage as system command
-	@echo "Building package..."
+	@echo "==> Building package..."
 	@python3 setup.py sdist
 	@echo "    [✓]"
 
-	@echo "Creating virtual environment..."
+	@echo "==> Creating virtual environment..."
 	@python3 -m venv venv
 	@echo "    [✓]"
 
-	@echo "Installing utility and dependencies..."
+	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
 	@venv/bin/pip install .
 	@sudo ln -sf '$(CURDIR)/venv/bin/biomage' $(ENTRY_POINT)
 	@echo "    [✓]"
 
 uninstall: clean ## Uninstalls utility and destroys venv
-	@echo "Uninstalling utility and dependencies..."
+	@echo "==> Uninstalling utility and dependencies..."
 	@venv/bin/pip uninstall -y biomage-utils
 	@rm -rf venv/
-	@sudo rm -f $(ENTRY_POINT)
+	@sudo rm -f $(ENTRY_POINT) $(OLD_ENTRY_POINT)
 	@echo "    [✓]"
 
 develop: ## Installs development dependencies
@@ -69,7 +70,7 @@ test: ## Tests that biomage cmd & subcommand are available
 
 clean: ## Cleans up temporary files
 	@echo "==> Cleaning up..."
-	@rm -r dist/ || true
+	@rm -rf dist/
 	@find . -name "*.pyc" -exec rm -f {} \;
 	@echo "    [✓]"
 	@echo ""
