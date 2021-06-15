@@ -15,4 +15,5 @@ jobs:
     - id: test
       name: Run tests
       run: |-
+        make install
         make test
