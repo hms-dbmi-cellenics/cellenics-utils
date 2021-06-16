@@ -8,9 +8,6 @@
 		"[python]": {
 			"editor.formatOnPaste": true,
 			"editor.formatOnSave": true,
-            "editor.codeActionsOnSave": {
-                "source.organizeImports": true
-            }
 		},
 		"python.venvPath": "venv",
 		"python.formatting.provider": "black",
