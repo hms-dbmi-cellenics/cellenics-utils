@@ -1,4 +1,3 @@
-import copy
 import itertools
 from pprint import pprint
 
@@ -179,7 +178,8 @@ def compare(experiment_id):
                 if not diff:
                     click.echo(
                         click.style(
-                            f"✔️ {env1} and {env2} are equal for bucket '{bucket_name}'",
+                            f"✔️ {env1} and {env2} are equal for bucket"
+                            f" '{bucket_name}'",
                             bg="green",
                         )
                     )

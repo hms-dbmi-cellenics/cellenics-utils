@@ -40,7 +40,8 @@ def download_templates(org, repo, ref):
     else:
         raise Exception("Ref must be integer, string, or None.")
 
-    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/{template}"
+    url = ("https://raw.githubusercontent.com/{org}/iac/master/releases/"
+           f"staging-candidates/{repo}/{template}")
 
     s = requests.Session()
     r = s.get(url)
@@ -367,7 +368,8 @@ def paginate_experiments(
             {
                 "type": "checkbox",
                 "name": "experiments_to_stage",
-                "message": "Which experiments would you like to enable for the staging environment?",
+                "message": "Which experiments would you like to enable for the"
+                           " staging environment?",
                 "choices": choices,
             }
         ]
@@ -412,7 +414,8 @@ def paginate_experiments(
                 {
                     "type": "checkbox",
                     "name": "experiments_to_stage",
-                    "message": "Which experiments would you like to enable for the staging environment?\n"
+                    "message": "Which experiments would you like to enable for the"
+                               " staging environment?\n"
                     "Choose 'done' to exit",
                     "choices": choices,
                 }
@@ -635,7 +638,8 @@ def stage(token, org, deployments):
         click.echo(
             "\n".join(
                 [
-                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
+                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/"
+                    f"{sandbox_id}-{experiment_id}/data-processing"
                     for experiment_id in available_experiments
                 ]
             )
