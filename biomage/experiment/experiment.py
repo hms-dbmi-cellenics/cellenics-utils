@@ -9,7 +9,6 @@ from deepdiff import DeepDiff
 from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
-
 from .copy import copy
 from .ls import ls
 from .pull import pull

@@ -12,7 +12,6 @@ from ..utils.constants import (
     SAMPLES_FILE,
     SAMPLES_TABLE,
 )
-
 from .utils import (
     PULL,
     Summary,

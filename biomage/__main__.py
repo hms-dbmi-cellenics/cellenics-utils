@@ -1,11 +1,11 @@
 import click
 
 from biomage.configure_repo import configure_repo
+from biomage.experiment import experiment
+from biomage.release import release
 from biomage.rotate_ci import rotate_ci
 from biomage.stage import stage
 from biomage.unstage import unstage
-from biomage.experiment import experiment
-from biomage.release import release
 
 
 @click.group()

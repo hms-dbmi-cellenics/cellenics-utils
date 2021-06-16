@@ -1,10 +1,10 @@
-from functools import reduce
 import json
 import time
+from functools import reduce
 
+import boto3
 import cfn_flip
 import click
-import boto3
 import requests
 from botocore.config import Config
 from github import Github
