@@ -434,7 +434,10 @@ def paginate_experiments(
                 answers.remove(done_text)
                 page_action = "done"
 
-            chosen_experiments = {*chosen_experiments, *[experiment.split(" ")[0] for experiment in answers]}
+            chosen_experiments = {
+                *chosen_experiments,
+                *(experiment.split(" ")[0] for experiment in answers),
+            }
 
             # Switch according to chosen action
             if page_action == "next":
