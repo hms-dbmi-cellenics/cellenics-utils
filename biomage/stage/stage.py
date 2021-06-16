@@ -593,10 +593,21 @@ def stage(token, org, deployments):
 
     wf = r.get_workflow(wf)
 
-    wf.create_dispatch(
+    workflow_started = wf.create_dispatch(
         ref="master",
         inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
     )
+
+    if not workflow_started:
+        click.echo(
+            click.style(
+                "❌ Could not run workflow. Does your GitHub token have the required privileges? "
+                f"See https://github.com/{org}/biomage-utils#setup for more information.",
+                fg="red",
+                bold=True,
+            )
+        )
+        return
 
     if len(experiment_ids_to_stage) > 0:
         copy_experiments_to(experiment_ids_to_stage, sandbox_id, config)
