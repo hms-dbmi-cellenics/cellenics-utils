@@ -14,7 +14,6 @@ else
     ENTRY_POINT=/usr/bin/biomage
 endif
 
-# should point to biomage-utils root folder to link ./biomage python module & ./venv
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
@@ -22,12 +21,14 @@ install: clean ## Creates venv, and adds biomage as system command
 	@echo "==> Creating virtual environment..."
 	@python3 -m venv venv
 	@echo "    [✓]"
+	@echo
 
 	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
 	@venv/bin/pip install .
 	@sudo ln -sf '$(CURDIR)/venv/bin/biomage' $(ENTRY_POINT)
 	@echo "    [✓]"
+	@echo
 
 uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
@@ -35,26 +36,32 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@rm -rf venv/
 	@sudo rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
+	@echo
 
 develop: ## Installs development dependencies
 	@echo "==> Installing development dependencies..."
 	@venv/bin/pip install -r dev-requirements.txt --quiet
 	@echo "    [✓]"
+	@echo
 
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
 	@venv/bin/black $(PYTHON_FILES)
 	@echo "    [✓]"
+	@echo
 
 check: develop ## Checks code for linting/construct errors
 	@echo "==> Checking if files are well formatted..."
 	@venv/bin/flake8 $(PYTHON_FILES)
 	@echo "    [✓]"
+	@echo
 
 test: ## Tests that biomage cmd & subcommand are available
 	@echo "==> Checking if biomage is in path..."
 	biomage > /dev/null
 	@echo "    [✓]"
+	@echo
+
 	@echo "==> Checking if all subcommands are available..."
 	biomage configure-repo --help > /dev/null
 	biomage experiment --help > /dev/null
@@ -67,12 +74,13 @@ test: ## Tests that biomage cmd & subcommand are available
 	biomage unstage --help > /dev/null
 	biomage release --help > /dev/null
 	@echo "    [✓]"
+	@echo
 
 clean: ## Cleans up temporary files
 	@echo "==> Cleaning up..."
 	@find . -name "*.pyc" -exec rm -f {} \;
 	@echo "    [✓]"
-	@echo ""
+	@echo
 
 .PHONY: install uninstall develop fmt check test clean help
 help: ## Shows available targets
