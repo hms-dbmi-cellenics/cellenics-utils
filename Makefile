@@ -7,8 +7,12 @@
 # Variables
 #--------------------------------------------------
 PYTHON_FILES?=$$(find biomage -name '*.py')
-ENTRY_POINT=/usr/bin/biomage
-OLD_ENTRY_POINT=/usr/local/bin/biomage
+
+ifeq ($(shell uname -s),Darwin)
+    ENTRY_POINT=/usr/local/bin/biomage
+else
+    ENTRY_POINT=/usr/bin/biomage
+endif
 
 # should point to biomage-utils root folder to link ./biomage python module & ./venv
 #--------------------------------------------------
@@ -33,7 +37,7 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
 	@venv/bin/pip uninstall -y biomage-utils
 	@rm -rf venv/
-	@sudo rm -f $(ENTRY_POINT) $(OLD_ENTRY_POINT)
+	@sudo rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
 
 develop: ## Installs development dependencies
