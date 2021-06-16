@@ -19,10 +19,6 @@ endif
 # Targets
 #--------------------------------------------------
 install: clean ## Creates venv, and adds biomage as system command
-	@echo "==> Building package..."
-	@python3 setup.py sdist
-	@echo "    [✓]"
-
 	@echo "==> Creating virtual environment..."
 	@python3 -m venv venv
 	@echo "    [✓]"
@@ -74,7 +70,6 @@ test: ## Tests that biomage cmd & subcommand are available
 
 clean: ## Cleans up temporary files
 	@echo "==> Cleaning up..."
-	@rm -rf dist/
 	@find . -name "*.pyc" -exec rm -f {} \;
 	@echo "    [✓]"
 	@echo ""
