@@ -6,8 +6,6 @@
 #--------------------------------------------------
 # Variables
 #--------------------------------------------------
-PYTHON_FILES?=$$(find biomage -name '*.py')
-
 ifeq ($(shell uname -s),Darwin)
     ENTRY_POINT=/usr/local/bin/biomage
 else
@@ -19,7 +17,7 @@ endif
 #--------------------------------------------------
 install: clean ## Creates venv, and adds biomage as system command
 	@echo "==> Creating virtual environment..."
-	@python3 -m venv venv
+	@python3 -m venv venv/
 	@echo "    [✓]"
 	@echo
 
@@ -46,13 +44,14 @@ develop: ## Installs development dependencies
 
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
-	@venv/bin/black $(PYTHON_FILES)
+	@venv/bin/black biomage/
+	@venv/bin/isort biomage/
 	@echo "    [✓]"
 	@echo
 
 check: develop ## Checks code for linting/construct errors
 	@echo "==> Checking if files are well formatted..."
-	@venv/bin/flake8 $(PYTHON_FILES)
+	@venv/bin/flake8 biomage/
 	@echo "    [✓]"
 	@echo
 
