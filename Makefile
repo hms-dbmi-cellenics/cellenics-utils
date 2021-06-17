@@ -32,7 +32,7 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
 	@venv/bin/pip uninstall -y biomage-utils
 	@rm -rf venv/
-	@rm -f $(ENTRY_POINT)
+	@sudo rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
 
