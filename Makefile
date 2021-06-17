@@ -32,7 +32,7 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
 	@venv/bin/pip uninstall -y biomage-utils
 	@rm -rf venv/
-	@sudo rm -f $(ENTRY_POINT)
+	@rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
 
@@ -45,7 +45,7 @@ develop: ## Installs development dependencies
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
 	@venv/bin/black biomage/
-	@venv/bin/isort biomage/
+	@venv/bin/isort --sp isort.cfg biomage/
 	@echo "    [✓]"
 	@echo
 

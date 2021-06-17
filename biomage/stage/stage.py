@@ -40,8 +40,10 @@ def download_templates(org, repo, ref):
     else:
         raise Exception("Ref must be integer, string, or None.")
 
-    url = ("https://raw.githubusercontent.com/{org}/iac/master/releases/"
-           f"staging-candidates/{repo}/{template}")
+    url = (
+        "https://raw.githubusercontent.com/{org}/iac/master/releases/"
+        f"staging-candidates/{repo}/{template}"
+    )
 
     s = requests.Session()
     r = s.get(url)
@@ -369,7 +371,7 @@ def paginate_experiments(
                 "type": "checkbox",
                 "name": "experiments_to_stage",
                 "message": "Which experiments would you like to enable for the"
-                           " staging environment?",
+                " staging environment?",
                 "choices": choices,
             }
         ]
@@ -415,7 +417,7 @@ def paginate_experiments(
                     "type": "checkbox",
                     "name": "experiments_to_stage",
                     "message": "Which experiments would you like to enable for the"
-                               " staging environment?\n"
+                    " staging environment?\n"
                     "Choose 'done' to exit",
                     "choices": choices,
                 }

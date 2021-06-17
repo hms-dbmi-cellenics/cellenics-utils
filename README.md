@@ -12,6 +12,10 @@ After cloning the repository, do the following:
 
     make install
 
+If you are going to be developing `biomage-utils` please install also the development dependencies with:
+
+    make develop
+
 You can verify that the command has been successfully installed with:
 
     make test
