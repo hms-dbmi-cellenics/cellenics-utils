@@ -3,7 +3,7 @@ DEVELOPMENT = "development"
 STAGING = "staging"
 PRODUCTION = "production"
 
-# Default values used by bimoage-utils
+# Default values used by biomage-utils
 DEFAULT_SANDBOX = "default"
 DEFAULT_EXPERIMENT_ID = "e52b39624588791a7889e39c617f669e"
 

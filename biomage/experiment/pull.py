@@ -1,7 +1,7 @@
 import boto3
 import click
 
-from utils.constants import (
+from ..utils.constants import (
     CELLSETS_FILE,
     DEFAULT_EXPERIMENT_ID,
     EXPERIMENTS_FILE,
@@ -12,7 +12,6 @@ from utils.constants import (
     SAMPLES_FILE,
     SAMPLES_TABLE,
 )
-
 from .utils import (
     PULL,
     Summary,

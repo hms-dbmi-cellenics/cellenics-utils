@@ -14,8 +14,9 @@ import requests
 import yaml
 from github import Github
 from PyInquirer import prompt
-from utils.config import get_config
-from utils.data import copy_experiments_to
+
+from ..utils.config import get_config
+from ..utils.data import copy_experiments_to
 
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
@@ -39,7 +40,10 @@ def download_templates(org, repo, ref):
     else:
         raise Exception("Ref must be integer, string, or None.")
 
-    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging-candidates/{repo}/{template}"
+    url = (
+        "https://raw.githubusercontent.com/{org}/iac/master/releases/"
+        f"staging-candidates/{repo}/{template}"
+    )
 
     s = requests.Session()
     r = s.get(url)
@@ -174,13 +178,15 @@ def get_all_experiments(source_table="experiments-staging"):
 
     experiment_ids = response.get("Items")
 
-    while last_key := response.get("LastEvaluatedKey"):
+    last_key = response.get("LastEvaluatedKey")
+    while last_key:
         response = table.scan(
             AttributesToGet=["experimentId", "experimentName"],
             ConsistentRead=True,
             ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
         )
         experiment_ids = [*experiment_ids, *response.get("Items")]
+        last_key = response.get("LastEvaluatedKey")
 
     experiment_ids.sort(key=lambda x: x["experimentId"])
     return experiment_ids
@@ -364,7 +370,8 @@ def paginate_experiments(
             {
                 "type": "checkbox",
                 "name": "experiments_to_stage",
-                "message": "Which experiments would you like to enable for the staging environment?",
+                "message": "Which experiments would you like to enable for the"
+                " staging environment?",
                 "choices": choices,
             }
         ]
@@ -409,7 +416,8 @@ def paginate_experiments(
                 {
                     "type": "checkbox",
                     "name": "experiments_to_stage",
-                    "message": "Which experiments would you like to enable for the staging environment?\n"
+                    "message": "Which experiments would you like to enable for the"
+                    " staging environment?\n"
                     "Choose 'done' to exit",
                     "choices": choices,
                 }
@@ -431,12 +439,10 @@ def paginate_experiments(
                 answers.remove(done_text)
                 page_action = "done"
 
-            chosen_experiments = set(
-                [
-                    *chosen_experiments,
-                    *[experiment.split(" ")[0] for experiment in answers],
-                ]
-            )
+            chosen_experiments = {
+                *chosen_experiments,
+                *(experiment.split(" ")[0] for experiment in answers),
+            }
 
             # Switch according to chosen action
             if page_action == "next":
@@ -645,7 +651,8 @@ def stage(token, org, deployments):
         click.echo(
             "\n".join(
                 [
-                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/{sandbox_id}-{experiment_id}/data-processing"
+                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/"
+                    f"{sandbox_id}-{experiment_id}/data-processing"
                     for experiment_id in available_experiments
                 ]
             )

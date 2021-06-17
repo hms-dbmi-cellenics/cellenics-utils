@@ -2,7 +2,7 @@ import boto3
 import click
 from botocore.exceptions import ClientError
 
-from utils.constants import PRODUCTION, STAGING
+from ..utils.constants import PRODUCTION, STAGING
 
 
 def modified_records(item, target_table, config):

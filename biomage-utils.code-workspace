@@ -8,11 +8,15 @@
 		"[python]": {
 			"editor.formatOnPaste": true,
 			"editor.formatOnSave": true,
-            "editor.codeActionsOnSave": {
-                "source.organizeImports": true
-            }
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": true
+			}
 		},
-		"python.venvPath": "venv",
+		"python.pythonPath": "venv",
+		"python.sortImports.args": [
+			"-rc", // recursive on all files
+			"-sp isort.cfg" //points to isort config file
+		],
 		"python.formatting.provider": "black",
 		"python.linting.enabled": true,
 		"python.linting.pylintEnabled": false,
