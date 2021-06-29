@@ -41,7 +41,7 @@ def download_templates(org, repo, ref):
         raise Exception("Ref must be integer, string, or None.")
 
     url = (
-        "https://raw.githubusercontent.com/{org}/iac/master/releases/"
+        f"https://raw.githubusercontent.com/{org}/iac/master/releases/"
         f"staging-candidates/{repo}/{template}"
     )
 
