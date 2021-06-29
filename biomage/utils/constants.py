@@ -20,3 +20,5 @@ PROCESSED_RDS_FILE = "processed-matrix.r.rds"
 SAMPLES_TABLE = "samples"
 EXPERIMENTS_TABLE = "experiments"
 PROJECTS_TABLE = "projects"
+
+COGNITO_STAGING_POOL = "eu-west-1_sVQL15Yxu"

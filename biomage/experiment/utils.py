@@ -6,6 +6,8 @@ from pathlib import Path
 
 import boto3
 
+from ..utils.constants import COGNITO_STAGING_POOL
+
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 PULL = "PULL"
 
@@ -122,7 +124,7 @@ def download_S3_json(s3_obj, key, filepath):
 
 def get_cognito_username(email):
     client = boto3.client("cognito-idp")
-    user_name = client.admin_get_user(Username=email, UserPoolId="eu-west-1_sVQL15Yxu")[
+    user_name = client.admin_get_user(Username=email, UserPoolId=COGNITO_STAGING_POOL)[
         "Username"
     ]
 
@@ -131,7 +133,8 @@ def get_cognito_username(email):
 
 def add_user_to_rbac(user_name, cfg):
     if "rbac_can_write" in cfg:
-        cfg["rbac_can_write"]["SS"].append(user_name)
+        if user_name not in cfg["rbac_can_write"]["SS"]:
+            cfg["rbac_can_write"]["SS"].append(user_name)
         return cfg
     for val in cfg.values():
         if isinstance(val, dict):

@@ -42,6 +42,7 @@ def download_if_modified(bucket, key, filepath):
     s3_obj = s3.Object(bucket, key)
 
     try:
+        # accessing last_modified will trigger an error if the object does not exist
         s3_obj.last_modified
     except ClientError as e:
         raise Exception(f"could not retrieve file: {bucket}/{key}\n{e}")
@@ -141,7 +142,7 @@ def update_configs(experiment_id, origin):
     # update samples
     file_path = f"{experiment_id}/{SAMPLES_FILE}"
     table_name = f"{SAMPLES_TABLE}-{origin}"
-    project_uuid = update_config_if_needed(file_path, table_name, experiment_id)
+    update_config_if_needed(file_path, table_name, experiment_id)
 
     # update experiments
     file_path = f"{experiment_id}/{EXPERIMENTS_FILE}"
@@ -191,19 +192,19 @@ def pull(experiment_id, input_env):
     Summary.set_command(cmd=PULL, origin=input_env, experiment_id=experiment_id)
 
     bucket = f"biomage-source-{input_env}"
-    file = f"{experiment_id}/r.rds"
-    dst_file = f"{experiment_id}/{SOURCE_RDS_FILE}.gz"
-    download_if_modified(bucket=bucket, key=file, filepath=dst_file)
+    remote_file = f"{experiment_id}/r.rds"
+    local_file = f"{experiment_id}/{SOURCE_RDS_FILE}.gz"
+    download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
 
     bucket = f"processed-matrix-{input_env}"
-    file = f"{experiment_id}/r.rds"
-    dst_file = f"{experiment_id}/{PROCESSED_RDS_FILE}.gz"
-    download_if_modified(bucket=bucket, key=file, filepath=dst_file)
+    remote_file = f"{experiment_id}/r.rds"
+    local_file = f"{experiment_id}/{PROCESSED_RDS_FILE}.gz"
+    download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
 
     bucket = f"cell-sets-{input_env}"
-    dst_file = f"{experiment_id}/{CELLSETS_FILE}"
+    local_file = f"{experiment_id}/{CELLSETS_FILE}"
     # the name of the cell sets file in S3 is just the experiment ID
-    download_if_modified(bucket=bucket, key=experiment_id, filepath=dst_file)
+    download_if_modified(bucket=bucket, key=experiment_id, filepath=local_file)
 
     update_configs(experiment_id, input_env)
 
