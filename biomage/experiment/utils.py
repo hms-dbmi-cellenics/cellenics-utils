@@ -4,6 +4,8 @@ import os
 import time
 from pathlib import Path
 
+import boto3
+
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 PULL = "PULL"
 
@@ -116,3 +118,35 @@ def download_S3_json(s3_obj, key, filepath):
     s3_obj.download_file(local_file)
 
     set_modified_date(file_location=local_file, date=s3_obj.last_modified)
+
+
+def get_cognito_username(email):
+    client = boto3.client("cognito-idp")
+    user_name = client.admin_get_user(Username=email, UserPoolId="eu-west-1_sVQL15Yxu")[
+        "Username"
+    ]
+
+    return user_name
+
+
+def add_user_to_rbac(user_name, cfg):
+    if "rbac_can_write" in cfg:
+        cfg["rbac_can_write"]["SS"].append(user_name)
+        return cfg
+    for val in cfg.values():
+        if isinstance(val, dict):
+            add_user_to_rbac(user_name, val)
+
+
+def add_env_user_to_experiment(cfg):
+    email = os.getenv("BIOMAGE_EMAIL")
+    if not email:
+        raise ValueError(
+            "biomage email not available to patch experiment permissions."
+            + ' Set the environment variable "BIOMAGE_EMAIL" with the email you use to log in into cellscope'
+            + " and try again."
+        )
+
+    user_name = get_cognito_username(email=email)
+
+    return add_user_to_rbac(user_name=user_name, cfg=cfg)

@@ -12,8 +12,11 @@ CELLSETS_FILE = "mock_cell_sets.json"
 PLOTS_TABLES_FILE = "mock_plots_tables.json"
 EXPERIMENTS_FILE = "mock_experiment.json"
 SAMPLES_FILE = "mock_samples.json"
-RDS_FILE = "r.rds"
+PROJECTS_FILE = "mock_projects.json"
+SOURCE_RDS_FILE = "biomage-source.r.rds"
+PROCESSED_RDS_FILE = "processed-matrix.r.rds"
 
 # DynamoDB table names
 SAMPLES_TABLE = "samples"
 EXPERIMENTS_TABLE = "experiments"
+PROJECTS_TABLE = "projects"

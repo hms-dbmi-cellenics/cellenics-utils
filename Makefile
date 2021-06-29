@@ -23,7 +23,7 @@ install: clean ## Creates venv, and adds biomage as system command
 
 	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
-	@venv/bin/pip install .
+	@venv/bin/pip install -e .
 	@sudo ln -sf '$(CURDIR)/venv/bin/biomage' $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
