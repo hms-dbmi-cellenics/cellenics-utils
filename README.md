@@ -53,6 +53,9 @@ then simply do:
   as the first part of the name of the staging environments created by you:
   `${BIOMAGE_NICK:-${USER}}-...`.
 
+* `BIOMAGE_EMAIL` is used by the `experiment pull` command to automatically add permissions for the downloaded experiment.
+You should specify the email used to log in into the platform in staging.
+
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
 
@@ -112,7 +115,7 @@ The utility will launch an interactive wizard to guide you through creating your
 
 The option to create isolated staging environments is provided during the creation of the staging environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolates your staging environment from changes made by others.
 
-Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully. 
+Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully.
 
 If your deployment fails, **you are recommended to use the same sandbox Id that have failed**. The wizard will detect existing staging environemtns and display created experimentIds. If you decide to use a different sandbox ID, [unstage](#unstage) your environment before staging using a new sandbox ID.
 
