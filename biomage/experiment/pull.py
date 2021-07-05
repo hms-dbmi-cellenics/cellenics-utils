@@ -102,13 +102,6 @@ def update_experiment_config_if_needed(filepath, table_name, experiment_id):
         TableName=table_name, Key={"experimentId": {"S": experiment_id}}
     )["Item"]
 
-    # the "pipeline" field in experiment config has information about
-    # the production pipeline Arn causing a crash with ExecutionDoesNotExist
-    # locally in the API. This solution is not ideal as it will fail
-    # if the field name changes or more tightly coupled info is added
-    # TODO: make api handle not found cases, or ignore keys in development env
-    remote_cfg = remove_key(remote_cfg, "pipeline")
-
     # add the cognito user specified in the env to the experiment permissions
     remote_cfg = add_env_user_to_experiment(cfg=remote_cfg)
 
