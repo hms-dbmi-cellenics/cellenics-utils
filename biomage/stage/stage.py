@@ -10,6 +10,7 @@ from functools import reduce
 import anybase32
 import boto3
 import click
+import random_name
 import requests
 import yaml
 from github import Github
@@ -192,7 +193,7 @@ def get_all_experiments(source_table="experiments-staging"):
     return experiment_ids
 
 
-def get_sandbox_id(templates, manifests, all_experiments):
+def get_sandbox_id(templates, manifests, all_experiments, auto):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
@@ -203,6 +204,10 @@ def get_sandbox_id(templates, manifests, all_experiments):
             if opts.ref != "develop"
         ]
     )
+
+    # if we are in auto mode (non interactive) just generate a random sandbox ID name
+    if auto:
+        return random_name.generate_name()
 
     fragments = (
         re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
@@ -248,49 +253,55 @@ def get_sandbox_id(templates, manifests, all_experiments):
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
-def create_manifest(templates, token, repo_to_ref, all_experiments):
+def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
 
-    # Ask about which releases to pin.
-    click.echo()
-    click.echo(
-        click.style(
-            "A sandbox will be created from the manifest files listed above. "
-            "Now specify which deployments you would like to pin.",
-            fg="yellow",
-            bold=True,
+    # autopin the repos on the default branch
+    if auto:
+        pins = [
+            name for name, props in templates.items() if props.ref == DEFAULT_BRANCH
+        ]
+    else:
+        # Ask about which releases to pin.
+        click.echo()
+        click.echo(
+            click.style(
+                "A sandbox will be created from the manifest files listed above. "
+                "Now specify which deployments you would like to pin.",
+                fg="yellow",
+                bold=True,
+            )
         )
-    )
-    click.echo(
-        "The sandbox will not be affected by any future changes made to pinned "
-        "deployments. For example, if you pin `ui`,\n"
-        f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` repository "
-        "will propagate to your sandbox after it’s created.\n"
-        f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
-        "are pinned, deployments using branches you are\n"
-        "likely to be testing (e.g. pull requests) are not."
-    )
-    questions = [
-        {
-            "type": "checkbox",
-            "name": "pins",
-            "message": "Which deployments would you like to pin?",
-            "choices": [
-                {"name": name, "checked": props.ref == DEFAULT_BRANCH}
-                for name, props in templates.items()
-            ],
-        }
-    ]
+        click.echo(
+            "The sandbox will not be affected by any future changes made to pinned "
+            "deployments. For example, if you pin `ui`,\n"
+            f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` repository "
+            "will propagate to your sandbox after it’s created.\n"
+            f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
+            "are pinned, deployments using branches you are\n"
+            "likely to be testing (e.g. pull requests) are not."
+        )
+        questions = [
+            {
+                "type": "checkbox",
+                "name": "pins",
+                "message": "Which deployments would you like to pin?",
+                "choices": [
+                    {"name": name, "checked": props.ref == DEFAULT_BRANCH}
+                    for name, props in templates.items()
+                ],
+            }
+        ]
 
-    click.echo()
-    pins = prompt(questions)
-    try:
-        pins = set(pins["pins"])
-        click.echo("Pinned repositories:")
-        click.echo("\n".join(f"• {pin}" for pin in pins))
+        click.echo()
+        pins = prompt(questions)
+        try:
+            pins = set(pins["pins"])
 
-    except Exception:
-        exit(1)
+        except Exception:
+            exit(1)
 
+    click.echo("Pinned repositories:")
+    click.echo("\n".join(f"• {pin}" for pin in pins))
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
     manifests = []
@@ -332,7 +343,10 @@ def create_manifest(templates, token, repo_to_ref, all_experiments):
     manifests = yaml.dump_all(manifests)
 
     # Write sandbox ID
-    sandbox_id = get_sandbox_id(templates, manifests, all_experiments)
+    sandbox_id = get_sandbox_id(
+        templates, manifests, all_experiments=all_experiments, auto=auto
+    )
+    click.echo
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
@@ -530,7 +544,15 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     default="biomage-ltd",
     help="The GitHub organization to perform the operation in.",
 )
-def stage(token, org, deployments):
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Set auto flag to use default staging options without requiring any"
+    " user input. It will pin the default branches, generate a random name for"
+    " the sandbox, and will not stage any experiment data.",
+)
+def stage(token, org, deployments, auto):
     """
     Deploys a custom staging environment.
     """
@@ -543,19 +565,26 @@ def stage(token, org, deployments):
     all_experiments = get_all_experiments(config["production-experiments-table"])
 
     manifest, sandbox_id = create_manifest(
-        templates, token, repo_to_ref=repo_to_ref, all_experiments=all_experiments
+        templates,
+        token,
+        repo_to_ref=repo_to_ref,
+        all_experiments=all_experiments,
+        auto=auto,
     )
 
-    print("select staging experiments")
-    experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
-        sandbox_id, all_experiments, config
-    )
+    click.echo()
+    click.echo(f"Sandbox ID: {sandbox_id}")
+
+    experiment_ids_to_stage, staged_experiment_ids = [], []
+    # do not stage automatically any experiment on auto mode
+    if not auto:
+        click.echo("select staging experiments")
+        experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
+            sandbox_id, all_experiments, config
+        )
 
     if len(experiment_ids_to_stage) == 0:
-        click.echo(
-            "No experiments chosen. "
-            "Skipping creation of isolated staging environment."
-        )
+        click.echo("No experiments chosen. ")
 
     # get (secret) access keys
     session = boto3.Session()
@@ -575,18 +604,19 @@ def stage(token, org, deployments):
     )
     secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
 
-    questions = [
-        {
-            "type": "confirm",
-            "name": "create",
-            "message": "Are you sure you want to create this deployment?",
-            "default": False,
-        }
-    ]
-    click.echo()
-    answers = prompt(questions)
-    if not answers["create"]:
-        exit(1)
+    if not auto:
+        questions = [
+            {
+                "type": "confirm",
+                "name": "create",
+                "message": "Are you sure you want to create this deployment?",
+                "default": False,
+            }
+        ]
+        click.echo()
+        answers = prompt(questions)
+        if not answers["create"]:
+            exit(1)
 
     g = Github(token)
     o = g.get_organization(org)
@@ -607,8 +637,9 @@ def stage(token, org, deployments):
     if not workflow_started:
         click.echo(
             click.style(
-                "❌ Could not run workflow. Does your GitHub token have the required privileges? "
-                f"See https://github.com/{org}/biomage-utils#setup for more information.",
+                "❌ Could not run workflow. Does your GitHub token have the required ",
+                f"privileges? See https://github.com/{org}/biomage-utils#setup for",
+                " more information.",
                 fg="red",
                 bold=True,
             )
@@ -622,11 +653,21 @@ def stage(token, org, deployments):
     click.echo(
         click.style(
             "✔️ Deployment submitted. You can check your progress at "
-            f"https://github.com/{org}/iac/actions",
+            f"https://github.com/{org}/iac/actions. When the deployment is done"
+            " run the following command to trigger flux synchronization and "
+            " speed up the process:",
             fg="green",
             bold=True,
         )
     )
+
+    click.echo()
+    click.echo(
+        "fluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
+        "242905224710:cluster/biomage-staging",
+    )
+    click.echo()
+
     click.echo(
         click.style(
             "✔️ The deployment, when done, should be available at "
