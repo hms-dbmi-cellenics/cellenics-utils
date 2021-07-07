@@ -293,15 +293,14 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
         ]
 
         click.echo()
-        pins = prompt(questions)
-        try:
-            pins = set(pins["pins"])
+        answer = prompt(questions)
+        pins = set(answer["pins"])
 
-        except Exception:
-            exit(1)
-
-    click.echo("Pinned repositories:")
-    click.echo("\n".join(f"• {pin}" for pin in pins))
+    if len(pins) > 0:
+        click.echo("Pinned repositories:")
+        click.echo("\n".join(f"• {pin}" for pin in pins))
+    else:
+        click.echo("Not pinning any repository")
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
     manifests = []
@@ -346,7 +345,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
     sandbox_id = get_sandbox_id(
         templates, manifests, all_experiments=all_experiments, auto=auto
     )
-    click.echo
+    click.echo()
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
