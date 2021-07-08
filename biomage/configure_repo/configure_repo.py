@@ -45,6 +45,7 @@ def configure(r, token):
     "--create",
     "-c",
     is_flag=True,
+    show_default=True,
     help="Automatically create the repository if not already present.",
 )
 @click.option(
@@ -52,12 +53,14 @@ def configure(r, token):
     "-t",
     envvar="GITHUB_API_TOKEN",
     required=True,
+    show_default=True,
     help="A GitHub Personal Access Token with the required permissions.",
 )
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
     default="biomage-ltd",
+    show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
 def configure_repo(name, token, create, org):

@@ -163,6 +163,7 @@ def update_configs(experiment_id, origin):
     "--experiment_id",
     required=False,
     default=DEFAULT_EXPERIMENT_ID,
+    show_default=True,
     help="Experiment ID to be copied.",
 )
 @click.option(
@@ -170,6 +171,7 @@ def update_configs(experiment_id, origin):
     "--input_env",
     required=False,
     default=PRODUCTION,
+    show_default=True,
     help="Input environment to pull the data from.",
 )
 def pull(experiment_id, input_env):
