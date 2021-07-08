@@ -64,6 +64,10 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
     s3 = boto3.client("s3")
     exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
 
+    if 'Contents' not in exp_files:
+        click.echo(f"Failed to do an experiment copy: bucket {source_bucket} doesn't contain {prefix} as prefix.")
+        return
+    
     for obj in exp_files.get("Contents"):
 
         experiment_id = obj["Key"].split("/")[0]
