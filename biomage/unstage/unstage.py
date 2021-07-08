@@ -199,12 +199,14 @@ def remove_staging_resources(sandbox_id, config):
     "-t",
     envvar="GITHUB_API_TOKEN",
     required=True,
+    show_default=True,
     help="A GitHub Personal Access Token with the required permissions.",
 )
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
     default="biomage-ltd",
+    show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
 def unstage(token, org, sandbox_id):

@@ -9,13 +9,18 @@ from ..utils.data import copy_experiments_to
 
 @click.command()
 @click.option(
-    "-e", "--experiment_id", required=True, help="Experiment ID to be copied."
+    "-e",
+    "--experiment_id",
+    required=True,
+    show_default=True,
+    help="Experiment ID to be copied.",
 )
 @click.option(
     "-s",
     "--sandbox_id",
     required=True,
     default=DEFAULT_SANDBOX,
+    show_default=True,
     help="Sandbox ID in the destination environment to copy the data to.",
 )
 @click.option(
@@ -23,6 +28,7 @@ from ..utils.data import copy_experiments_to
     "--input_env",
     required=False,
     default=PRODUCTION,
+    show_default=True,
     help="Input environment to copy the data from.",
 )
 @click.option(
@@ -30,6 +36,7 @@ from ..utils.data import copy_experiments_to
     "--output_env",
     required=False,
     default=STAGING,
+    show_default=True,
     help="Output environment to copy the data to.",
 )
 def copy(experiment_id, sandbox_id, input_env, output_env):

@@ -54,6 +54,7 @@ def get_release_workflow(token):
     "-t",
     envvar="GITHUB_API_TOKEN",
     required=True,
+    show_default=True,
     help="A GitHub Personal Access Token with the required permissions.",
 )
 @click.option("--all", is_flag=True, help="Release all repositories")

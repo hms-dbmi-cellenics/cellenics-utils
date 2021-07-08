@@ -15,6 +15,7 @@ def list_bucket_files(bucket):
 @click.argument(
     "origin",
     default=PRODUCTION,
+    show_default=True,
 )
 def ls(origin):
     """
