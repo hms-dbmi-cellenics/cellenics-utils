@@ -48,7 +48,12 @@ class Summary(object):
 
 
 def save_cfg_file(dictionary, dst_file):
-    with open(os.path.join(DATA_LOCATION, dst_file), "w") as f:
+    local_file = os.path.join(DATA_LOCATION, dst_file)
+
+    # try to create experiment folder, ignores if already exists (same as mkdir -p)
+    Path(os.path.dirname(local_file)).mkdir(parents=True, exist_ok=True)
+
+    with open(local_file, "w") as f:
         # We sort & indent the result to make it easier to inspect & debug the files
         # neither sorting nor indentation is used to check if two confis are equal
         json.dump(dictionary, f)

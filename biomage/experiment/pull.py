@@ -184,6 +184,8 @@ def pull(experiment_id, input_env):
 
     Summary.set_command(cmd=PULL, origin=input_env, experiment_id=experiment_id)
 
+    update_configs(experiment_id, input_env)
+
     bucket = f"biomage-source-{input_env}"
     remote_file = f"{experiment_id}/r.rds"
     local_file = f"{experiment_id}/{SOURCE_RDS_FILE}.gz"
@@ -198,7 +200,5 @@ def pull(experiment_id, input_env):
     local_file = f"{experiment_id}/{CELLSETS_FILE}"
     # the name of the cell sets file in S3 is just the experiment ID
     download_if_modified(bucket=bucket, key=experiment_id, filepath=local_file)
-
-    update_configs(experiment_id, input_env)
 
     Summary.report_changes()
