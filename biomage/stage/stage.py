@@ -273,12 +273,12 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
         )
         click.echo(
             "The sandbox will not be affected by any future changes made to pinned "
-            "deployments. For example, if you pin `ui`,\n"
-            f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` repository "
-            "will propagate to your sandbox after it’s created.\n"
+            "deployments. For example, if you pin `ui`,",
+            f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` "
+            "repository will propagate to your sandbox after it’s created.",
             f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
-            "are pinned, deployments using branches you are\n"
-            "likely to be testing (e.g. pull requests) are not."
+            "are pinned, deployments using branches you are",
+            "likely to be testing (e.g. pull requests) are not.",
         )
         questions = [
             {
@@ -583,7 +583,7 @@ def stage(token, org, deployments, auto):
         )
 
     if len(experiment_ids_to_stage) == 0:
-        click.echo("No experiments chosen. ")
+        click.echo("No experiments chosen.")
 
     # get (secret) access keys
     session = boto3.Session()
@@ -662,7 +662,7 @@ def stage(token, org, deployments, auto):
 
     click.echo()
     click.echo(
-        "fluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
+        "\tfluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
         "242905224710:cluster/biomage-staging",
     )
     click.echo()
