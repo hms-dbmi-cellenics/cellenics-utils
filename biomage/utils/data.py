@@ -65,8 +65,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
     exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
 
     if 'Contents' not in exp_files:
-        click.echo(f"Failed to do an experiment copy: bucket {source_bucket} doesn't contain {prefix} as prefix.")
-        return
+        raise Exception(f"Failed to do an experiment copy: bucket {source_bucket} doesn't contain {prefix} as prefix.")
     
     for obj in exp_files.get("Contents"):
 
