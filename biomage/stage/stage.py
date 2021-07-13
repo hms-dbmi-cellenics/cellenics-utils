@@ -549,6 +549,7 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     "--auto",
     is_flag=True,
     default=False,
+    show_default=True,
     help="Set auto flag to use default staging options without requiring any"
     " user input. It will pin the default branches, generate a random name for"
     " the sandbox, and will not stage any experiment data.",
