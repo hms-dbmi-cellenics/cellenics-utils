@@ -273,11 +273,11 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
         )
         click.echo(
             "The sandbox will not be affected by any future changes made to pinned "
-            "deployments. For example, if you pin `ui`,",
+            "deployments. For example, if you pin `ui`, \n"
             f"no new changes made to the {DEFAULT_BRANCH} branch of the `ui` "
-            "repository will propagate to your sandbox after it’s created.",
+            "repository will propagate to your sandbox after it’s created.\n"
             f"By default, only deployments sourced from the {DEFAULT_BRANCH} "
-            "are pinned, deployments using branches you are",
+            "are pinned, deployments using branches you are "
             "likely to be testing (e.g. pull requests) are not.",
         )
         questions = [
