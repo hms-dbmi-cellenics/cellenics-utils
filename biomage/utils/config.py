@@ -1,17 +1,12 @@
-import os
-import pathlib
+import pkgutil
 
 import yaml
 
 
 def get_config():
     # Read configuration
-    config = None
     # this depends on the location of this config file, we use this to avoid depending
     # on the current working dir so that `biomage` cmd can be called from anywhere
     # in the system
-    repo_root = pathlib.Path(__file__).parent.parent.parent
-    with open(os.path.join(repo_root, "config.yaml")) as config_file:
-        config = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))[0]
-
-    return config
+    config = pkgutil.get_data("biomage", "config.yaml").decode("utf-8")
+    return yaml.load(config, Loader=yaml.SafeLoader)

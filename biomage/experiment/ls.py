@@ -1,7 +1,7 @@
 import boto3
 import click
 
-from utils.constants import PRODUCTION
+from ..utils.constants import PRODUCTION
 
 
 def list_bucket_files(bucket):

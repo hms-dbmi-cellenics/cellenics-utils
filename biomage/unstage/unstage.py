@@ -7,7 +7,8 @@ import click
 import requests
 from github import Github
 from PyInquirer import prompt
-from utils.config import get_config
+
+from ..utils.config import get_config
 
 
 def check_if_sandbox_exists(org, sandbox_id):
@@ -43,7 +44,8 @@ def delete_staging_records(sandbox_id, config):
 
     if len(staged_experiments) == 0:
         click.echo(
-            f"No scoped experiments registered in table {config['staging-experiments-table']}"
+            "No scoped experiments registered in table"
+            f" {config['staging-experiments-table']}"
         )
         click.echo()
         return

@@ -1,4 +1,3 @@
-import copy
 import itertools
 from pprint import pprint
 
@@ -8,8 +7,7 @@ from botocore.exceptions import ClientError
 from deepdiff import DeepDiff
 from PyInquirer import prompt
 
-from utils.constants import DEVELOPMENT, PRODUCTION, STAGING
-
+from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
 from .copy import copy
 from .ls import ls
 from .pull import pull
@@ -180,7 +178,8 @@ def compare(experiment_id):
                 if not diff:
                     click.echo(
                         click.style(
-                            f"✔️ {env1} and {env2} are equal for bucket '{bucket_name}'",
+                            f"✔️ {env1} and {env2} are equal for bucket"
+                            f" '{bucket_name}'",
                             bg="green",
                         )
                     )

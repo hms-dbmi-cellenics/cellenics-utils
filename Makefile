@@ -6,37 +6,61 @@
 #--------------------------------------------------
 # Variables
 #--------------------------------------------------
-PYTHON_FILES?=$$(find biomage -name '*.py')
-INSTALL_PATH=/usr/local/bin
-MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
-MKFILE_DIR := $(dir $(MKFILE_PATH))
-# should point to biomage-utils root folder to link ./biomage python module & ./venv
+ifeq ($(shell uname -s),Darwin)
+    ENTRY_POINT=/usr/local/bin/biomage
+else
+    ENTRY_POINT=/usr/bin/biomage
+endif
+
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
 install: clean ## Creates venv, and adds biomage as system command
-	@echo "Creating virtual env and installing dependencies..."
-	@python3 -m venv venv
-	@venv/bin/pip3 install --upgrade pip
-	@venv/bin/pip3 install -r requirements.txt
-	@echo "    [✓]\n"
-	@echo "Installing biomage into ${INSTALL_PATH}"
-	@printf '#!/bin/bash\n$(MKFILE_DIR)venv/bin/python3 $(MKFILE_DIR)biomage $$@\n' > ${INSTALL_PATH}/biomage
-	@chmod +x /usr/local/bin/biomage
-	@echo "    [✓]\n"
-fmt: ## Formats python files
+	@echo "==> Creating virtual environment..."
+	@python3 -m venv venv/
+	@echo "    [✓]"
+	@echo
+
+	@echo "==> Installing utility and dependencies..."
+	@venv/bin/pip install --upgrade pip
+	@venv/bin/pip install -e .
+	@sudo ln -sf '$(CURDIR)/venv/bin/biomage' $(ENTRY_POINT)
+	@echo "    [✓]"
+	@echo
+
+uninstall: clean ## Uninstalls utility and destroys venv
+	@echo "==> Uninstalling utility and dependencies..."
+	@venv/bin/pip uninstall -y biomage-utils
+	@rm -rf venv/
+	@sudo rm -f $(ENTRY_POINT)
+	@echo "    [✓]"
+	@echo
+
+develop: ## Installs development dependencies
+	@echo "==> Installing development dependencies..."
+	@venv/bin/pip install -r dev-requirements.txt --quiet
+	@echo "    [✓]"
+	@echo
+
+fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
-	@black $(PYTHON_FILES)
-	@echo ""
-check: ## Checks code for linting/construct errors
+	@venv/bin/black biomage/
+	@venv/bin/isort --sp isort.cfg biomage/
+	@echo "    [✓]"
+	@echo
+
+check: develop ## Checks code for linting/construct errors
 	@echo "==> Checking if files are well formatted..."
-	@flake8 $(PYTHON_FILES)
-	@echo "    [✓]\n"
+	@venv/bin/flake8 biomage/
+	@echo "    [✓]"
+	@echo
 
 test: ## Tests that biomage cmd & subcommand are available
-	@echo "==> Checking if biomge is in path..."
+	@echo "==> Checking if biomage is in path..."
 	biomage > /dev/null
-	@echo "    [✓]\n"
+	@echo "    [✓]"
+	@echo
+
 	@echo "==> Checking if all subcommands are available..."
 	biomage configure-repo --help > /dev/null
 	biomage experiment --help > /dev/null
@@ -48,15 +72,15 @@ test: ## Tests that biomage cmd & subcommand are available
 	biomage stage --help > /dev/null
 	biomage unstage --help > /dev/null
 	biomage release --help > /dev/null
-	@echo "    [✓]\n"
+	@echo "    [✓]"
+	@echo
 
 clean: ## Cleans up temporary files
 	@echo "==> Cleaning up..."
 	@find . -name "*.pyc" -exec rm -f {} \;
-	@rm -r venv
 	@echo "    [✓]"
-	@echo ""
+	@echo
 
-.PHONY: install fmt check test clean help
+.PHONY: install uninstall develop fmt check test clean help
 help: ## Shows available targets
 	@fgrep -h "## " $(MAKEFILE_LIST) | fgrep -v fgrep | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-13s\033[0m %s\n", $$1, $$2}'

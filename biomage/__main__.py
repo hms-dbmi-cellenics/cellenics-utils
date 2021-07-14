@@ -1,17 +1,16 @@
 import click
-from configure_repo import configure_repo
-from rotate_ci import rotate_ci
-from stage import stage
-from unstage import unstage
-from experiment import experiment
-from release import release
+
+from biomage.configure_repo import configure_repo
+from biomage.experiment import experiment
+from biomage.release import release
+from biomage.rotate_ci import rotate_ci
+from biomage.stage import stage
+from biomage.unstage import unstage
 
 
 @click.group()
 def main():
     """🧬 Your one-stop shop for managing Biomage infrastructure."""
-
-    pass
 
 
 main.add_command(configure_repo.configure_repo)

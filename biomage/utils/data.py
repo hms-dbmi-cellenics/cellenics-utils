@@ -2,7 +2,7 @@ import boto3
 import click
 from botocore.exceptions import ClientError
 
-from utils.constants import PRODUCTION, STAGING
+from ..utils.constants import PRODUCTION, STAGING
 
 
 def add_env_user_to_experiment(username, config):

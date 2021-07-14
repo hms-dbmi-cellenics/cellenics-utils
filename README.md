@@ -8,9 +8,13 @@ infrastructure.
 Setup
 -----
 
-After cloning the repository, do the following (might require **sudo** in some distributions, and `pip` > 21.0.1):
+After cloning the repository, do the following:
 
     make install
+
+If you are going to be developing `biomage-utils` please install also the development dependencies with:
+
+    make develop
 
 You can verify that the command has been successfully installed with:
 
@@ -21,7 +25,8 @@ If the test was successful, you should be able to access `biomage-utils` by typi
     biomage --help
 
 As a prerequisite for running all scripts in this repo, you will need a GitHub Personal Access
-Token with full access to your account. You can generate one
+Token with full access to your account. This token should be given ALL scopes available. You can
+generate one
 [here](https://github.com/settings/tokens). Make sure you note down this and
 supply it when required. Utilities can accept this token in two ways:
 
@@ -42,11 +47,14 @@ then simply do:
 
     biomage stage
 
-### Other Enviroment Variables
+### Other Environment Variables
 
 * `BIOMAGE_NICK` is optional and used to override the `USER` environment variable
   as the first part of the name of the staging environments created by you:
   `${BIOMAGE_NICK:-${USER}}-...`.
+
+* `BIOMAGE_EMAIL` is used by the `experiment pull` command to automatically add permissions for the downloaded experiment.
+You should specify the email used to log in into the platform in staging.
 
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
@@ -107,7 +115,7 @@ The utility will launch an interactive wizard to guide you through creating your
 
 The option to create isolated staging environments is provided during the creation of the staging environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolates your staging environment from changes made by others.
 
-Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully. 
+Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully.
 
 If your deployment fails, **you are recommended to use the same sandbox Id that have failed**. The wizard will detect existing staging environemtns and display created experimentIds. If you decide to use a different sandbox ID, [unstage](#unstage) your environment before staging using a new sandbox ID.
 
