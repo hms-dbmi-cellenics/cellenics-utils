@@ -307,16 +307,16 @@ def copy_experiments_to(
     click.echo()
     click.echo("Copying items for new experiments...")
 
-    # buckets = config["source-buckets"]
+    buckets = config["source-buckets"]
     # Copy files
-    # for source_bucket in buckets:
-    #     target_bucket = source_bucket.replace(origin, destination)
+    for source_bucket in buckets:
+        target_bucket = source_bucket.replace(origin, destination)
 
-    #     for experiment_id in experiments:
-    #         copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
+        for experiment_id in experiments:
+            copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
 
-    # click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
-    # click.echo()
+    click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
+    click.echo()
 
     # Copy DynamoDB entries
     click.echo("Copying DynamoDB records for new experiments...")
