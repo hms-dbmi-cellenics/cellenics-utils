@@ -5,7 +5,7 @@ import click
 
 from ..utils.config import get_config
 from ..utils.constants import DEFAULT_SANDBOX, PRODUCTION, STAGING
-from ..utils.data import copy_experiments_to
+from ..utils.data import copy_experiments_to, get_user_cognito_id
 
 
 @click.command()
@@ -60,10 +60,13 @@ def copy(experiment_id, sandbox_id, username, input_env, output_env):
     experiments = [experiment_id]
 
     config = get_config()
+
+    user_id = get_user_cognito_id(config, username)
+
     copy_experiments_to(
         experiments=experiments,
         sandbox_id=sandbox_id,
-        username=username,
+        user_id=user_id,
         config=config,
         origin=input_env,
         destination=output_env,

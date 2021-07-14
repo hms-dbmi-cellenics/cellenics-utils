@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 from ..utils.constants import PRODUCTION, STAGING
 
 
-def add_env_user_to_experiment(username, config):
+def get_user_cognito_id(username, config, environment=STAGING):
     """
     Add cognito userId of the current user to the experiment.
     This function should return a string that is the current user id.
@@ -15,7 +15,7 @@ def add_env_user_to_experiment(username, config):
 
     try:
         user = client.admin_get_user(
-            UserPoolId=config["user-pool-id"],
+            UserPoolId=config[f"user-pool-id-{environment}"],
             Username=username
         )
 
@@ -43,7 +43,7 @@ def remap_sample_references(samples, sandbox_id):
                         sandbox_id
                     ),
                     "uuid": {"S" : f"{sandbox_id}-{sample_id}"},
-                    "projectUuid": { 
+                    "projectUuid": {
                         "S" : f"{sandbox_id}-{samples['M'][sample_id]['M']['projectUuid']['S']}"
                     }
                 },
@@ -57,7 +57,7 @@ def remap_file_references(files, sandbox_id):
     Prefix sandbox_id to references in files
     """
 
-    valid_filenames = [ file for file in files["M"] if file != "lastModified" ]
+    valid_filenames = [file for file in files["M"] if file != "lastModified"]
 
     remapped_files = {
         "M" : {
@@ -106,7 +106,7 @@ def modified_records(item, target_table, config, **extra):
             "rbac_can_write": {
                 "SS" : [
                     *item["rbac_can_write"]["SS"],
-                    add_env_user_to_experiment(extra['username'], config)
+                    extra['user_id']
                 ]
             }
         }
@@ -211,7 +211,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
 
 
 def copy_dynamodb_records(
-    sandbox_id, staging_experiments, source_table, target_table, config, username
+    sandbox_id, staging_experiments, source_table, target_table, config, user_id
 ):
     """
     Copy dynamodBD records for an experiment id
@@ -241,7 +241,7 @@ def copy_dynamodb_records(
                                 item,
                                 target_table,
                                 config,
-                                username=username,
+                                user_id=user_id,
                                 sandbox_id=sandbox_id
                             ),
                             "experimentId": {
@@ -298,7 +298,7 @@ def copy_project_record(
 
 
 def copy_experiments_to(
-    experiments, sandbox_id, config, username, origin=PRODUCTION, destination=STAGING
+    experiments, sandbox_id, config, user_id, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into
@@ -325,7 +325,7 @@ def copy_experiments_to(
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
         copy_dynamodb_records(
-            sandbox_id, experiments, source_table, target_table, config, username
+            sandbox_id, experiments, source_table, target_table, config, user_id
         )
 
     click.echo(
