@@ -28,6 +28,55 @@ def add_env_user_to_experiment(username, config):
         )
 
 
+def remap_sample_references(samples, sandbox_id):
+    """
+    Prefix sandbox_id to references in samples
+    """
+
+    return {
+        "M" : {
+            f"{sandbox_id}-{sample_id}": {
+                "M": {
+                    **samples['M'][sample_id]['M'],
+                    "files": remap_file_references(
+                        samples['M'][sample_id]["M"]["files"],
+                        sandbox_id
+                    ),
+                    "uuid": {"S" : f"{sandbox_id}-{sample_id}"},
+                    "projectUuid": { 
+                        "S" : f"{sandbox_id}-{samples['M'][sample_id]['M']['projectUuid']['S']}"
+                    }
+                },
+            } for sample_id in samples['M']
+        }
+    }
+
+
+def remap_file_references(files, sandbox_id):
+    """
+    Prefix sandbox_id to references in files
+    """
+
+    valid_filenames = [ file for file in files["M"] if file != "lastModified" ]
+
+    remapped_files = {
+        "M" : {
+            file : {
+                "M": {
+                    **files['M'][file]['M'],
+                    "path": {
+                        "S": f"{sandbox_id}-{files['M'][file]['M']['path']['S']}"
+                    }
+                }
+            } for file in valid_filenames
+        }
+    }
+
+    remapped_files['M']["lastModified"] = files['M']['lastModified']
+
+    return remapped_files
+
+
 def modified_records(item, target_table, config, **extra):
     """
     Return modified records.
@@ -60,6 +109,12 @@ def modified_records(item, target_table, config, **extra):
                     add_env_user_to_experiment(extra['username'], config)
                 ]
             }
+        }
+
+    if target_table == config["staging-samples-table"]:
+        return {
+            "projectUuid": {"S" : f"{extra['sandbox_id']}-{item['projectUuid']['S']}"},
+            "samples": remap_sample_references(item['samples'], extra['sandbox_id'])
         }
 
     if target_table == config["staging-projects-table"]:

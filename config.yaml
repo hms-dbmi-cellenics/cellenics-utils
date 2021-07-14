@@ -1,7 +1,7 @@
 source-tables:
+  - "projects-production"
   - "experiments-production"
   - "samples-production"
-  - "projects-production"
 
 source-buckets:
   - "processed-matrix-production"
@@ -10,7 +10,8 @@ source-buckets:
 
 user-pool-id: "eu-west-1_sVQL15Yxu"
 
-staging-experiments-table: "experiments-staging"
 staging-projects-table: "projects-staging"
+staging-experiments-table: "experiments-staging"
+staging-samples-table: "samples-staging"
 
 production-experiments-table: "experiments-production"
