@@ -1,3 +1,4 @@
+import os
 import sys
 
 import click
@@ -32,13 +33,27 @@ from utils.data import copy_experiments_to
     default=STAGING,
     help="Output environment to copy the data to.",
 )
-def copy(experiment_id, sandbox_id, input_env, output_env):
+@click.option(
+    "-u",
+    "--username",
+    required=False,
+    default=False,
+    help="Username for the user to be added to the copied experiment",
+)
+def copy(experiment_id, sandbox_id, username, input_env, output_env):
     """
-    Copy a experiment from the default sandbox of the input environment into the sandbox_id of the output environment.
+    Copy an experiment from the default sandbox of the input
+    environment into the sandbox_id of the output environment.
     """
 
     if output_env == PRODUCTION:
         click.echo(f"Cowardly refusing to copy data to {PRODUCTION} environment.")
+        sys.exit(1)
+
+    username = username if username else os.getenv("BIOMAGE_STAGING_USERNAME")
+
+    if not username:
+        click.echo("Please provide a username (-u/--user) or add BIOMAGE_STAGING_USERNAME in your ENV")
         sys.exit(1)
 
     # the function expects a list of ids
@@ -48,6 +63,7 @@ def copy(experiment_id, sandbox_id, input_env, output_env):
     copy_experiments_to(
         experiments=experiments,
         sandbox_id=sandbox_id,
+        username=username,
         config=config,
         origin=input_env,
         destination=output_env,

@@ -5,7 +5,30 @@ from botocore.exceptions import ClientError
 from utils.constants import PRODUCTION, STAGING
 
 
-def modified_records(item, target_table, config):
+def add_env_user_to_experiment(username, config):
+    """
+    Add cognito userId of the current user to the experiment.
+    This function should return a string that is the current user id.
+    """
+
+    client = boto3.client('cognito-idp')
+
+    try:
+        user = client.admin_get_user(
+            UserPoolId=config["user-pool-id"],
+            Username=username
+        )
+
+        return user["Username"]
+
+    except Exception as e:
+        click.echo(
+            f"failed to get userId to add into RBAC \
+            with exception: \n {e}"
+        )
+
+
+def modified_records(item, target_table, config, **extra):
     """
     Return modified records.
     This function should return spreadable dictionary
@@ -24,6 +47,45 @@ def modified_records(item, target_table, config):
                             "executionArn": {"S": ""},
                         }
                     },
+                }
+            },
+            # Modify project id to point to sandboxed project
+            "projectId": {
+                'S': f"{extra['sandbox_id']}-{item['projectId']['S']}",
+            },
+            # Add user id to experiment
+            "rbac_can_write": {
+                "SS" : [
+                    *item["rbac_can_write"]["SS"],
+                    add_env_user_to_experiment(extra['username'], config)
+                ]
+            }
+        }
+
+    if target_table == config["staging-projects-table"]:
+        return {
+            "projects" : {
+                "M" : {
+                    **item["projects"]["M"],
+                    # Add sandbox_id to existing experiments
+                    "experiments": {
+                        "L" : [
+                            {"S" : f"{extra['sandbox_id']}-{experiment_id['S']}"}
+                            for experiment_id in item["projects"]["M"]["experiments"]["L"]
+                        ]
+                    },
+                    # Add sandbox_id to project uuid
+                    "uuid": {
+                        "S": f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
+                    },
+                    # Add sandbox_id to existing samples
+                    "samples": {
+                        "L" : [
+                            {"S" : f"{extra['sandbox_id']}-{samples_id['S']}"}
+                            for samples_id in item["projects"]["M"]["samples"]["L"]
+                        ]
+                    }
+
                 }
             }
         }
@@ -94,11 +156,18 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
 
 
 def copy_dynamodb_records(
-    sandbox_id, staging_experiments, source_table, target_table, config
+    sandbox_id, staging_experiments, source_table, target_table, config, username
 ):
     """
     Copy dynamodBD records for an experiment id
     """
+
+    if source_table in ['projects-production', 'projects-staging']:
+        copy_project_record(
+            sandbox_id, staging_experiments, source_table, target_table, config
+        )
+        return
+
     dynamodb = boto3.client("dynamodb")
     for experiment_id in staging_experiments:
         items = dynamodb.query(
@@ -113,7 +182,13 @@ def copy_dynamodb_records(
                     "PutRequest": {
                         "Item": {
                             **item,
-                            **modified_records(item, target_table, config),
+                            **modified_records(
+                                item,
+                                target_table,
+                                config,
+                                username=username,
+                                sandbox_id=sandbox_id
+                            ),
                             "experimentId": {
                                 "S": f"{sandbox_id}-{item['experimentId']['S']}",
                             },
@@ -130,8 +205,45 @@ def copy_dynamodb_records(
             click.echo(f"Failed inserting records: {e}")
 
 
+def copy_project_record(
+    sandbox_id, staging_experiments, source_table, target_table, config
+):
+
+    dynamodb = boto3.client("dynamodb")
+    for experiment_id in staging_experiments:
+        project_id = dynamodb.get_item(
+            TableName="experiments-production",
+            Key={"experimentId": {"S": experiment_id}}
+        ).get("Item")['projectId']['S']
+
+        item = dynamodb.get_item(
+            TableName=source_table,
+            Key={"projectUuid": {'S' : project_id}}
+        ).get("Item")
+
+        try:
+            dynamodb.put_item(
+                TableName=target_table,
+                Item={
+                    **item,
+                    "projectUuid": {
+                        "S": f"{sandbox_id}-{project_id}"
+                    },
+                    **modified_records(
+                        item,
+                        target_table,
+                        config,
+                        sandbox_id=sandbox_id
+                    ),
+                },
+            )
+        except Exception as e:
+            click.echo(f"Failed inserting project: {e}")
+    pass
+
+
 def copy_experiments_to(
-    experiments, sandbox_id, config, origin=PRODUCTION, destination=STAGING
+    experiments, sandbox_id, config, username, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into
@@ -140,16 +252,16 @@ def copy_experiments_to(
     click.echo()
     click.echo("Copying items for new experiments...")
 
-    buckets = config["source-buckets"]
+    # buckets = config["source-buckets"]
     # Copy files
-    for source_bucket in buckets:
-        target_bucket = source_bucket.replace(origin, destination)
+    # for source_bucket in buckets:
+    #     target_bucket = source_bucket.replace(origin, destination)
 
-        for experiment_id in experiments:
-            copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
+    #     for experiment_id in experiments:
+    #         copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
 
-    click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
-    click.echo()
+    # click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
+    # click.echo()
 
     # Copy DynamoDB entries
     click.echo("Copying DynamoDB records for new experiments...")
@@ -158,7 +270,7 @@ def copy_experiments_to(
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
         copy_dynamodb_records(
-            sandbox_id, experiments, source_table, target_table, config
+            sandbox_id, experiments, source_table, target_table, config, username
         )
 
     click.echo(
