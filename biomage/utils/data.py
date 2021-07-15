@@ -1,3 +1,5 @@
+import sys
+
 import boto3
 import click
 from botocore.exceptions import ClientError
@@ -23,9 +25,9 @@ def get_user_cognito_id(username, config, environment=STAGING):
 
     except Exception as e:
         click.echo(
-            f"failed to get userId to add into RBAC \
-            with exception: \n {e}"
+            f"Failed to get userId to add into experiment with exception: \n {e}"
         )
+        sys.exit(1)
 
 
 def remap_sample_references(samples, sandbox_id):
@@ -91,6 +93,12 @@ def modified_records(item, target_table, config, **extra):
                 "M": {
                     **item["meta"]["M"],
                     "pipeline": {
+                        "M": {
+                            "stateMachineArn": {"S": ""},
+                            "executionArn": {"S": ""},
+                        }
+                    },
+                    "gem2s": {   
                         "M": {
                             "stateMachineArn": {"S": ""},
                             "executionArn": {"S": ""},

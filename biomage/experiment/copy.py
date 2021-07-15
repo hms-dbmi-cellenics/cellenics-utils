@@ -37,8 +37,8 @@ from ..utils.data import copy_experiments_to, get_user_cognito_id
     "-u",
     "--username",
     required=False,
-    default=False,
-    help="Username for the user to be added to the copied experiment",
+    default='',
+    help="Username (not user id) to be added to the copied experiment",
 )
 def copy(experiment_id, sandbox_id, username, input_env, output_env):
     """
@@ -61,7 +61,7 @@ def copy(experiment_id, sandbox_id, username, input_env, output_env):
 
     config = get_config()
 
-    user_id = get_user_cognito_id(config, username)
+    user_id = get_user_cognito_id(username, config)
 
     copy_experiments_to(
         experiments=experiments,
