@@ -2,84 +2,68 @@ import sys
 
 import boto3
 import click
+from biomage.experiment.utils import add_env_user_to_experiment
 from botocore.exceptions import ClientError
 
 from ..utils.constants import PRODUCTION, STAGING
 
 
-def get_user_cognito_id(username, config, environment=STAGING):
-    """
-    Add cognito userId of the current user to the experiment.
-    This function should return a string that is the current user id.
-    """
-
-    client = boto3.client('cognito-idp')
-
-    try:
-        user = client.admin_get_user(
-            UserPoolId=config[f"user-pool-id-{environment}"],
-            Username=username
-        )
-
-        return user["Username"]
-
-    except Exception as e:
-        click.echo(
-            f"Failed to get userId to add into experiment with exception: \n {e}"
-        )
-        sys.exit(1)
-
-
 def remap_sample_references(samples, sandbox_id):
     """
-    Prefix sandbox_id to references in samples
+    Edit entries in samples dictionary to opoint to the right prefixed resources
     """
 
-    return {
-        "M" : {
-            f"{sandbox_id}-{sample_id}": {
+    remapped_samples = {"M" : {}}
+
+    for sample_id in samples['M']:
+
+        prefixed_sample_name = f"{sandbox_id}-{sample_id}"
+        prefixed_project_uuid = f"{sandbox_id}-{samples['M'][sample_id]['M']['projectUuid']['S']}"
+
+        remapped_samples['M'][prefixed_sample_name] = {
                 "M": {
                     **samples['M'][sample_id]['M'],
                     "files": remap_file_references(
                         samples['M'][sample_id]["M"]["files"],
                         sandbox_id
                     ),
-                    "uuid": {"S" : f"{sandbox_id}-{sample_id}"},
+                    "uuid": {"S" : prefixed_sample_name},
                     "projectUuid": {
-                        "S" : f"{sandbox_id}-{samples['M'][sample_id]['M']['projectUuid']['S']}"
+                        "S" : prefixed_project_uuid
                     }
-                },
-            } for sample_id in samples['M']
+                }
         }
-    }
+
+    return remapped_samples
 
 
 def remap_file_references(files, sandbox_id):
     """
-    Prefix sandbox_id to references in files
+    Edit entries in files dictionary to opoint to the right prefixed resources
     """
 
     valid_filenames = [file for file in files["M"] if file != "lastModified"]
 
-    remapped_files = {
-        "M" : {
-            file : {
+    remapped_files = {"M" : {}}
+    
+    for file in valid_filenames:
+
+        remapped_files['M'][file] = {
                 "M": {
                     **files['M'][file]['M'],
                     "path": {
                         "S": f"{sandbox_id}-{files['M'][file]['M']['path']['S']}"
-                    }
-                }
-            } for file in valid_filenames
+                    },
+                    "lastModified": files['M'][file]['M']['lastModified']
+                },
         }
-    }
 
-    remapped_files['M']["lastModified"] = files['M']['lastModified']
+    remapped_files["M"]["lastModified"] = files['M']['lastModified']
 
     return remapped_files
 
 
-def modified_records(item, target_table, config, **extra):
+def modify_records(item, target_table, config, **extra):
     """
     Return modified records.
     This function should return spreadable dictionary
@@ -87,36 +71,16 @@ def modified_records(item, target_table, config, **extra):
 
     if target_table == config["staging-experiments-table"]:
         return {
-            # Rewrite pipeline details in experiments-table
-            # metadata to pipeline ARN in production environment
-            "meta": {
-                "M": {
-                    **item["meta"]["M"],
-                    "pipeline": {
-                        "M": {
-                            "stateMachineArn": {"S": ""},
-                            "executionArn": {"S": ""},
-                        }
-                    },
-                    "gem2s": {   
-                        "M": {
-                            "stateMachineArn": {"S": ""},
-                            "executionArn": {"S": ""},
-                        }
-                    },
-                }
-            },
             # Modify project id to point to sandboxed project
             "projectId": {
                 'S': f"{extra['sandbox_id']}-{item['projectId']['S']}",
             },
-            # Add user id to experiment
-            "rbac_can_write": {
-                "SS" : [
-                    *item["rbac_can_write"]["SS"],
-                    extra['user_id']
-                ]
-            }
+            # Add the current user's id to experiment
+            **add_env_user_to_experiment(cfg={
+                "rbac_can_write": {
+                    "SS": item['rbac_can_write']['SS']
+                }
+            })
         }
 
     if target_table == config["staging-samples-table"]:
@@ -219,13 +183,13 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
 
 
 def copy_dynamodb_records(
-    sandbox_id, staging_experiments, source_table, target_table, config, user_id
+    sandbox_id, staging_experiments, source_table, target_table, config
 ):
     """
     Copy dynamodBD records for an experiment id
     """
 
-    if source_table in ['projects-production', 'projects-staging']:
+    if 'projects-' in source_table:
         copy_project_record(
             sandbox_id, staging_experiments, source_table, target_table, config
         )
@@ -245,11 +209,10 @@ def copy_dynamodb_records(
                     "PutRequest": {
                         "Item": {
                             **item,
-                            **modified_records(
+                            **modify_records(
                                 item,
                                 target_table,
                                 config,
-                                user_id=user_id,
                                 sandbox_id=sandbox_id
                             ),
                             "experimentId": {
@@ -292,7 +255,7 @@ def copy_project_record(
                     "projectUuid": {
                         "S": f"{sandbox_id}-{project_id}"
                     },
-                    **modified_records(
+                    **modify_records(
                         item,
                         target_table,
                         config,
@@ -301,12 +264,11 @@ def copy_project_record(
                 },
             )
         except Exception as e:
-            click.echo(f"Failed inserting project: {e}")
-    pass
+            click.echo(f"Failed inserting project {project_id} with error: {e}")
 
 
 def copy_experiments_to(
-    experiments, sandbox_id, config, user_id, origin=PRODUCTION, destination=STAGING
+    experiments, sandbox_id, config, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into
@@ -333,7 +295,7 @@ def copy_experiments_to(
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
         copy_dynamodb_records(
-            sandbox_id, experiments, source_table, target_table, config, user_id
+            sandbox_id, experiments, source_table, target_table, config
         )
 
     click.echo(
