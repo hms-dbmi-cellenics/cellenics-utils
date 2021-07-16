@@ -60,9 +60,7 @@ def modify_records(item, target_table, config, **extra):
     if target_table == config["staging-experiments-table"]:
 
         item['projectId']['S'] = f"{extra['sandbox_id']}-{item['projectId']['S']}"
-
-        new_rbac = add_env_user_to_experiment(cfg=item)['rbac_can_write']
-        item['rbac_can_write'] = new_rbac
+        item = add_env_user_to_experiment(cfg=item)
 
         return item
 
