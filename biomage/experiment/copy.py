@@ -51,8 +51,8 @@ def copy(experiment_id, sandbox_id, input_env, output_env):
 
     # the function expects a list of ids
     experiments = [experiment_id]
-
     config = get_config()
+
     copy_experiments_to(
         experiments=experiments,
         sandbox_id=sandbox_id,

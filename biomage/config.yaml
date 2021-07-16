@@ -1,11 +1,16 @@
 source-tables:
+  - "projects-production"
   - "experiments-production"
   - "samples-production"
 
 source-buckets:
   - "processed-matrix-production"
+  - "biomage-originals-production"
   - "biomage-source-production"
   - "cell-sets-production"
 
+staging-projects-table: "projects-staging"
 staging-experiments-table: "experiments-staging"
+staging-samples-table: "samples-staging"
+
 production-experiments-table: "experiments-production"
