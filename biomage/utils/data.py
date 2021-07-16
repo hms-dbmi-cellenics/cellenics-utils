@@ -58,18 +58,13 @@ def modify_records(item, target_table, config, **extra):
     """
 
     if target_table == config["staging-experiments-table"]:
-        return {
-            # Modify project id to point to sandboxed project
-            "projectId": {
-                'S': f"{extra['sandbox_id']}-{item['projectId']['S']}",
-            },
-            # Add the current user's id to experiment
-            **add_env_user_to_experiment(cfg={
-                "rbac_can_write": {
-                    "SS": item['rbac_can_write']['SS']
-                }
-            })
-        }
+
+        item['projectId']['S'] = f"{extra['sandbox_id']}-{item['projectId']['S']}"
+
+        new_rbac = add_env_user_to_experiment(cfg=item)['rbac_can_write']
+        item['rbac_can_write'] = new_rbac
+
+        return item
 
     if target_table == config["staging-samples-table"]:
         return {
@@ -78,32 +73,22 @@ def modify_records(item, target_table, config, **extra):
         }
 
     if target_table == config["staging-projects-table"]:
-        return {
-            "projects" : {
-                "M" : {
-                    **item["projects"]["M"],
-                    # Add sandbox_id to existing experiments
-                    "experiments": {
-                        "L" : [
-                            {"S" : f"{extra['sandbox_id']}-{experiment_id['S']}"}
-                            for experiment_id in item["projects"]["M"]["experiments"]["L"]
-                        ]
-                    },
-                    # Add sandbox_id to project uuid
-                    "uuid": {
-                        "S": f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
-                    },
-                    # Add sandbox_id to existing samples
-                    "samples": {
-                        "L" : [
-                            {"S" : f"{extra['sandbox_id']}-{samples_id['S']}"}
-                            for samples_id in item["projects"]["M"]["samples"]["L"]
-                        ]
-                    }
 
-                }
-            }
-        }
+        new_experiments_list = []
+        for experiment_id in item["projects"]["M"]["experiments"]["L"]:
+            new_experiments_list.append({"S" : f"{extra['sandbox_id']}-{experiment_id['S']}"})
+
+        item["projects"]["M"]["experiments"]["L"] = new_experiments_list
+
+        item["projects"]["M"]["uuid"]["S"] = f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
+
+        new_samples_list = []
+        for samples_id in item["projects"]["M"]["samples"]["L"]:
+            new_samples_list.append({"S" : f"{extra['sandbox_id']}-{samples_id['S']}"})
+
+        item["projects"]["M"]["experiments"]["L"] = new_samples_list
+
+        return item
 
     return {}
 
