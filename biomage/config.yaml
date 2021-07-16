@@ -5,11 +5,9 @@ source-tables:
 
 source-buckets:
   - "processed-matrix-production"
+  - "biomage-originals-production"
   - "biomage-source-production"
   - "cell-sets-production"
-
-user-pool-id-production: " eu-west-1_ZmmBYI6jO"
-user-pool-id-staging: "eu-west-1_sVQL15Yxu"
 
 staging-projects-table: "projects-staging"
 staging-experiments-table: "experiments-staging"

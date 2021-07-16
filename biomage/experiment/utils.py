@@ -1,10 +1,14 @@
 import gzip
+import hashlib
 import json
 import os
+import sys
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 import boto3
+from biomage.utils import constants
 
 from ..utils.constants import COGNITO_STAGING_POOL
 
@@ -131,8 +135,67 @@ def get_cognito_username(email):
     return user_name
 
 
+def get_experiment_project_id(experiment_id, source_table):
+
+    table = boto3.resource('dynamodb').Table(source_table)
+
+    project_id = table.get_item(
+        Key={"experimentId": experiment_id},
+        ProjectionExpression='projectId'
+    ).get("Item")['projectId']
+
+    return project_id
+
+
+def create_gem2s_hash(experiment, project, samples):
+
+    organism = constants.DEFAULT_NULL_SPECIES_VALUE
+
+    if experiment['meta']['M']['organism'].get('S'):
+        organism = experiment['meta']['M']['organism']['S']
+
+    sample_ids = [sample_id for sample_id in samples['M']]
+
+    sample_names = []
+    for sample_id in sample_ids:
+        sample_names.append(samples['M'][sample_id]['M']['name']['S'])
+
+    task_params = {
+        "projectId": experiment['projectId']['S'],
+        "experimentName": experiment['experimentName']['S'],
+        "organism": organism,
+        "input": {"type" : experiment["meta"]['M']["type"]["S"]},
+        "sampleIds": sample_ids,
+        "sampleNames": sample_names,
+    }
+
+    metadata_values = OrderedDict()
+    metadata_keys = [metadata['S'] for metadata in project['M']['metadataKeys']['L']]
+
+    for key in metadata_keys:
+        # Replace '-' in key to '_'if
+        sanitizedKey = key.replace('-', '_')
+
+        for sample_id in sample_ids:
+
+            metadata_value = constants.DEFAULT_METADATA_VALUE
+
+            if samples['M'][sample_id]['M']['metadata']['M'].get(key):
+                metadata_value = samples['M'][sample_id]['M']['metadata']['M'][key]['S']
+
+            if not metadata_values.get(sanitizedKey):
+                metadata_values[sanitizedKey] = []    
+
+            metadata_values[sanitizedKey].append(metadata_value)
+
+    task_params['metadata'] = metadata_values
+    task_params_string = json.dumps(task_params).replace(" ", "").encode('utf-8')
+
+    return hashlib.sha1(task_params_string).hexdigest()
+
+
 def add_user_to_rbac(user_name, cfg):
-    if "rbac_can_write" in cfg:
+    if "rbac_can_write" in cfg: 
         if user_name not in cfg["rbac_can_write"]["SS"]:
             cfg["rbac_can_write"]["SS"].append(user_name)
         return cfg
@@ -153,3 +216,42 @@ def add_env_user_to_experiment(cfg):
     user_name = get_cognito_username(email=email)
 
     return add_user_to_rbac(user_name=user_name, cfg=cfg)
+
+
+
+
+# {
+#   projectId: '88f913a3-e592-4918-b3f9-825778c97481',
+#   experimentName: 'VM1',
+#   organism: null,
+#   input: { type: '10x' },
+#   sampleIds: [
+#     'dc5c63c7-3f9e-441d-8ea6-1d4905640973',
+#     '64e07951-3544-4b7d-b483-97ca6875b099',
+#     'a34f40ff-684a-4e0d-8147-78e44336f66d'
+#   ],
+#   sampleNames: [ 'WT1', 'WT2', 'KO1' ],
+#   metadata: { Genotype: [ 'WT', 'WT', 'KO' ] }
+# }
+
+# Production
+#{"projectId":"88f913a3-e592-4918-b3f9-825778c97481","experimentName":"VM1","organism":null,"input":{"type":"10x"},"sampleIds":["dc5c63c7-3f9e-441d-8ea6-1d4905640973","64e07951-3544-4b7d-b483-97ca6875b099","a34f40ff-684a-4e0d-8147-78e44336f66d"],"sampleNames":["WT1","WT2","KO1"],"metadata":{"Genotype":["WT","WT","KO"]}}
+#167cc113f066f2922c1c5aea455bf3c6bcbd1b24
+
+# Script
+#{"projectId":"88f913a3-e592-4918-b3f9-825778c97481","experimentName":"VM1","organism":null,"input":{"type":"10x"},"sampleIds":["dc5c63c7-3f9e-441d-8ea6-1d4905640973","64e07951-3544-4b7d-b483-97ca6875b099","a34f40ff-684a-4e0d-8147-78e44336f66d"],"sampleNames":["WT1","WT2","KO1"],"metadata":{"Genotype":["WT","WT","KO"]}}
+#167cc113f066f2922c1c5aea455bf3c6bcbd1b24
+
+# New hash
+# cd0edcfe82aec2dc37a467d3b10df6531aa590a9
+
+# Scrip hash
+# cd0edcfe82aec2dc37a467d3b10df6531aa590a9
+
+# {
+# "projectId": 
+# "88f913a3-e592-4918-b3f9-825778c97481", 
+# "experimentName": "VM1", 
+# "organism": "null", 
+# "input": {"type": "10x"}, 
+# "sampleIds": ["a34f40ff-684a-4e0d-8147-78e44336f66d", "dc5c63c7-3f9e-441d-8ea6-1d4905640973", "64e07951-3544-4b7d-b483-97ca6875b099"], "sampleNames": ["KO1", "WT1", "WT2"], "metadata": {"Genotype": ["KO", "WT", "WT"]}}
