@@ -44,24 +44,11 @@ def remap_file_references(files, sandbox_id):
     """
 
     valid_filenames = [file for file in files["M"] if file != "lastModified"]
-
-    remapped_files = {"M" : {}}
     
     for file in valid_filenames:
+        files['M'][file]['M']['path']['S'] = f"{sandbox_id}-{files['M'][file]['M']['path']['S']}"
 
-        remapped_files['M'][file] = {
-                "M": {
-                    **files['M'][file]['M'],
-                    "path": {
-                        "S": f"{sandbox_id}-{files['M'][file]['M']['path']['S']}"
-                    },
-                    "lastModified": files['M'][file]['M']['lastModified']
-                },
-        }
-
-    remapped_files["M"]["lastModified"] = files['M']['lastModified']
-
-    return remapped_files
+    return files
 
 
 def modify_records(item, target_table, config, **extra):
@@ -72,19 +59,6 @@ def modify_records(item, target_table, config, **extra):
 
     if target_table == config["staging-experiments-table"]:
         return {
-            # Rewrite pipeline details in experiments-table
-            # metadata to pipeline ARN in production environment
-            "meta": {
-                "M": {
-                    **item["meta"]["M"],
-                    "gem2s": {
-                        "M": {
-                            **item["meta"]["M"]["gem2s"]["M"],
-                            "paramsHash": {"S" : ""},
-                        }
-                    },
-                }
-            },
             # Modify project id to point to sandboxed project
             "projectId": {
                 'S': f"{extra['sandbox_id']}-{item['projectId']['S']}",

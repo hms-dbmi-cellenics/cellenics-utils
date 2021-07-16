@@ -2,7 +2,6 @@ import gzip
 import hashlib
 import json
 import os
-import sys
 import time
 from collections import OrderedDict
 from pathlib import Path
@@ -195,7 +194,7 @@ def create_gem2s_hash(experiment, project, samples):
 
 
 def add_user_to_rbac(user_name, cfg):
-    if "rbac_can_write" in cfg: 
+    if "rbac_can_write" in cfg:
         if user_name not in cfg["rbac_can_write"]["SS"]:
             cfg["rbac_can_write"]["SS"].append(user_name)
         return cfg
@@ -216,42 +215,3 @@ def add_env_user_to_experiment(cfg):
     user_name = get_cognito_username(email=email)
 
     return add_user_to_rbac(user_name=user_name, cfg=cfg)
-
-
-
-
-# {
-#   projectId: '88f913a3-e592-4918-b3f9-825778c97481',
-#   experimentName: 'VM1',
-#   organism: null,
-#   input: { type: '10x' },
-#   sampleIds: [
-#     'dc5c63c7-3f9e-441d-8ea6-1d4905640973',
-#     '64e07951-3544-4b7d-b483-97ca6875b099',
-#     'a34f40ff-684a-4e0d-8147-78e44336f66d'
-#   ],
-#   sampleNames: [ 'WT1', 'WT2', 'KO1' ],
-#   metadata: { Genotype: [ 'WT', 'WT', 'KO' ] }
-# }
-
-# Production
-#{"projectId":"88f913a3-e592-4918-b3f9-825778c97481","experimentName":"VM1","organism":null,"input":{"type":"10x"},"sampleIds":["dc5c63c7-3f9e-441d-8ea6-1d4905640973","64e07951-3544-4b7d-b483-97ca6875b099","a34f40ff-684a-4e0d-8147-78e44336f66d"],"sampleNames":["WT1","WT2","KO1"],"metadata":{"Genotype":["WT","WT","KO"]}}
-#167cc113f066f2922c1c5aea455bf3c6bcbd1b24
-
-# Script
-#{"projectId":"88f913a3-e592-4918-b3f9-825778c97481","experimentName":"VM1","organism":null,"input":{"type":"10x"},"sampleIds":["dc5c63c7-3f9e-441d-8ea6-1d4905640973","64e07951-3544-4b7d-b483-97ca6875b099","a34f40ff-684a-4e0d-8147-78e44336f66d"],"sampleNames":["WT1","WT2","KO1"],"metadata":{"Genotype":["WT","WT","KO"]}}
-#167cc113f066f2922c1c5aea455bf3c6bcbd1b24
-
-# New hash
-# cd0edcfe82aec2dc37a467d3b10df6531aa590a9
-
-# Scrip hash
-# cd0edcfe82aec2dc37a467d3b10df6531aa590a9
-
-# {
-# "projectId": 
-# "88f913a3-e592-4918-b3f9-825778c97481", 
-# "experimentName": "VM1", 
-# "organism": "null", 
-# "input": {"type": "10x"}, 
-# "sampleIds": ["a34f40ff-684a-4e0d-8147-78e44336f66d", "dc5c63c7-3f9e-441d-8ea6-1d4905640973", "64e07951-3544-4b7d-b483-97ca6875b099"], "sampleNames": ["KO1", "WT1", "WT2"], "metadata": {"Genotype": ["KO", "WT", "WT"]}}
