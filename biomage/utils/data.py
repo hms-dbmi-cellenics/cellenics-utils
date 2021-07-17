@@ -84,7 +84,7 @@ def modify_records(item, target_table, config, **extra):
         for samples_id in item["projects"]["M"]["samples"]["L"]:
             new_samples_list.append({"S" : f"{extra['sandbox_id']}-{samples_id['S']}"})
 
-        item["projects"]["M"]["experiments"]["L"] = new_samples_list
+        item["projects"]["M"]["samples"]["L"] = new_samples_list
 
         return item
 
@@ -232,16 +232,15 @@ def copy_project_record(
         dynamodb.put_item(
             TableName=target_table,
             Item={
-                **item,
-                "projectUuid": {
-                    "S": f"{sandbox_id}-{project_id}"
-                },
                 **modify_records(
                     item,
                     target_table,
                     config,
                     sandbox_id=sandbox_id
                 ),
+                "projectUuid": {
+                    "S": f"{sandbox_id}-{project_id}"
+                },
             },
         )
 
