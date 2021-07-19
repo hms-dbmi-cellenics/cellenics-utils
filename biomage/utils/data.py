@@ -1,3 +1,7 @@
+
+import sys
+import json 
+
 import boto3
 import click
 from biomage.experiment.utils import (add_env_user_to_experiment,
@@ -91,6 +95,22 @@ def modify_records(item, target_table, config, **extra):
     return {}
 
 
+def prefix_cell_set_samples_key(sandbox_id, cell_sets):
+    """
+    Prefix sandbox_id to sample keys in cell-sets object
+    """
+    for root_idx in range(len(cell_sets["cellSets"])):
+
+        if cell_sets["cellSets"][root_idx].get("key") != "sample":
+            continue
+
+        for cell_set_idx in range(len(cell_sets["cellSets"][root_idx]["children"])):
+            new_key = f"{sandbox_id}-{cell_sets['cellSets'][root_idx]['children'][cell_set_idx]['key']}"
+            cell_sets["cellSets"][root_idx]["children"][cell_set_idx]["key"] = new_key
+
+    return cell_sets
+
+
 def definitely_equal(target, source):
     """
     Returns if 2 objects are equal. Only positive return values are reliable. Two
@@ -151,6 +171,22 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
                 f"{target['Bucket']}/{target['Key']}"
             )
             try:
+                if 'cell-sets-' in target_bucket:
+                    content_stream = s3.get_object(
+                        Bucket=source["Bucket"], 
+                        Key=source["Key"]
+                    )
+
+                    cell_sets_json = json.loads(content_stream['Body'].read().decode('UTF-8'))
+                    cell_sets_json = prefix_cell_set_samples_key(sandbox_id, cell_sets_json)
+
+                    s3.put_object(
+                        Body=json.dumps(cell_sets_json),
+                        Bucket=target["Bucket"],
+                        Key=target["Key"]
+                    )
+                    continue
+
                 s3.copy_object(
                     CopySource=source,
                     Bucket=target["Bucket"],
