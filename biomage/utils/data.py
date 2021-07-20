@@ -1,58 +1,12 @@
 
-import sys
-import json 
-
 import boto3
 import click
 from biomage.experiment.utils import (add_env_user_to_experiment,
                                       create_gem2s_hash,
                                       get_experiment_project_id)
 from botocore.exceptions import ClientError
-from click.utils import echo
 
 from ..utils.constants import PRODUCTION, STAGING
-
-
-def remap_sample_references(samples, sandbox_id):
-    """
-    Edit entries in samples dictionary to opoint to the right prefixed resources
-    """
-
-    remapped_samples = {"M" : {}}
-
-    for sample_id in samples['M']:
-
-        prefixed_sample_name = f"{sandbox_id}-{sample_id}"
-        prefixed_project_uuid = f"{sandbox_id}-{samples['M'][sample_id]['M']['projectUuid']['S']}"
-
-        remapped_samples['M'][prefixed_sample_name] = {
-                "M": {
-                    **samples['M'][sample_id]['M'],
-                    "files": remap_file_references(
-                        samples['M'][sample_id]["M"]["files"],
-                        sandbox_id
-                    ),
-                    "uuid": {"S" : prefixed_sample_name},
-                    "projectUuid": {
-                        "S" : prefixed_project_uuid
-                    }
-                }
-        }
-
-    return remapped_samples
-
-
-def remap_file_references(files, sandbox_id):
-    """
-    Edit entries in files dictionary to opoint to the right prefixed resources
-    """
-
-    valid_filenames = [file for file in files["M"] if file != "lastModified"]
-    
-    for file in valid_filenames:
-        files['M'][file]['M']['path']['S'] = f"{sandbox_id}-{files['M'][file]['M']['path']['S']}"
-
-    return files
 
 
 def modify_records(item, target_table, config, **extra):
@@ -71,7 +25,6 @@ def modify_records(item, target_table, config, **extra):
     if target_table == config["staging-samples-table"]:
         return {
             "projectUuid": {"S" : f"{extra['sandbox_id']}-{item['projectUuid']['S']}"},
-            "samples": remap_sample_references(item['samples'], extra['sandbox_id'])
         }
 
     if target_table == config["staging-projects-table"]:
@@ -84,31 +37,9 @@ def modify_records(item, target_table, config, **extra):
 
         item["projects"]["M"]["uuid"]["S"] = f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
 
-        new_samples_list = []
-        for samples_id in item["projects"]["M"]["samples"]["L"]:
-            new_samples_list.append({"S" : f"{extra['sandbox_id']}-{samples_id['S']}"})
-
-        item["projects"]["M"]["samples"]["L"] = new_samples_list
-
         return item
 
     return {}
-
-
-def prefix_cell_set_samples_key(sandbox_id, cell_sets):
-    """
-    Prefix sandbox_id to sample keys in cell-sets object
-    """
-    for root_idx in range(len(cell_sets["cellSets"])):
-
-        if cell_sets["cellSets"][root_idx].get("key") != "sample":
-            continue
-
-        for cell_set_idx in range(len(cell_sets["cellSets"][root_idx]["children"])):
-            new_key = f"{sandbox_id}-{cell_sets['cellSets'][root_idx]['children'][cell_set_idx]['key']}"
-            cell_sets["cellSets"][root_idx]["children"][cell_set_idx]["key"] = new_key
-
-    return cell_sets
 
 
 def definitely_equal(target, source):
@@ -171,22 +102,6 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
                 f"{target['Bucket']}/{target['Key']}"
             )
             try:
-                if 'cell-sets-' in target_bucket:
-                    content_stream = s3.get_object(
-                        Bucket=source["Bucket"], 
-                        Key=source["Key"]
-                    )
-
-                    cell_sets_json = json.loads(content_stream['Body'].read().decode('UTF-8'))
-                    cell_sets_json = prefix_cell_set_samples_key(sandbox_id, cell_sets_json)
-
-                    s3.put_object(
-                        Body=json.dumps(cell_sets_json),
-                        Bucket=target["Bucket"],
-                        Key=target["Key"]
-                    )
-                    continue
-
                 s3.copy_object(
                     CopySource=source,
                     Bucket=target["Bucket"],
@@ -361,7 +276,9 @@ def copy_experiments_to(
             sandbox_id, experiments, source_table, target_table, config
         )
 
-    # Create new GEM2S paramsHash to prevent rerunning of pipeline
+    # GEM2S should not be run on copied records and files as that may introduce
+    # diferences to the generated records and files which prevents testing production
+    # data on staging environment
     click.echo("Creating new GEM2S params to prevent rerunning pipeline...")
     insert_new_gem2s_hash(sandbox_id, experiments, config['staging-experiments-table'])
 
