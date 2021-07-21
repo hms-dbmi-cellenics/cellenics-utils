@@ -176,24 +176,26 @@ def create_gem2s_hash(experiment, project, samples):
     metadata_values = OrderedDict()
     metadata_keys = [metadata['S'] for metadata in project['M']['metadataKeys']['L']]
 
-    for key in metadata_keys:
-        # Replace '-' in key to '_'if
-        sanitizedKey = key.replace('-', '_')
+    if len(metadata_keys) > 0:
+        for key in metadata_keys:
+            # Replace '-' in key to '_'if
+            sanitizedKey = key.replace('-', '_')
 
-        for sample_id in sample_ids:
+            for sample_id in sample_ids:
 
-            metadata_value = constants.DEFAULT_METADATA_VALUE
+                metadata_value = constants.DEFAULT_METADATA_VALUE
 
-            if samples['M'][sample_id]['M']['metadata']['M'].get(key):
-                metadata_value = samples['M'][sample_id]['M']['metadata']['M'][key]['S']
+                if samples['M'][sample_id]['M']['metadata']['M'].get(key):
+                    metadata_value = samples['M'][sample_id]['M']['metadata']['M'][key]['S']
 
-            if not metadata_values.get(sanitizedKey):
-                metadata_values[sanitizedKey] = []    
+                if not metadata_values.get(sanitizedKey):
+                    metadata_values[sanitizedKey] = []    
 
-            metadata_values[sanitizedKey].append(metadata_value)
+                metadata_values[sanitizedKey].append(metadata_value)
 
-    task_params['metadata'] = metadata_values
-    task_params_string = json.dumps(task_params).replace(" ", "").encode('utf-8')
+        task_params['metadata'] = metadata_values
+
+    task_params_string = json.dumps(task_params).replace(", ", ",").replace(": ", ":").encode('utf-8')
 
     return hashlib.sha1(task_params_string).hexdigest()
 
