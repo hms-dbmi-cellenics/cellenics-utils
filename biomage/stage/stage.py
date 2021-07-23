@@ -23,7 +23,7 @@ SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
 
-DEFAULT_BRANCH = "develop"
+DEFAULT_BRANCH = "master"
 
 
 def recursive_get(d, *keys):
@@ -145,13 +145,11 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     if repo_name in repo_to_ref:
         ref = repo_to_ref[repo_name]
 
-    target_branch = None
     if isinstance(ref, int):
         target_branch = f"refs/pull/{ref}/head"
     elif isinstance(ref, str):
         target_branch = f"refs/heads/{ref}"
     else:
-        ref = repo.default_branch
         target_branch = f"refs/heads/{repo.default_branch}"
 
     # if no specific reference was specified (e.g. `api` instead of `api/22`)
@@ -201,7 +199,7 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
         [
             f"{repo}{opts.ref}"
             for repo, opts in templates.items()
-            if opts.ref != "develop"
+            if opts.ref != DEFAULT_BRANCH
         ]
     )
 
