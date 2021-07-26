@@ -23,7 +23,7 @@ SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
 
-DEFAULT_BRANCH = "develop"
+DEFAULT_BRANCH = "master"
 
 
 def recursive_get(d, *keys):
