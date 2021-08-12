@@ -164,9 +164,10 @@ def create_gem2s_hash(experiment, project, samples):
     for sample_id in sample_ids:
         sample_names.append(samples['M'][sample_id]['M']['name']['S'])
 
-    task_params = {
-        "projectId": experiment['projectId']['S'],
-        "experimentName": experiment['experimentName']['S'],
+    sample_ids.sort()
+    sample_names.sort()
+
+    hash_params = {
         "organism": organism,
         "input": {"type" : experiment["meta"]['M']["type"]["S"]},
         "sampleIds": sample_ids,
@@ -193,11 +194,11 @@ def create_gem2s_hash(experiment, project, samples):
 
                 metadata_values[sanitizedKey].append(metadata_value)
 
-        task_params['metadata'] = metadata_values
+        hash_params['metadata'] = metadata_values
 
-    task_params_string = json.dumps(task_params).replace(", ", ",").replace(": ", ":").encode('utf-8')
+    hash_params_string = json.dumps(hash_params).replace(", ", ",").replace(": ", ":").encode('utf-8')
 
-    return hashlib.sha1(task_params_string).hexdigest()
+    return hashlib.sha1(hash_params_string).hexdigest()
 
 
 def add_user_to_rbac(user_name, cfg):
