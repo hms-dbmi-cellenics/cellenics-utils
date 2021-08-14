@@ -159,11 +159,9 @@ def create_gem2s_hash(experiment, project, samples):
         organism = experiment['meta']['M']['organism']['S']
 
     # Filter 'ids' key which is present in older samples object
-    unsorted_sample_ids = [
-        sample_id
-        for sample_id
-        in samples['M']
-        if sample_id != 'ids'
+    unsorted_sample_ids = [ 
+        sample_id for sample_id
+        in samples['M'] if sample_id != 'ids'
     ]
 
     # Sample IDS is first sorted so that hash does not depend on order of samples
