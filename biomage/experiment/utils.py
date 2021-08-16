@@ -158,18 +158,28 @@ def create_gem2s_hash(experiment, project, samples):
     if experiment['meta']['M']['organism'].get('S'):
         organism = experiment['meta']['M']['organism']['S']
 
-    sample_ids = [sample_id for sample_id in samples['M']]
+    # Filter 'ids' key which is present in older samples object
+    unsorted_sample_ids = [ 
+        sample_id for sample_id
+        in samples['M'] if sample_id != 'ids'
+    ]
+
+    # Sample IDS is first sorted so that hash does not depend on order of samples
+    sorted_sample_ids = unsorted_sample_ids.copy()
+    sorted_sample_ids.sort()
 
     sample_names = []
-    for sample_id in sample_ids:
+
+    # Sample names are created according to the sorted sampleIds so sample order doesn't matter
+    for sample_id in sorted_sample_ids:
         sample_names.append(samples['M'][sample_id]['M']['name']['S'])
 
-    task_params = {
-        "projectId": experiment['projectId']['S'],
-        "experimentName": experiment['experimentName']['S'],
+    hash_params = OrderedDict()
+
+    hash_params = {
         "organism": organism,
         "input": {"type" : experiment["meta"]['M']["type"]["S"]},
-        "sampleIds": sample_ids,
+        "sampleIds": sorted_sample_ids,
         "sampleNames": sample_names,
     }
 
@@ -177,11 +187,12 @@ def create_gem2s_hash(experiment, project, samples):
     metadata_keys = [metadata['S'] for metadata in project['M']['metadataKeys']['L']]
 
     if len(metadata_keys) > 0:
+
         for key in metadata_keys:
             # Replace '-' in key to '_'if
             sanitizedKey = key.replace('-', '_')
 
-            for sample_id in sample_ids:
+            for sample_id in unsorted_sample_ids:
 
                 metadata_value = constants.DEFAULT_METADATA_VALUE
 
@@ -193,11 +204,14 @@ def create_gem2s_hash(experiment, project, samples):
 
                 metadata_values[sanitizedKey].append(metadata_value)
 
-        task_params['metadata'] = metadata_values
+        hash_params['metadata'] = metadata_values
 
-    task_params_string = json.dumps(task_params).replace(", ", ",").replace(": ", ":").encode('utf-8')
+    hash_params_string = json.dumps(hash_params) \
+        .replace(", ", ",") \
+        .replace(": ", ":") \
+        .encode('utf-8')
 
-    return hashlib.sha1(task_params_string).hexdigest()
+    return hashlib.sha1(hash_params_string).hexdigest()
 
 
 def add_user_to_rbac(user_name, cfg):
