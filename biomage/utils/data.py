@@ -1,9 +1,10 @@
-
 import boto3
 import click
-from biomage.experiment.utils import (add_env_user_to_experiment,
-                                      create_gem2s_hash,
-                                      get_experiment_project_id)
+from biomage.experiment.utils import (
+    add_env_user_to_experiment,
+    create_gem2s_hash,
+    get_experiment_project_id,
+)
 from botocore.exceptions import ClientError
 
 from ..utils.constants import PRODUCTION, STAGING
@@ -17,25 +18,29 @@ def modify_records(item, target_table, config, **extra):
 
     if target_table == config["staging-experiments-table"]:
 
-        item['projectId']['S'] = f"{extra['sandbox_id']}-{item['projectId']['S']}"
+        item["projectId"]["S"] = f"{extra['sandbox_id']}-{item['projectId']['S']}"
         item = add_env_user_to_experiment(cfg=item)
 
         return item
 
     if target_table == config["staging-samples-table"]:
         return {
-            "projectUuid": {"S" : f"{extra['sandbox_id']}-{item['projectUuid']['S']}"},
+            "projectUuid": {"S": f"{extra['sandbox_id']}-{item['projectUuid']['S']}"},
         }
 
     if target_table == config["staging-projects-table"]:
 
         new_experiments_list = []
         for experiment_id in item["projects"]["M"]["experiments"]["L"]:
-            new_experiments_list.append({"S" : f"{extra['sandbox_id']}-{experiment_id['S']}"})
+            new_experiments_list.append(
+                {"S": f"{extra['sandbox_id']}-{experiment_id['S']}"}
+            )
 
         item["projects"]["M"]["experiments"]["L"] = new_experiments_list
 
-        item["projects"]["M"]["uuid"]["S"] = f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
+        item["projects"]["M"]["uuid"][
+            "S"
+        ] = f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
 
         return item
 
@@ -75,9 +80,11 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
     s3 = boto3.client("s3")
     exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
 
-    if 'Contents' not in exp_files:
-        raise Exception(f"Failed to do an experiment copy: bucket {source_bucket} doesn't contain {prefix} as prefix.")
-    
+    if "Contents" not in exp_files:
+        raise Exception(
+            f"Failed to do an experiment copy: bucket {source_bucket} doesn't contain {prefix} as prefix."
+        )
+
     for obj in exp_files.get("Contents"):
 
         experiment_id = obj["Key"].split("/")[0]
@@ -85,7 +92,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
 
         # biomage-originals- uses projectId/sampleId/file schema,
         # so sampleId has to be prefixed too
-        if 'biomage-originals-' in target_bucket:
+        if "biomage-originals-" in target_bucket:
             sample_id = obj["Key"].split("/")[1]
             target_key = target_key.replace(sample_id, f"{sandbox_id}-{sample_id}")
 
@@ -121,7 +128,7 @@ def copy_dynamodb_records(
     Copy dynamodBD records for an experiment id
     """
 
-    if 'projects-' in source_table:
+    if "projects-" in source_table:
         copy_project_record(
             sandbox_id, staging_experiments, source_table, target_table, config
         )
@@ -142,10 +149,7 @@ def copy_dynamodb_records(
                         "Item": {
                             **item,
                             **modify_records(
-                                item,
-                                target_table,
-                                config,
-                                sandbox_id=sandbox_id
+                                item, target_table, config, sandbox_id=sandbox_id
                             ),
                             "experimentId": {
                                 "S": f"{sandbox_id}-{item['experimentId']['S']}",
@@ -171,37 +175,28 @@ def copy_project_record(
     for experiment_id in staging_experiments:
 
         project_id = get_experiment_project_id(
-            experiment_id,
-            config['production-experiments-table']
+            experiment_id, config["production-experiments-table"]
         )
 
         item = dynamodb.get_item(
-            TableName=source_table,
-            Key={"projectUuid": {'S' : project_id}}
+            TableName=source_table, Key={"projectUuid": {"S": project_id}}
         ).get("Item")
 
         dynamodb.put_item(
             TableName=target_table,
             Item={
-                **modify_records(
-                    item,
-                    target_table,
-                    config,
-                    sandbox_id=sandbox_id
-                ),
-                "projectUuid": {
-                    "S": f"{sandbox_id}-{project_id}"
-                },
+                **modify_records(item, target_table, config, sandbox_id=sandbox_id),
+                "projectUuid": {"S": f"{sandbox_id}-{project_id}"},
             },
         )
 
 
 def insert_new_gem2s_hash(sandbox_id, experiments, source_experiments_table):
 
-    source_projects_table = source_experiments_table.replace('experiments', 'projects')
-    source_samples_table = source_experiments_table.replace('experiments', 'samples')
+    source_projects_table = source_experiments_table.replace("experiments", "projects")
+    source_samples_table = source_experiments_table.replace("experiments", "samples")
 
-    client = boto3.client('dynamodb')
+    client = boto3.client("dynamodb")
 
     for experiment_id in experiments:
 
@@ -209,26 +204,26 @@ def insert_new_gem2s_hash(sandbox_id, experiments, source_experiments_table):
 
         experiment = client.get_item(
             TableName=source_experiments_table,
-            Key={'experimentId' : {'S' : prefixed_experiment_id}}
+            Key={"experimentId": {"S": prefixed_experiment_id}},
         ).get("Item")
 
         project = client.get_item(
             TableName=source_projects_table,
-            Key={"projectUuid": experiment['projectId']},
-        ).get("Item")['projects']
+            Key={"projectUuid": experiment["projectId"]},
+        ).get("Item")["projects"]
 
         samples = client.get_item(
             TableName=source_samples_table,
-            Key={"experimentId": {"S" : prefixed_experiment_id}},
-        ).get("Item")['samples']
+            Key={"experimentId": {"S": prefixed_experiment_id}},
+        ).get("Item")["samples"]
 
         gem2s_hash = create_gem2s_hash(experiment, project, samples)
 
         client.update_item(
             TableName=source_experiments_table,
-            Key={'experimentId' : {'S' : prefixed_experiment_id}},
-            UpdateExpression='SET meta.gem2s.paramsHash = :hash_string',
-            ExpressionAttributeValues={':hash_string': {'S': gem2s_hash}}
+            Key={"experimentId": {"S": prefixed_experiment_id}},
+            UpdateExpression="SET meta.gem2s.paramsHash = :hash_string",
+            ExpressionAttributeValues={":hash_string": {"S": gem2s_hash}},
         )
 
         click.echo(
@@ -238,7 +233,7 @@ def insert_new_gem2s_hash(sandbox_id, experiments, source_experiments_table):
 
 
 def copy_experiments_to(
-    experiments, sandbox_id, config, origin=PRODUCTION, destination=STAGING
+    experiments, prefix, config, update_hash, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into
@@ -255,13 +250,12 @@ def copy_experiments_to(
         for experiment_id in experiments:
             if "biomage-originals-" in target_bucket:
                 project_id = get_experiment_project_id(
-                    experiment_id,
-                    config['production-experiments-table']
+                    experiment_id, config["production-experiments-table"]
                 )
-                copy_s3_files(sandbox_id, project_id, source_bucket, target_bucket)
+                copy_s3_files(prefix, project_id, source_bucket, target_bucket)
                 continue
 
-            copy_s3_files(sandbox_id, experiment_id, source_bucket, target_bucket)
+            copy_s3_files(prefix, experiment_id, source_bucket, target_bucket)
 
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
     click.echo()
@@ -272,15 +266,16 @@ def copy_experiments_to(
         target_table = source_table.replace(origin, destination)
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
-        copy_dynamodb_records(
-            sandbox_id, experiments, source_table, target_table, config
-        )
+        copy_dynamodb_records(prefix, experiments, source_table, target_table, config)
 
     # GEM2S should not be run on copied records and files as that may introduce
-    # diferences to the generated records and files which prevents testing production
-    # data on staging environment
-    click.echo("Creating new GEM2S params to prevent rerunning pipeline...")
-    insert_new_gem2s_hash(sandbox_id, experiments, config['staging-experiments-table'])
+    # diferences to the generated records and files which prevents testing
+    # production data on staging environment
+    # When copying experiments for integration testing we want them to run again
+    # so we added the parameter to disable the hash update.
+    if update_hash:
+        click.echo("Creating new GEM2S params to prevent rerunning pipeline...")
+        insert_new_gem2s_hash(prefix, experiments, config["staging-experiments-table"])
 
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)

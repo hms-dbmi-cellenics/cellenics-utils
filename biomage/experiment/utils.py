@@ -141,12 +141,11 @@ def get_cognito_username(email):
 
 def get_experiment_project_id(experiment_id, source_table):
 
-    table = boto3.resource('dynamodb').Table(source_table)
+    table = boto3.resource("dynamodb").Table(source_table)
 
     project_id = table.get_item(
-        Key={"experimentId": experiment_id},
-        ProjectionExpression='projectId'
-    ).get("Item")['projectId']
+        Key={"experimentId": experiment_id}, ProjectionExpression="projectId"
+    ).get("Item")["projectId"]
 
     return project_id
 
@@ -155,47 +154,51 @@ def create_gem2s_hash(experiment, project, samples):
 
     organism = constants.DEFAULT_NULL_SPECIES_VALUE
 
-    if experiment['meta']['M']['organism'].get('S'):
-        organism = experiment['meta']['M']['organism']['S']
+    if experiment["meta"]["M"]["organism"].get("S"):
+        organism = experiment["meta"]["M"]["organism"]["S"]
 
-    sample_ids = [sample_id for sample_id in samples['M']]
+    sample_ids = [sample_id for sample_id in samples["M"]]
 
     sample_names = []
     for sample_id in sample_ids:
-        sample_names.append(samples['M'][sample_id]['M']['name']['S'])
+        sample_names.append(samples["M"][sample_id]["M"]["name"]["S"])
 
     task_params = {
-        "projectId": experiment['projectId']['S'],
-        "experimentName": experiment['experimentName']['S'],
+        "projectId": experiment["projectId"]["S"],
+        "experimentName": experiment["experimentName"]["S"],
         "organism": organism,
-        "input": {"type" : experiment["meta"]['M']["type"]["S"]},
+        "input": {"type": experiment["meta"]["M"]["type"]["S"]},
         "sampleIds": sample_ids,
         "sampleNames": sample_names,
     }
 
     metadata_values = OrderedDict()
-    metadata_keys = [metadata['S'] for metadata in project['M']['metadataKeys']['L']]
+    metadata_keys = [metadata["S"] for metadata in project["M"]["metadataKeys"]["L"]]
 
     if len(metadata_keys) > 0:
         for key in metadata_keys:
             # Replace '-' in key to '_'if
-            sanitizedKey = key.replace('-', '_')
+            sanitizedKey = key.replace("-", "_")
 
             for sample_id in sample_ids:
 
                 metadata_value = constants.DEFAULT_METADATA_VALUE
 
-                if samples['M'][sample_id]['M']['metadata']['M'].get(key):
-                    metadata_value = samples['M'][sample_id]['M']['metadata']['M'][key]['S']
+                if samples["M"][sample_id]["M"]["metadata"]["M"].get(key):
+                    metadata_value = samples["M"][sample_id]["M"]["metadata"]["M"][key][
+                        "S"
+                    ]
 
                 if not metadata_values.get(sanitizedKey):
-                    metadata_values[sanitizedKey] = []    
+                    metadata_values[sanitizedKey] = []
 
                 metadata_values[sanitizedKey].append(metadata_value)
 
-        task_params['metadata'] = metadata_values
+        task_params["metadata"] = metadata_values
 
-    task_params_string = json.dumps(task_params).replace(", ", ",").replace(": ", ":").encode('utf-8')
+    task_params_string = (
+        json.dumps(task_params).replace(", ", ",").replace(": ", ":").encode("utf-8")
+    )
 
     return hashlib.sha1(task_params_string).hexdigest()
 
@@ -211,14 +214,20 @@ def add_user_to_rbac(user_name, cfg):
 
 
 def add_env_user_to_experiment(cfg):
-    email = os.getenv("BIOMAGE_EMAIL")
-    if not email:
-        raise ValueError(
-            "biomage email not available to patch experiment permissions."
-            + ' Set the environment variable "BIOMAGE_EMAIL" with the email you use to log in into cellscope'
-            + " and try again."
-        )
+    # get the user ID directly from an ENV variable
+    user_name = os.getenv("BIOMAGE_USERNAME")
+    if not user_name:
+        # if we didnt' get the username directly try to get it from cognito
+        # it requires aws permissions
+        email = os.getenv("BIOMAGE_EMAIL")
+        if not email:
+            raise ValueError(
+                "biomage username/ email not available to patch experiment permissions."
+                + ' Set the either environment variable "BIOMAGE_EMAIL" with the email'
+                + ' you use to log in into cellscope or the "BIOMAGE_USERNAME" with '
+                + "your ID and try again."
+            )
 
-    user_name = get_cognito_username(email=email)
+        user_name = get_cognito_username(email=email)
 
     return add_user_to_rbac(user_name=user_name, cfg=cfg)

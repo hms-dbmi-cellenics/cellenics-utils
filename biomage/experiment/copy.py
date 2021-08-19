@@ -1,3 +1,4 @@
+import os
 import sys
 
 import click
@@ -16,12 +17,12 @@ from ..utils.data import copy_experiments_to
     help="Experiment ID to be copied.",
 )
 @click.option(
-    "-s",
-    "--sandbox_id",
-    required=True,
-    default=DEFAULT_SANDBOX,
+    "-p",
+    "--prefix",
+    required=False,
+    default=os.getenv("BIOMAGE_EMAIL"),
     show_default=True,
-    help="Sandbox ID in the destination environment to copy the data to.",
+    help="Prefix added to copied experiment to avoid ID clashes with other copies.",
 )
 @click.option(
     "-i",
@@ -39,7 +40,16 @@ from ..utils.data import copy_experiments_to
     show_default=True,
     help="Output environment to copy the data to.",
 )
-def copy(experiment_id, sandbox_id, input_env, output_env):
+@click.option(
+    "--update_hash",
+    required=False,
+    default=True,
+    show_default=True,
+    help="When adding prefixes the experiment parameters' hash will change "
+    "so the pipeline will need to be run again. Set to true to update experiment"
+    " hash so that the pipeline does not need to run again.",
+)
+def copy(experiment_id, prefix, input_env, output_env, update_hash):
     """
     Copy an experiment from the default sandbox of the input environment into the
     sandbox_id of the output environment.
@@ -55,8 +65,9 @@ def copy(experiment_id, sandbox_id, input_env, output_env):
 
     copy_experiments_to(
         experiments=experiments,
-        sandbox_id=sandbox_id,
+        prefix=prefix,
         config=config,
         origin=input_env,
         destination=output_env,
+        update_hash=update_hash,
     )
