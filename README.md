@@ -166,7 +166,7 @@ Downloads experiment data and config files from a given environment into `BIOMAG
 
 E.g. to download experiment `e52b39624588791a7889e39c617f669e` data from `production`:
 
-`biomage experiment pull production e52b39624588791a7889e39c617f669e`
+    biomage experiment pull production e52b39624588791a7889e39c617f669e
 
 #### experiment ls
 
@@ -174,7 +174,15 @@ List available experiments data in a given environment. See `biomage experiment 
 
 Example: list experiment files in `production`:
 
-`biomage experiment ls production`
+    biomage experiment ls production
+
+#### experiment copy
+
+Copies one experiment information from a given env to another (default: production to staging), prefxing keys of the copied data and records with `sandbox_id`. It is recommended to set the value of `sandbox_id` to the same value as your staging environment, so that running `biomage unstage` when unstaging the experiment will also delete records of the copied experiment.
+
+To run this command, `BIOMAGE_EMAIL` has to be set with the username you use to login in the staging environment. See `biomage experiment copy --help` for more details.
+
+    biomage experiment copy --experiment_id=my-experiment-id --sandbox_id=my-sandbox-id
 
 #### experiment compare
 
@@ -188,11 +196,3 @@ Creates new releases from develop branches.
 
 `biomage release` -> creates a new release asking for systems to be released.
 `biomage release --all` -> creates a new release for all repos (ui, api, pipeline, worker).
-
-#### experiment copy
-
-Copies one experiment information from a given env to another, prefxing keys of the copied data and records with `sandbox_id`. It is recommended to set the value of `sandbox_id` to the same value as your staging environment, so that running `biomage unstage` when unstaging the experiment will also delete records of the copied experiment.
-
-To run this command, `BIOMAGE_EMAIL` has to be set with the username you use to login in the staging environment. See `biomage experiment copy --help` for more details.
-
-`biomage experiment copy --experiment_id=e52b39624588791a7889e39c617f669e --sandbox_id=default`

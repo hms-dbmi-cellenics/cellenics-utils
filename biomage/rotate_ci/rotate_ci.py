@@ -9,7 +9,7 @@ import requests
 from botocore.config import Config
 from github import Github
 
-from ..utils import encrypt
+from ..utils.encrypt import encrypt
 
 config = Config(
     region_name="eu-west-1",

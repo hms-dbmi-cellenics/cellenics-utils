@@ -90,12 +90,6 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
         experiment_id = obj["Key"].split("/")[0]
         target_key = obj["Key"].replace(experiment_id, f"{sandbox_id}-{experiment_id}")
 
-        # biomage-originals- uses projectId/sampleId/file schema,
-        # so sampleId has to be prefixed too
-        if "biomage-originals-" in target_bucket:
-            sample_id = obj["Key"].split("/")[1]
-            target_key = target_key.replace(sample_id, f"{sandbox_id}-{sample_id}")
-
         source = {"Bucket": source_bucket, "Key": obj["Key"]}
 
         target = {

@@ -20,7 +20,9 @@ from ..utils.data import copy_experiments_to
     "-p",
     "--prefix",
     required=False,
-    default=os.getenv("BIOMAGE_EMAIL"),
+    default=os.getenv("BIOMAGE_EMAIL").split("@")[
+        0
+    ],  # keep only the name as @ is not allowed in DynamoDB keys
     show_default=True,
     help="Prefix added to copied experiment to avoid ID clashes with other copies.",
 )
