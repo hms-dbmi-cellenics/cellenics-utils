@@ -42,16 +42,7 @@ from ..utils.data import copy_experiments_to
     show_default=True,
     help="Output environment to copy the data to.",
 )
-@click.option(
-    "--update_hash",
-    required=False,
-    default=True,
-    show_default=True,
-    help="When adding prefixes the experiment parameters' hash will change "
-    "so the pipeline will need to be run again. Set to true to update experiment"
-    " hash so that the pipeline does not need to run again.",
-)
-def copy(experiment_id, prefix, input_env, output_env, update_hash):
+def copy(experiment_id, prefix, input_env, output_env):
     """
     Copy an experiment from the default sandbox of the input environment into the
     sandbox_id of the output environment.
@@ -71,5 +62,4 @@ def copy(experiment_id, prefix, input_env, output_env, update_hash):
         config=config,
         origin=input_env,
         destination=output_env,
-        update_hash=update_hash,
     )

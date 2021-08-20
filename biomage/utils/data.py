@@ -2,7 +2,6 @@ import boto3
 import click
 from biomage.experiment.utils import (
     add_env_user_to_experiment,
-    create_gem2s_hash,
     get_experiment_project_id,
 )
 from botocore.exceptions import ClientError
@@ -185,49 +184,8 @@ def copy_project_record(
         )
 
 
-def insert_new_gem2s_hash(sandbox_id, experiments, source_experiments_table):
-
-    source_projects_table = source_experiments_table.replace("experiments", "projects")
-    source_samples_table = source_experiments_table.replace("experiments", "samples")
-
-    client = boto3.client("dynamodb")
-
-    for experiment_id in experiments:
-
-        prefixed_experiment_id = f"{sandbox_id}-{experiment_id}"
-
-        experiment = client.get_item(
-            TableName=source_experiments_table,
-            Key={"experimentId": {"S": prefixed_experiment_id}},
-        ).get("Item")
-
-        project = client.get_item(
-            TableName=source_projects_table,
-            Key={"projectUuid": experiment["projectId"]},
-        ).get("Item")["projects"]
-
-        samples = client.get_item(
-            TableName=source_samples_table,
-            Key={"experimentId": {"S": prefixed_experiment_id}},
-        ).get("Item")["samples"]
-
-        gem2s_hash = create_gem2s_hash(experiment, project, samples)
-
-        client.update_item(
-            TableName=source_experiments_table,
-            Key={"experimentId": {"S": prefixed_experiment_id}},
-            UpdateExpression="SET meta.gem2s.paramsHash = :hash_string",
-            ExpressionAttributeValues={":hash_string": {"S": gem2s_hash}},
-        )
-
-        click.echo(
-            f"Inserted new GEM2S params for experiment {experiment_id} "
-            + f"in {source_experiments_table}"
-        )
-
-
 def copy_experiments_to(
-    experiments, prefix, config, update_hash, origin=PRODUCTION, destination=STAGING
+    experiments, prefix, config, origin=PRODUCTION, destination=STAGING
 ):
     """
     Copy the list of experiment IDs in experiments from the origin env into
@@ -261,15 +219,6 @@ def copy_experiments_to(
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
         copy_dynamodb_records(prefix, experiments, source_table, target_table, config)
-
-    # GEM2S should not be run on copied records and files as that may introduce
-    # diferences to the generated records and files which prevents testing
-    # production data on staging environment
-    # When copying experiments for integration testing we want them to run again
-    # so we added the parameter to disable the hash update.
-    if update_hash:
-        click.echo("Creating new GEM2S params to prevent rerunning pipeline...")
-        insert_new_gem2s_hash(prefix, experiments, config["staging-experiments-table"])
 
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)
