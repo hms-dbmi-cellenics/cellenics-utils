@@ -4,7 +4,7 @@ import sys
 import click
 
 from ..utils.config import get_config
-from ..utils.constants import DEFAULT_SANDBOX, PRODUCTION, STAGING
+from ..utils.constants import PRODUCTION, STAGING
 from ..utils.data import copy_experiments_to
 
 
@@ -15,16 +15,6 @@ from ..utils.data import copy_experiments_to
     required=True,
     show_default=True,
     help="Experiment ID to be copied.",
-)
-@click.option(
-    "-p",
-    "--prefix",
-    required=False,
-    default=os.getenv("BIOMAGE_EMAIL").split("@")[
-        0
-    ],  # keep only the name as @ is not allowed in DynamoDB keys
-    show_default=True,
-    help="Prefix added to copied experiment to avoid ID clashes with other copies.",
 )
 @click.option(
     "-i",
@@ -42,10 +32,9 @@ from ..utils.data import copy_experiments_to
     show_default=True,
     help="Output environment to copy the data to.",
 )
-def copy(experiment_id, prefix, input_env, output_env):
+def copy(experiment_id, input_env, output_env):
     """
-    Copy an experiment from the default sandbox of the input environment into the
-    sandbox_id of the output environment.
+    Copy an experiment from the input environment into an output environment.
     """
 
     if output_env == PRODUCTION:
@@ -58,7 +47,6 @@ def copy(experiment_id, prefix, input_env, output_env):
 
     copy_experiments_to(
         experiments=experiments,
-        prefix=prefix,
         config=config,
         origin=input_env,
         destination=output_env,

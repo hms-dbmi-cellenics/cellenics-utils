@@ -154,27 +154,22 @@ def add_user_to_rbac(user_name, cfg):
     if "rbac_can_write" in cfg:
         if user_name not in cfg["rbac_can_write"]["SS"]:
             cfg["rbac_can_write"]["SS"].append(user_name)
-        return cfg
     for val in cfg.values():
         if isinstance(val, dict):
             add_user_to_rbac(user_name, val)
 
 
 def add_env_user_to_experiment(cfg):
-    # get the user ID directly from an ENV variable
-    user_name = os.getenv("BIOMAGE_USERNAME")
-    if not user_name:
-        # if we didnt' get the username directly try to get it from cognito
-        # it requires aws permissions
-        email = os.getenv("BIOMAGE_EMAIL")
-        if not email:
-            raise ValueError(
-                "biomage username/ email not available to patch experiment permissions."
-                + ' Set the either environment variable "BIOMAGE_EMAIL" with the email'
-                + ' you use to log in into cellscope or the "BIOMAGE_USERNAME" with '
-                + "your ID and try again."
-            )
+    email = os.getenv("BIOMAGE_EMAIL")
+    if not email:
+        raise ValueError(
+            "biomage email not available to patch experiment permissions."
+            + ' Set the environment variable "BIOMAGE_EMAIL" with the email you use to log in into cellscope'
+            + " and try again."
+        )
 
-        user_name = get_cognito_username(email=email)
+    user_name = get_cognito_username(email=email)
 
-    return add_user_to_rbac(user_name=user_name, cfg=cfg)
+    add_user_to_rbac(user_name=user_name, cfg=cfg)
+
+    return cfg

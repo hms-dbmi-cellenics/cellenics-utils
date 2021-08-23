@@ -9,43 +9,6 @@ from botocore.exceptions import ClientError
 from ..utils.constants import PRODUCTION, STAGING
 
 
-def modify_records(item, target_table, config, **extra):
-    """
-    Return modified records.
-    This function should return spreadable dictionary
-    """
-
-    if target_table == config["staging-experiments-table"]:
-
-        item["projectId"]["S"] = f"{extra['sandbox_id']}-{item['projectId']['S']}"
-        item = add_env_user_to_experiment(cfg=item)
-
-        return item
-
-    if target_table == config["staging-samples-table"]:
-        return {
-            "projectUuid": {"S": f"{extra['sandbox_id']}-{item['projectUuid']['S']}"},
-        }
-
-    if target_table == config["staging-projects-table"]:
-
-        new_experiments_list = []
-        for experiment_id in item["projects"]["M"]["experiments"]["L"]:
-            new_experiments_list.append(
-                {"S": f"{extra['sandbox_id']}-{experiment_id['S']}"}
-            )
-
-        item["projects"]["M"]["experiments"]["L"] = new_experiments_list
-
-        item["projects"]["M"]["uuid"][
-            "S"
-        ] = f"{extra['sandbox_id']}-{item['projectUuid']['S']}"
-
-        return item
-
-    return {}
-
-
 def definitely_equal(target, source):
     """
     Returns if 2 objects are equal. Only positive return values are reliable. Two
@@ -72,9 +35,10 @@ def definitely_equal(target, source):
     return same_etag
 
 
-def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
+def copy_s3_files(prefix, source_bucket, target_bucket):
     """
-    Copy s3 files in a bucket under a prefix
+    Copy s3 files in a bucket under a prefix. Prefix is normally an experiment or
+     project id
     """
     s3 = boto3.client("s3")
     exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
@@ -86,8 +50,7 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
 
     for obj in exp_files.get("Contents"):
 
-        experiment_id = obj["Key"].split("/")[0]
-        target_key = obj["Key"].replace(experiment_id, f"{sandbox_id}-{experiment_id}")
+        target_key = obj["Key"]
 
         source = {"Bucket": source_bucket, "Key": obj["Key"]}
 
@@ -114,17 +77,13 @@ def copy_s3_files(sandbox_id, prefix, source_bucket, target_bucket):
                 )
 
 
-def copy_dynamodb_records(
-    sandbox_id, staging_experiments, source_table, target_table, config
-):
+def copy_dynamodb_records(staging_experiments, source_table, target_table, config):
     """
     Copy dynamodBD records for an experiment id
     """
 
     if "projects-" in source_table:
-        copy_project_record(
-            sandbox_id, staging_experiments, source_table, target_table, config
-        )
+        copy_project_record(staging_experiments, source_table, target_table, config)
         return
 
     dynamodb = boto3.client("dynamodb")
@@ -135,34 +94,21 @@ def copy_dynamodb_records(
             ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
         ).get("Items")
 
-        items_to_insert = {
-            target_table: [
-                {
-                    "PutRequest": {
-                        "Item": {
-                            **item,
-                            **modify_records(
-                                item, target_table, config, sandbox_id=sandbox_id
-                            ),
-                            "experimentId": {
-                                "S": f"{sandbox_id}-{item['experimentId']['S']}",
-                            },
-                        }
-                    }
-                }
-                for item in items
-            ]
-        }
+        items_to_insert = []
+        print(f"ITEMS: {items}")
+        for item in items:
+            item = add_env_user_to_experiment(cfg=item)
+            items_to_insert.append({"PutRequest": {"Item": item}})
+
+        insert_request = {target_table: items_to_insert}
 
         try:
-            dynamodb.batch_write_item(RequestItems=items_to_insert)
+            dynamodb.batch_write_item(RequestItems=insert_request)
         except Exception as e:
             click.echo(f"Failed inserting records: {e}")
 
 
-def copy_project_record(
-    sandbox_id, staging_experiments, source_table, target_table, config
-):
+def copy_project_record(staging_experiments, source_table, target_table, config):
 
     dynamodb = boto3.client("dynamodb")
     for experiment_id in staging_experiments:
@@ -175,18 +121,10 @@ def copy_project_record(
             TableName=source_table, Key={"projectUuid": {"S": project_id}}
         ).get("Item")
 
-        dynamodb.put_item(
-            TableName=target_table,
-            Item={
-                **modify_records(item, target_table, config, sandbox_id=sandbox_id),
-                "projectUuid": {"S": f"{sandbox_id}-{project_id}"},
-            },
-        )
+        dynamodb.put_item(TableName=target_table, Item=item)
 
 
-def copy_experiments_to(
-    experiments, prefix, config, origin=PRODUCTION, destination=STAGING
-):
+def copy_experiments_to(experiments, config, origin=PRODUCTION, destination=STAGING):
     """
     Copy the list of experiment IDs in experiments from the origin env into
     destination env.
@@ -204,10 +142,10 @@ def copy_experiments_to(
                 project_id = get_experiment_project_id(
                     experiment_id, config["production-experiments-table"]
                 )
-                copy_s3_files(prefix, project_id, source_bucket, target_bucket)
+                copy_s3_files(project_id, source_bucket, target_bucket)
                 continue
 
-            copy_s3_files(prefix, experiment_id, source_bucket, target_bucket)
+            copy_s3_files(experiment_id, source_bucket, target_bucket)
 
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
     click.echo()
@@ -218,7 +156,7 @@ def copy_experiments_to(
         target_table = source_table.replace(origin, destination)
 
         click.echo(f"Copying records from {source_table} to table {target_table}...")
-        copy_dynamodb_records(prefix, experiments, source_table, target_table, config)
+        copy_dynamodb_records(experiments, source_table, target_table, config)
 
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)
