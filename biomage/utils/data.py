@@ -35,7 +35,7 @@ def definitely_equal(target, source):
     return same_etag
 
 
-def copy_s3_files(prefix, source_bucket, target_bucket):
+def copy_s3_bucket(prefix, source_bucket, target_bucket):
     """
     Copy s3 files in a bucket under a prefix. Prefix is normally an experiment or
      project id
@@ -77,51 +77,77 @@ def copy_s3_files(prefix, source_bucket, target_bucket):
                 )
 
 
-def copy_dynamodb_records(staging_experiments, source_table, target_table, config):
+def copy_s3_data(experiments, config, origin, destination):
+    buckets = config["source-buckets"]
+    for experiment_id in experiments:
+
+        for source_bucket in buckets:
+            target_bucket = source_bucket.replace(origin, destination)
+
+            if "biomage-originals-" in target_bucket:
+                project_id = get_experiment_project_id(
+                    experiment_id, config["production-experiments-table"]
+                )
+                copy_s3_bucket(project_id, source_bucket, target_bucket)
+                continue
+
+            copy_s3_bucket(experiment_id, source_bucket, target_bucket)
+
+
+def copy_dynamodb_records(experiment_id, source_table, target_table, config):
     """
     Copy dynamodBD records for an experiment id
     """
 
+    # projects table uses project ID as PK so it's copied a bit differently
     if "projects-" in source_table:
-        copy_project_record(staging_experiments, source_table, target_table, config)
+        copy_project_record(experiment_id, source_table, target_table, config)
         return
 
     dynamodb = boto3.client("dynamodb")
-    for experiment_id in staging_experiments:
-        items = dynamodb.query(
-            TableName=source_table,
-            KeyConditionExpression="experimentId = :experiment_id",
-            ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
-        ).get("Items")
+    items = dynamodb.query(
+        TableName=source_table,
+        KeyConditionExpression="experimentId = :experiment_id",
+        ExpressionAttributeValues={":experiment_id": {"S": experiment_id}},
+    ).get("Items")
 
-        items_to_insert = []
-        print(f"ITEMS: {items}")
-        for item in items:
-            item = add_env_user_to_experiment(cfg=item)
-            items_to_insert.append({"PutRequest": {"Item": item}})
+    items_to_insert = []
+    for item in items:
+        item = add_env_user_to_experiment(cfg=item)
+        items_to_insert.append({"PutRequest": {"Item": item}})
 
-        insert_request = {target_table: items_to_insert}
+    insert_request = {target_table: items_to_insert}
 
-        try:
-            dynamodb.batch_write_item(RequestItems=insert_request)
-        except Exception as e:
-            click.echo(f"Failed inserting records: {e}")
+    try:
+        dynamodb.batch_write_item(RequestItems=insert_request)
+    except Exception as e:
+        click.echo(f"Failed inserting records: {e}")
 
 
-def copy_project_record(staging_experiments, source_table, target_table, config):
+def copy_project_record(experiment_id, source_table, target_table, config):
 
     dynamodb = boto3.client("dynamodb")
-    for experiment_id in staging_experiments:
 
-        project_id = get_experiment_project_id(
-            experiment_id, config["production-experiments-table"]
-        )
+    project_id = get_experiment_project_id(
+        experiment_id, config["production-experiments-table"]
+    )
 
-        item = dynamodb.get_item(
-            TableName=source_table, Key={"projectUuid": {"S": project_id}}
-        ).get("Item")
+    item = dynamodb.get_item(
+        TableName=source_table, Key={"projectUuid": {"S": project_id}}
+    ).get("Item")
 
-        dynamodb.put_item(TableName=target_table, Item=item)
+    dynamodb.put_item(TableName=target_table, Item=item)
+
+
+def copy_dynamodb_data(experiments, config, origin, destination):
+    for experiment_id in experiments:
+        for source_table in config["source-tables"]:
+            target_table = source_table.replace(origin, destination)
+
+            click.echo(
+                f"Copying records from {source_table} to table {target_table}..."
+            )
+            copy_dynamodb_records(experiment_id, source_table, target_table, config)
 
 
 def copy_experiments_to(experiments, config, origin=PRODUCTION, destination=STAGING):
@@ -132,32 +158,17 @@ def copy_experiments_to(experiments, config, origin=PRODUCTION, destination=STAG
     click.echo()
     click.echo("Copying items for new experiments...")
 
-    buckets = config["source-buckets"]
-    # Copy files
-    for source_bucket in buckets:
-        target_bucket = source_bucket.replace(origin, destination)
-
-        for experiment_id in experiments:
-            if "biomage-originals-" in target_bucket:
-                project_id = get_experiment_project_id(
-                    experiment_id, config["production-experiments-table"]
-                )
-                copy_s3_files(project_id, source_bucket, target_bucket)
-                continue
-
-            copy_s3_files(experiment_id, source_bucket, target_bucket)
-
+    copy_s3_data(
+        experiments=experiments, config=config, origin=origin, destination=destination
+    )
     click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
     click.echo()
 
     # Copy DynamoDB entries
     click.echo("Copying DynamoDB records for new experiments...")
-    for source_table in config["source-tables"]:
-        target_table = source_table.replace(origin, destination)
-
-        click.echo(f"Copying records from {source_table} to table {target_table}...")
-        copy_dynamodb_records(experiments, source_table, target_table, config)
-
+    copy_dynamodb_data(
+        experiments=experiments, config=config, origin=origin, destination=destination
+    )
     click.echo(
         click.style("DynamoDB records successfully copied.", fg="green", bold=True)
     )
