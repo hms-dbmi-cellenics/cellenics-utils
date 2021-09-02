@@ -179,7 +179,7 @@ def pull(experiment_id, input_env):
     Downloads experiment data and config files from a given environment.\n
 
     E.g.:
-    biomage experiment pull -i staging -e e52b39624588791a7889e39c617f669e
+    biomage experiment pull -i staging -e 2093e95fd17372fb558b81b9142f230e
 
     Works only with r.rds datasets.\n
     """
