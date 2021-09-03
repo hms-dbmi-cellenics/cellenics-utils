@@ -38,7 +38,7 @@ def definitely_equal(target, source):
 def copy_s3_bucket(prefix, source_bucket, target_bucket):
     """
     Copy s3 files in a bucket under a prefix. Prefix is normally an experiment or
-     project id
+    project id
     """
     s3 = boto3.client("s3")
     exp_files = s3.list_objects_v2(Bucket=source_bucket, Prefix=prefix)
@@ -80,7 +80,6 @@ def copy_s3_bucket(prefix, source_bucket, target_bucket):
 def copy_s3_data(experiments, config, origin, destination):
     buckets = config["source-buckets"]
     for experiment_id in experiments:
-
         for source_bucket in buckets:
             target_bucket = source_bucket.replace(origin, destination)
 
