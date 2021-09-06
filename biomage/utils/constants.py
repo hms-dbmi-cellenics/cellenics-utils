@@ -4,7 +4,6 @@ STAGING = "staging"
 PRODUCTION = "production"
 
 # Default values used by biomage-utils
-DEFAULT_SANDBOX = "default"
 DEFAULT_EXPERIMENT_ID = "e52b39624588791a7889e39c617f669e"
 DEFAULT_NULL_SPECIES_VALUE = None
 DEFAULT_METADATA_VALUE = "N.A."
@@ -24,4 +23,3 @@ EXPERIMENTS_TABLE = "experiments"
 PROJECTS_TABLE = "projects"
 
 COGNITO_STAGING_POOL = "eu-west-1_sVQL15Yxu"
-

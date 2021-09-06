@@ -1,13 +1,10 @@
 import gzip
-import hashlib
 import json
 import os
 import time
-from collections import OrderedDict
 from pathlib import Path
 
 import boto3
-from biomage.utils import constants
 
 from ..utils.constants import COGNITO_STAGING_POOL
 
@@ -141,84 +138,19 @@ def get_cognito_username(email):
 
 def get_experiment_project_id(experiment_id, source_table):
 
-    table = boto3.resource('dynamodb').Table(source_table)
+    table = boto3.resource("dynamodb").Table(source_table)
 
     project_id = table.get_item(
-        Key={"experimentId": experiment_id},
-        ProjectionExpression='projectId'
-    ).get("Item")['projectId']
+        Key={"experimentId": experiment_id}, ProjectionExpression="projectId"
+    ).get("Item")["projectId"]
 
     return project_id
-
-
-def create_gem2s_hash(experiment, project, samples):
-
-    organism = constants.DEFAULT_NULL_SPECIES_VALUE
-
-    if experiment['meta']['M']['organism'].get('S'):
-        organism = experiment['meta']['M']['organism']['S']
-
-    # Filter 'ids' key which is present in older samples object
-    unsorted_sample_ids = [ 
-        sample_id for sample_id
-        in samples['M'] if sample_id != 'ids'
-    ]
-
-    # Sample IDS is first sorted so that hash does not depend on order of samples
-    sorted_sample_ids = unsorted_sample_ids.copy()
-    sorted_sample_ids.sort()
-
-    sample_names = []
-
-    # Sample names are created according to the sorted sampleIds so sample order doesn't matter
-    for sample_id in sorted_sample_ids:
-        sample_names.append(samples['M'][sample_id]['M']['name']['S'])
-
-    hash_params = OrderedDict()
-
-    hash_params = {
-        "organism": organism,
-        "input": {"type" : experiment["meta"]['M']["type"]["S"]},
-        "sampleIds": sorted_sample_ids,
-        "sampleNames": sample_names,
-    }
-
-    metadata_values = OrderedDict()
-    metadata_keys = [metadata['S'] for metadata in project['M']['metadataKeys']['L']]
-
-    if len(metadata_keys) > 0:
-
-        for key in metadata_keys:
-            # Replace '-' in key to '_'if
-            sanitizedKey = key.replace('-', '_')
-
-            for sample_id in unsorted_sample_ids:
-
-                metadata_value = constants.DEFAULT_METADATA_VALUE
-
-                if samples['M'][sample_id]['M']['metadata']['M'].get(key):
-                    metadata_value = samples['M'][sample_id]['M']['metadata']['M'][key]['S']
-
-                if not metadata_values.get(sanitizedKey):
-                    metadata_values[sanitizedKey] = []    
-
-                metadata_values[sanitizedKey].append(metadata_value)
-
-        hash_params['metadata'] = metadata_values
-
-    hash_params_string = json.dumps(hash_params) \
-        .replace(", ", ",") \
-        .replace(": ", ":") \
-        .encode('utf-8')
-
-    return hashlib.sha1(hash_params_string).hexdigest()
 
 
 def add_user_to_rbac(user_name, cfg):
     if "rbac_can_write" in cfg:
         if user_name not in cfg["rbac_can_write"]["SS"]:
             cfg["rbac_can_write"]["SS"].append(user_name)
-        return cfg
     for val in cfg.values():
         if isinstance(val, dict):
             add_user_to_rbac(user_name, val)
@@ -235,4 +167,6 @@ def add_env_user_to_experiment(cfg):
 
     user_name = get_cognito_username(email=email)
 
-    return add_user_to_rbac(user_name=user_name, cfg=cfg)
+    add_user_to_rbac(user_name=user_name, cfg=cfg)
+
+    return cfg
