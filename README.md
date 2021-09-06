@@ -54,8 +54,8 @@ then simply do:
   `${BIOMAGE_NICK:-${USER}}-...`.
 
 * `BIOMAGE_EMAIL` is used by the `experiment pull/copy` command to automatically add permissions for the downloaded experiment.
-You should specify the email used to log in into the platform in staging. **Note** your current aws account will need permissions
-for cognito.
+You should specify the email used to log in into the platform in staging. **Note** your current AWS account will need permissions
+for Cognito.
 
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
