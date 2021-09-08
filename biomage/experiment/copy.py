@@ -3,7 +3,7 @@ import sys
 import click
 
 from ..utils.config import get_config
-from ..utils.constants import DEFAULT_SANDBOX, PRODUCTION, STAGING
+from ..utils.constants import PRODUCTION, STAGING
 from ..utils.data import copy_experiments_to
 
 
@@ -14,14 +14,6 @@ from ..utils.data import copy_experiments_to
     required=True,
     show_default=True,
     help="Experiment ID to be copied.",
-)
-@click.option(
-    "-s",
-    "--sandbox_id",
-    required=True,
-    default=DEFAULT_SANDBOX,
-    show_default=True,
-    help="Sandbox ID in the destination environment to copy the data to.",
 )
 @click.option(
     "-i",
@@ -39,10 +31,9 @@ from ..utils.data import copy_experiments_to
     show_default=True,
     help="Output environment to copy the data to.",
 )
-def copy(experiment_id, sandbox_id, input_env, output_env):
+def copy(experiment_id, input_env, output_env):
     """
-    Copy an experiment from the default sandbox of the input environment into the
-    sandbox_id of the output environment.
+    Copy an experiment from the input environment into an output environment.
     """
 
     if output_env == PRODUCTION:
@@ -55,7 +46,6 @@ def copy(experiment_id, sandbox_id, input_env, output_env):
 
     copy_experiments_to(
         experiments=experiments,
-        sandbox_id=sandbox_id,
         config=config,
         origin=input_env,
         destination=output_env,
