@@ -181,7 +181,7 @@ def update_configs(experiment_id, origin):
     show_default=True,
     help="Whether to donwload s3 data for the experiments.",
 )
-def pull(experiment_id, input_env):
+def pull(experiment_id, input_env, get_s3_data):
     """
     Downloads experiment data and config files from a given environment.\n
 
