@@ -174,6 +174,13 @@ def update_configs(experiment_id, origin):
     show_default=True,
     help="Input environment to pull the data from.",
 )
+@click.option(
+    "--get_s3_data",
+    required=False,
+    default=True,
+    show_default=True,
+    help="Whether to donwload s3 data for the experiments.",
+)
 def pull(experiment_id, input_env):
     """
     Downloads experiment data and config files from a given environment.\n
@@ -186,21 +193,24 @@ def pull(experiment_id, input_env):
 
     Summary.set_command(cmd=PULL, origin=input_env, experiment_id=experiment_id)
 
-    update_configs(experiment_id, input_env)
+    try:
+        update_configs(experiment_id, input_env)
+    except Exception as e:
+        print(e)
 
-    bucket = f"biomage-source-{input_env}"
-    remote_file = f"{experiment_id}/r.rds"
-    local_file = f"{experiment_id}/{SOURCE_RDS_FILE}.gz"
-    download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
+    # bucket = f"biomage-source-{input_env}"
+    # remote_file = f"{experiment_id}/r.rds"
+    # local_file = f"{experiment_id}/{SOURCE_RDS_FILE}.gz"
+    # download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
 
-    bucket = f"processed-matrix-{input_env}"
-    remote_file = f"{experiment_id}/r.rds"
-    local_file = f"{experiment_id}/{PROCESSED_RDS_FILE}.gz"
-    download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
+    # bucket = f"processed-matrix-{input_env}"
+    # remote_file = f"{experiment_id}/r.rds"
+    # local_file = f"{experiment_id}/{PROCESSED_RDS_FILE}.gz"
+    # download_if_modified(bucket=bucket, key=remote_file, filepath=local_file)
 
-    bucket = f"cell-sets-{input_env}"
-    local_file = f"{experiment_id}/{CELLSETS_FILE}"
-    # the name of the cell sets file in S3 is just the experiment ID
-    download_if_modified(bucket=bucket, key=experiment_id, filepath=local_file)
+    # bucket = f"cell-sets-{input_env}"
+    # local_file = f"{experiment_id}/{CELLSETS_FILE}"
+    # # the name of the cell sets file in S3 is just the experiment ID
+    # download_if_modified(bucket=bucket, key=experiment_id, filepath=local_file)
 
     Summary.report_changes()
