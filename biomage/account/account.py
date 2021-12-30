@@ -120,7 +120,7 @@ def create_user(username, email, password):
     _create_user(username, email, password)
 
 
-def _create_user(username, email, password):
+def _create_user(username, email, password, overwrite=False):
 
     # format username into title and email into lowercase
     username = username.title()
@@ -130,9 +130,12 @@ def _create_user(username, email, password):
     # if the user already exists, just proceed and change the password
     # this way, when there's an error creating a list you can just
     # re-run the whole script and get the correct tmp passwords
-    if error and "UsernameExistsException" not in str(error):
+    if error and ("UsernameExistsException" not in str(error) or not overwrite):
         return error
 
+    if error:
+        print("there was an error and I was going to change the password anyway.")
+        return error
     error = _change_password(email, password)
     if error:
         return error
@@ -157,21 +160,21 @@ def create_users_list(user_list, header):
     The file should be in csv format.
     The first column should be the username in the format: first_name last_name
     The second row should be the email.
-    E.g.: Arthur Dent,arthur_dent@galaxy.gl
+    E.g.: Arthur Dent,arthur_dent@galaxy.gl,PASSWORD
     """
     import pandas as pd
 
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
-        for _, username, email in df.itertuples():
-            password = generate_password()
+        for _, username, email, password in df.itertuples():
+            # password = generate_password()
 
             username = username.title()
             email = email.lower()
             print("%s,%s,%s" % (username, email, password))
             out.write("%s,%s,%s\n" % (username, email, password))
 
-            error = _create_user(username, email, password)
+            error = _create_user(username, email, password, overwrite=True)
             if error:
                 print(error)
                 sys.exit(1)
