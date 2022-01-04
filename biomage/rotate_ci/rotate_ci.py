@@ -231,7 +231,7 @@ def rollback_if_necessary(iam, keys, result_codes):
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="biomage-ltd",
+    default="hms-dbmi-cellenics",
     help="The GitHub organization to perform the operation in.",
 )
 def rotate_ci(token, org):

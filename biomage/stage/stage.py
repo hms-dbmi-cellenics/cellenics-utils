@@ -129,7 +129,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     branch. If it is False, it returns the name of the default branch.
     """
 
-    # A `git` reference can be git@github.com:biomage-ltd/iac
+    # A `git` reference can be git@github.com:hms-dbmi-cellenics/iac
     # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
     org, repo_name = path[1].split("/")
@@ -539,7 +539,7 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="biomage-ltd",
+    default="hms-dbmi-cellenics",
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )

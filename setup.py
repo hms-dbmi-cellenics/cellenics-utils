@@ -19,7 +19,7 @@ setup(
     description="A CLI package for managing Biomage infrastructure and codebase.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/biomage-ltd/biomage-utils",
+    url="https://github.com/hms-dbmi-cellenics/biomage-utils",
 
     packages=find_packages(),
     package_data={
