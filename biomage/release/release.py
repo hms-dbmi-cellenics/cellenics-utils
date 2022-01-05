@@ -3,7 +3,7 @@ from github import Github
 from PyInquirer import prompt
 
 REPOS = ("ui", "api", "pipeline", "worker")
-ORG = "biomage-ltd"
+ORG = "hms-dbmi-cellenics"
 
 
 def prompt_repos_to_release():

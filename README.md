@@ -147,7 +147,7 @@ as these are commonly the branches that a developer would push features to mid-d
 ### unstage
 
 Removes a staging environment. You must specify the sandbox ID of the staging environment deployed
-previously from [here](https://github.com/biomage-ltd/iac/tree/master/releases/staging). Then, run
+previously from [here](https://github.com/hms-dbmi-cellenics/iac/tree/master/releases/staging). Then, run
 
     biomage unstage my-sandbox-id
 
