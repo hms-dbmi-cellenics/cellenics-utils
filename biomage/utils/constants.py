@@ -23,4 +23,4 @@ SAMPLES_TABLE = "samples"
 EXPERIMENTS_TABLE = "experiments"
 PROJECTS_TABLE = "projects"
 
-COGNITO_STAGING_POOL = "eu-west-1_sVQL15Yxu"
+COGNITO_STAGING_POOL = "eu-west-1_mAQcge0PR"
