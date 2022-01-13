@@ -47,7 +47,7 @@ def configure(r, token):
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="biomage-ltd",
+    default="hms-dbmi-cellenics",
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
