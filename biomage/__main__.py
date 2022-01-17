@@ -1,5 +1,6 @@
 import click
 
+from biomage.account import account
 from biomage.configure_repo import configure_repo
 from biomage.experiment import experiment
 from biomage.release import release
@@ -19,6 +20,7 @@ main.add_command(stage.stage)
 main.add_command(unstage.unstage)
 main.add_command(experiment.experiment)
 main.add_command(release.release)
+main.add_command(account.account)
 
 if __name__ == "__main__":
     main()
