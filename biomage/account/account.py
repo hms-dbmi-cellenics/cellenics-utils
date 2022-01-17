@@ -71,8 +71,15 @@ def create_account(username, email, userpool):
     help="Password for the new account.",
 )
 def change_password(email, password, userpool):
-
-    return _change_password(email, password, userpool)
+    print(
+        "Changing password for %s to %s in user pool %s..."
+        % (email, password, userpool)
+    )
+    error = _change_password(email, password, userpool)
+    if error:
+        print("Failed: %s" % error)
+    else:
+        print("Sucessful")
 
 
 def _change_password(email, password, userpool):
