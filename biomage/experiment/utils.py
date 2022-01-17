@@ -6,7 +6,7 @@ from pathlib import Path
 
 import boto3
 
-from ..utils.constants import COGNITO_STAGING_POOL
+COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL", "eu-west-1_mAQcge0PR")
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 PULL = "PULL"
