@@ -32,19 +32,19 @@ def generate_password():
     )
 
 
-def create_account(username, email, userpool):
+def create_account(user_name, email, userpool):
     """
     Creates a new account with the information provided. Requires a password change call afterwards."""
     p = Popen(
         f"""aws cognito-idp admin-create-user \
             --user-pool-id "{userpool}" \
-            --username "{email}" \
+            --user_name "{email}" \
             --message-action "SUPPRESS" \
             --user-attributes \
                 "Name=email,Value={email}" \
-                "Name=name,Value='{username}'" \
+                "Name=name,Value='{user_name}'" \
                 "Name=email_verified,Value=true" """.format(
-            userpool=userpool, email=email, username=username
+            userpool=userpool, email=email, user_name=user_name
         ),
         stdin=PIPE,
         stdout=PIPE,
@@ -53,8 +53,8 @@ def create_account(username, email, userpool):
     )
 
     output, error = p.communicate(input=b"\n")
-
-    print(output)
+    if output:
+        print(output)
 
     return error
 
@@ -77,16 +77,14 @@ def change_password(email, password, userpool):
     )
     error = _change_password(email, password, userpool)
     if error:
-        print("Failed: %s" % error)
-    else:
-        print("Sucessful")
+        print("Error changing password: %s" % error)
 
 
 def _change_password(email, password, userpool):
     p = Popen(
         f"""aws cognito-idp admin-set-user-password \
             --user-pool-id "{userpool}" \
-            --username "{email}" \
+            --user_name "{email}" \
             --password "{password}" \
             --permanent""".format(
             userpool=userpool, email=email, password=password
@@ -97,7 +95,8 @@ def _change_password(email, password, userpool):
         shell=True,
     )
     output, error = p.communicate(input=b"\n")
-    print(output)
+    if output:
+        print(output)
 
     return error
 
@@ -109,7 +108,7 @@ def _change_password(email, password, userpool):
     help="User email for the account.",
 )
 @click.option(
-    "--username",
+    "--user_name",
     required=True,
     help="The first and last name for the user. (e.g.: Arthur Dent)",
 )
@@ -118,7 +117,7 @@ def _change_password(email, password, userpool):
     required=False,
     help="Password for the new account.",
 )
-def create_user(username, email, password, userpool):
+def create_user(user_name, email, password, userpool):
     """
     Creates a new account with the provided password. The user will not receive any
     email and the account & email will be marked as verified.
@@ -126,25 +125,25 @@ def create_user(username, email, password, userpool):
     if not password:
         password = generate_password()
 
-    print("%s,%s,%s" % (username, email, password))
-    _create_user(username, email, password, userpool)
+    error = _create_user(user_name, email, password, userpool)
+    if error:
+        print("Error creating user: %s" % error)
 
 
-def _create_user(username, email, password, userpool, overwrite=False):
+def _create_user(user_name, email, password, userpool, overwrite=False):
 
-    # format username into title and email into lowercase
-    username = username.title()
+    # format user_name into title and email into lowercase
+    user_name = user_name.title()
     email = email.lower()
 
-    error = create_account(username, email, userpool)
+    error = create_account(user_name, email, userpool)
     # if the user already exists, just proceed and change the password
     # this way, when there's an error creating a list you can just
     # re-run the whole script and get the correct tmp passwords
-    if error and ("UsernameExistsException" not in str(error) or not overwrite):
+    if error and ("user_nameExistsException" not in str(error) or not overwrite):
         return error
 
     if error:
-        print("there was an error and I was going to change the password anyway.")
         return error
     error = _change_password(email, password, userpool)
     if error:
@@ -176,7 +175,7 @@ def create_users_list(user_list, header, input_env):
     """
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
-    The first column should be the username in the format: first_name last_name
+    The first column should be the user_name in the format: first_name last_name
     The second row should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
@@ -190,15 +189,15 @@ def create_users_list(user_list, header, input_env):
 
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
-        for _, username, email in df.itertuples():
+        for _, user_name, email in df.itertuples():
             password = generate_password()
 
-            username = username.title()
+            user_name = user_name.title()
             email = email.lower()
-            print("%s,%s,%s" % (username, email, password))
-            out.write("%s,%s,%s\n" % (username, email, password))
+            print("%s,%s,%s" % (user_name, email, password))
+            out.write("%s,%s,%s\n" % (user_name, email, password))
 
-            error = _create_user(username, email, password, userpool, overwrite=True)
+            error = _create_user(user_name, email, password, userpool, overwrite=True)
             if error:
                 print(error)
                 sys.exit(1)
