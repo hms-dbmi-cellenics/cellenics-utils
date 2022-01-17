@@ -8,6 +8,8 @@ from subprocess import PIPE, Popen
 
 import click
 
+from ..utils.constants import PRODUCTION, STAGING
+
 
 @click.group()
 def account():
@@ -17,7 +19,8 @@ def account():
     pass
 
 
-userpool = os.getenv("COGNITO_PRODUCTION_POOL")
+COGNITO_PRODUCTION_POOL = os.getenv("COGNITO_PRODUCTION_POOL")
+COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL")
 
 
 def generate_password():
@@ -29,7 +32,7 @@ def generate_password():
     )
 
 
-def create_account(username, email):
+def create_account(username, email, userpool):
     """
     Creates a new account with the information provided. Requires a password change call afterwards."""
     p = Popen(
@@ -67,12 +70,12 @@ def create_account(username, email):
     required=True,
     help="Password for the new account.",
 )
-def change_password(email, password):
+def change_password(email, password, userpool):
 
-    return _change_password(email, password)
+    return _change_password(email, password, userpool)
 
 
-def _change_password(email, password):
+def _change_password(email, password, userpool):
     p = Popen(
         f"""aws cognito-idp admin-set-user-password \
             --user-pool-id "{userpool}" \
@@ -108,7 +111,7 @@ def _change_password(email, password):
     required=False,
     help="Password for the new account.",
 )
-def create_user(username, email, password):
+def create_user(username, email, password, userpool):
     """
     Creates a new account with the provided password. The user will not receive any
     email and the account & email will be marked as verified.
@@ -117,16 +120,16 @@ def create_user(username, email, password):
         password = generate_password()
 
     print("%s,%s,%s" % (username, email, password))
-    _create_user(username, email, password)
+    _create_user(username, email, password, userpool)
 
 
-def _create_user(username, email, password, overwrite=False):
+def _create_user(username, email, password, userpool, overwrite=False):
 
     # format username into title and email into lowercase
     username = username.title()
     email = email.lower()
 
-    error = create_account(username, email)
+    error = create_account(username, email, userpool)
     # if the user already exists, just proceed and change the password
     # this way, when there's an error creating a list you can just
     # re-run the whole script and get the correct tmp passwords
@@ -136,7 +139,7 @@ def _create_user(username, email, password, overwrite=False):
     if error:
         print("there was an error and I was going to change the password anyway.")
         return error
-    error = _change_password(email, password)
+    error = _change_password(email, password, userpool)
     if error:
         return error
 
@@ -154,27 +157,41 @@ def _create_user(username, email, password, overwrite=False):
     help="""Header parameter passed to pandas read_csv function. Use 'None'
     if no headers are present, otherwise specify the header row number with an int.""",
 )
-def create_users_list(user_list, header):
+@click.option(
+    "-i",
+    "--input_env",
+    required=False,
+    default=STAGING,
+    show_default=True,
+    help="Input environment to pull the data from.",
+)
+def create_users_list(user_list, header, input_env):
     """
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
     The first column should be the username in the format: first_name last_name
     The second row should be the email.
-    E.g.: Arthur Dent,arthur_dent@galaxy.gl,PASSWORD
+    E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
     import pandas as pd
 
+    userpool = None
+    if input_env == PRODUCTION:
+        userpool = COGNITO_PRODUCTION_POOL
+    elif input_env == STAGING:
+        userpool = COGNITO_STAGING_POOL
+
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
-        for _, username, email, password in df.itertuples():
-            # password = generate_password()
+        for _, username, email in df.itertuples():
+            password = generate_password()
 
             username = username.title()
             email = email.lower()
             print("%s,%s,%s" % (username, email, password))
             out.write("%s,%s,%s\n" % (username, email, password))
 
-            error = _create_user(username, email, password, overwrite=True)
+            error = _create_user(username, email, password, userpool, overwrite=True)
             if error:
                 print(error)
                 sys.exit(1)
