@@ -14,7 +14,7 @@ from ..utils.constants import PRODUCTION, STAGING
 @click.group()
 def account():
     """
-    Manage  Cellscope account information.
+    Manage Cellenics account information.
     """
     pass
 

@@ -7,6 +7,7 @@ from biomage.release import release
 from biomage.rotate_ci import rotate_ci
 from biomage.stage import stage
 from biomage.unstage import unstage
+from biomage.rds import rds
 
 
 @click.group()
@@ -21,6 +22,7 @@ main.add_command(unstage.unstage)
 main.add_command(experiment.experiment)
 main.add_command(release.release)
 main.add_command(account.account)
+main.add_command(rds.rds)
 
 if __name__ == "__main__":
     main()
