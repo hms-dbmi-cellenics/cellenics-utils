@@ -8,7 +8,9 @@ from deepdiff import DeepDiff
 from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
+
 from .start_port_forwarding import start_port_forwarding
+from .login import login
 
 @click.group()
 def rds():
@@ -18,3 +20,4 @@ def rds():
     pass
 
 rds.add_command(start_port_forwarding)
+rds.add_command(login)
