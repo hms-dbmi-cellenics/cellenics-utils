@@ -31,7 +31,7 @@ trap cleanup EXIT
 
 ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
-echo "Finished setting up, run \"biomage rds login\" in a different tab"
+echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT\" in a different tab"
 echo 
 echo "------------------------------"
 echo "Press any key to close session."
