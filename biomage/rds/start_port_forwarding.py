@@ -1,11 +1,11 @@
+from subprocess import run
+
 import click
 
 from ..utils.constants import STAGING
 
-from subprocess import run
 
 @click.command()
-
 @click.option(
     "-i",
     "--input_env",
@@ -14,7 +14,6 @@ from subprocess import run
     show_default=True,
     help="Input environment of the RDS server.",
 )
-
 @click.option(
     "-t",
     "--endpoint_type",
@@ -23,7 +22,6 @@ from subprocess import run
     show_default=True,
     help="The type of the rds endpoint you want to connect to, can be either reader or writer",
 )
-
 # Disabled, only 5432 works for now
 # @click.option(
 #     "-p",
@@ -33,8 +31,7 @@ from subprocess import run
 #     show_default=True,
 #     help="Local port from which to connect.",
 # )
-
-def start_port_forwarding(input_env, endpoint_type, local_port = 5432):
+def start_port_forwarding(input_env, endpoint_type, local_port=5432):
     """
     Sets up a port forwarding session for the rds server in a given environment.\n
 
@@ -42,4 +39,7 @@ def start_port_forwarding(input_env, endpoint_type, local_port = 5432):
     biomage rds start-port-forwarding -i staging
     """
 
-    run(f"./biomage/rds/start_port_forwarding.sh {input_env} {local_port} {endpoint_type}", shell=True)
+    run(
+        f"./biomage/rds/start_port_forwarding.sh {input_env} {local_port} {endpoint_type}",
+        shell=True,
+    )
