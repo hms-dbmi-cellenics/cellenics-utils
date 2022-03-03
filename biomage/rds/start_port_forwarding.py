@@ -1,3 +1,4 @@
+import pathlib
 from subprocess import run
 
 import click
@@ -39,7 +40,8 @@ def start_port_forwarding(input_env, endpoint_type, local_port=5432):
     biomage rds start-port-forwarding -i staging
     """
 
+    file_dir = pathlib.Path(__file__).parent.resolve()
     run(
-        f"./biomage/rds/start_port_forwarding.sh {input_env} {local_port} {endpoint_type}",
+        f"{file_dir}/start_port_forwarding.sh {input_env} {local_port}",
         shell=True,
     )
