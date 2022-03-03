@@ -15,6 +15,15 @@ from subprocess import PIPE, run
     help="Input environment of the RDS server.",
 )
 
+@click.option(
+    "-t",
+    "--endpoint_type",
+    required=False,
+    default="reader",
+    show_default=True,
+    help="The type of the rds endpoint you want to connect to, can be either reader or writer",
+)
+
 # Disabled, only 5432 works for now
 # @click.option(
 #     "-p",
@@ -25,7 +34,7 @@ from subprocess import PIPE, run
 #     help="Local port from which to connect.",
 # )
 
-def start_port_forwarding(input_env, local_port = 5432):
+def start_port_forwarding(input_env, endpoint_type, local_port = 5432):
     """
     Sets up a port forwarding session for the rds server in a given environment.\n
 
@@ -33,7 +42,7 @@ def start_port_forwarding(input_env, local_port = 5432):
     biomage rds start-port-forwarding -i staging
     """
 
-    run(f"./biomage/rds/start_port_forwarding.sh {input_env} {local_port}", shell=True)
+    run(f"./biomage/rds/start_port_forwarding.sh {input_env} {local_port} {endpoint_type}", shell=True)
 
 # Everything that is commented out here is a python version in case it is useful if we try to reimplement it in python instead
 # def start_port_forwarding(input_env, local_port):

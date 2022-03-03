@@ -47,7 +47,16 @@ from subprocess import PIPE, run
     help="Role to connect as (role is the same as user).",
 )
 
-def login(input_env, port, user, region):
+@click.option(
+    "-t",
+    "--endpoint_type",
+    required=False,
+    default="reader",
+    show_default=True,
+    help="The type of the rds endpoint you want to connect to, can be either reader or writer",
+)
+
+def login(input_env, port, user, region, endpoint_type):
     """
     Logs into a database using psql and IAM if necessary.\n
 
@@ -66,7 +75,7 @@ def login(input_env, port, user, region):
 
         rds_client = boto3.client("rds")
 
-        remote_endpoint = get_rds_writer_endpoint(input_env, rds_client)
+        remote_endpoint = get_rds_endpoint(input_env, rds_client, endpoint_type)
 
         print(f"Generating temporary token for {input_env}")
         password = rds_client.generate_db_auth_token(remote_endpoint, internal_port, user, region)
@@ -75,13 +84,13 @@ def login(input_env, port, user, region):
 
     run(f"PGPASSWORD=\"{password}\" psql --host=localhost --port={internal_port} --username={user} --dbname=aurora_db", shell=True)
 
-def get_rds_writer_endpoint(input_env, rds_client):
+def get_rds_endpoint(input_env, rds_client, endpoint_type):
     response = rds_client.describe_db_cluster_endpoints(
         DBClusterIdentifier=f"aurora-cluster-{input_env}",
         Filters=[
             {
                 'Name': 'db-cluster-endpoint-type',
-                'Values': ['writer']
+                'Values': [endpoint_type]
             },
         ],
     )
