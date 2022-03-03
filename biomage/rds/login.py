@@ -39,16 +39,18 @@ from ..utils.constants import STAGING
     show_default=True,
     help="Role to connect as (role is the same as user).",
 )
-@click.option(
-    "-t",
-    "--endpoint_type",
-    required=False,
-    default="reader",
-    show_default=True,
-    help="The type of the rds endpoint you want to connect to, can \
-        be either reader or writer",
-)
-def login(input_env, port, user, region, endpoint_type):
+# Disabled, it doesn't change anything when there is only one instance
+# and might lead to confusion
+# @click.option(
+#     "-t",
+#     "--endpoint_type",
+#     required=False,
+#     default="reader",
+#     show_default=True,
+#     help="The type of the rds endpoint you want to connect to, can \
+#         be either reader or writer",
+# )
+def login(input_env, port, user, region, endpoint_type="writer"):
     """
     Logs into a database using psql and IAM if necessary.\n
 
