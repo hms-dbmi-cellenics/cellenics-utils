@@ -35,7 +35,7 @@ ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user
 echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT -t $ENDPOINT_TYPE\" in a different tab"
 echo 
 echo "------------------------------"
-echo "Press any key to close session."
+echo "Press enter to close session."
 echo "------------------------------"
 read
 echo
