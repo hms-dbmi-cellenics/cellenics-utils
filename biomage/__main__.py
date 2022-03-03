@@ -3,11 +3,11 @@ import click
 from biomage.account import account
 from biomage.configure_repo import configure_repo
 from biomage.experiment import experiment
+from biomage.rds import rds
 from biomage.release import release
 from biomage.rotate_ci import rotate_ci
 from biomage.stage import stage
 from biomage.unstage import unstage
-from biomage.rds import rds
 
 
 @click.group()

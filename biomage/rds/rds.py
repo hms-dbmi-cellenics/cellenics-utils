@@ -8,9 +8,9 @@ from deepdiff import DeepDiff
 from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
-
-from .tunnel import tunnel
 from .login import login
+from .tunnel import tunnel
+
 
 @click.group()
 def rds():
@@ -18,6 +18,7 @@ def rds():
     Manage Cellenics RDS databases.
     """
     pass
+
 
 rds.add_command(tunnel)
 rds.add_command(login)

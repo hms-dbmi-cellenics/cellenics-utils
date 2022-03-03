@@ -1,10 +1,11 @@
 import boto3
 import click
+from botocore.exceptions import ClientError
+
 from biomage.experiment.utils import (
     add_env_user_to_experiment,
     get_experiment_project_id,
 )
-from botocore.exceptions import ClientError
 
 from ..utils.constants import PRODUCTION, STAGING
 
