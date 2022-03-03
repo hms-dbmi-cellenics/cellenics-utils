@@ -45,7 +45,8 @@ from ..utils.constants import STAGING
     required=False,
     default="reader",
     show_default=True,
-    help="The type of the rds endpoint you want to connect to, can be either reader or writer",
+    help="The type of the rds endpoint you want to connect to, can \
+        be either reader or writer",
 )
 def login(input_env, port, user, region, endpoint_type):
     """
@@ -63,7 +64,8 @@ def login(input_env, port, user, region, endpoint_type):
     else:
         internal_port = 5432
         print(
-            "Only local port 5432 works connecting to staging and prod for now, so setting it to 5432"
+            "Only local port 5432 works connecting to staging and prod for now, \
+                so setting it to 5432"
         )
 
         rds_client = boto3.client("rds")
@@ -78,7 +80,11 @@ def login(input_env, port, user, region, endpoint_type):
     print("Token generated")
 
     run(
-        f'PGPASSWORD="{password}" psql --host=localhost --port={internal_port} --username={user} --dbname=aurora_db',
+        f'PGPASSWORD="{password}" psql \
+            --host=localhost \
+            --port={internal_port} \
+            --username={user} \
+            --dbname=aurora_db',
         shell=True,
     )
 

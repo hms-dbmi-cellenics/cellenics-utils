@@ -32,9 +32,9 @@ from ..utils.constants import STAGING
 #     show_default=True,
 #     help="Local port from which to connect.",
 # )
-def start_port_forwarding(input_env, endpoint_type, local_port=5432):
+def ssh_tunnel(input_env, endpoint_type, local_port=5432):
     """
-    Sets up a port forwarding session for the rds server in a given environment.\n
+    Sets up an ssh tunneling/port forwarding session for the rds server in a given environment.\n
 
     E.g.:
     biomage rds start-port-forwarding -i staging
@@ -42,6 +42,6 @@ def start_port_forwarding(input_env, endpoint_type, local_port=5432):
 
     file_dir = pathlib.Path(__file__).parent.resolve()
     run(
-        f"{file_dir}/start_port_forwarding.sh {input_env} {local_port}",
+        f"{file_dir}/start_port_forwarding.sh {input_env} {local_port} {endpoint_type}",
         shell=True,
     )
