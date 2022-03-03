@@ -2,7 +2,7 @@ import click
 
 from ..utils.constants import STAGING
 
-from subprocess import PIPE, run
+from subprocess import run
 
 @click.command()
 
