@@ -1,9 +1,5 @@
-import sys
-import signal
 import boto3
 import click
-
-import threading
 
 from ..utils.constants import STAGING
 
