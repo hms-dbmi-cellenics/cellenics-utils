@@ -9,7 +9,7 @@ from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
 
-from .start_port_forwarding import start_port_forwarding
+from .tunnel import tunnel
 from .login import login
 
 @click.group()
@@ -19,5 +19,5 @@ def rds():
     """
     pass
 
-rds.add_command(start_port_forwarding)
+rds.add_command(tunnel)
 rds.add_command(login)
