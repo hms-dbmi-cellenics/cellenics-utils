@@ -4,11 +4,38 @@ REGION=$2
 LOCAL_PORT=$3
 ENDPOINT_TYPE=$4
 
+function show_requirements() {
+	echo '
+---------------------
+There was an error. 
+---------------------
+
+Please check if the following packages are installed: postgresql, jq.
+Installation: brew install <pkgname>
+
+Or if the aws ssm plugin is installed:
+Installation:
+	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+	unzip sessionmanager-bundle.zip
+	sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+
+or check source for other ssm install options https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+	'
+	exit
+}
+
 function cleanup() {
+	if [ $? -ne 0 ]; then
+		show_requirements
+	fi
+
+
 	ssh -O exit -S temp-ssh.sock *
 	rm temp*
 	echo "Finished cleaning up"
 }
+
+trap cleanup EXIT
 
 RDSHOST="$(aws rds describe-db-cluster-endpoints \
 	--region $REGION \
@@ -28,8 +55,6 @@ AVAILABILITY_ZONE=$(echo $INSTANCE_DATA | jq -r '.[0][0].AvailabilityZone')
 ssh-keygen -t rsa -f temp -N ''
 
 AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://temp.pub
-
-trap cleanup EXIT
 
 ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
