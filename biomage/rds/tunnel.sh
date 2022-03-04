@@ -1,7 +1,8 @@
 #!/bin/bash
 ENVIRONMENT=$1
-LOCAL_PORT=$2
-ENDPOINT_TYPE=$3
+REGION=$2
+LOCAL_PORT=$3
+ENDPOINT_TYPE=$4
 
 function cleanup() {
 	ssh -O exit -S temp-ssh.sock *
@@ -10,7 +11,7 @@ function cleanup() {
 }
 
 RDSHOST="$(aws rds describe-db-cluster-endpoints \
-	--region eu-west-1 \
+	--region $REGION \
 	--db-cluster-identifier aurora-cluster-$ENVIRONMENT \
 	--filter Name=db-cluster-endpoint-type,Values=\'$ENDPOINT_TYPE\' \
 	--query 'DBClusterEndpoints[0].Endpoint' \
@@ -32,7 +33,7 @@ trap cleanup EXIT
 
 ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
-echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT\" in a different tab"
+echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT -r $REGION\" in a different tab"
 echo 
 echo "------------------------------"
 echo "Press enter to close session."

@@ -37,7 +37,7 @@ from ..utils.constants import STAGING
     required=False,
     default="eu-west-1",
     show_default=True,
-    help="Role to connect as (role is the same as user).",
+    help="Region the RDS server is in.",
 )
 # Disabled, it doesn't change anything when there is only one instance
 # and might lead to confusion
