@@ -1,4 +1,4 @@
-from subprocess import run
+from subprocess import DEVNULL, run
 
 import boto3
 import click
@@ -81,7 +81,7 @@ def login(input_env, port, user, region, endpoint_type="writer"):
 
     print("Token generated")
 
-    run(
+    result = run(
         f'PGPASSWORD="{password}" psql \
             --host=localhost \
             --port={internal_port} \
@@ -89,6 +89,16 @@ def login(input_env, port, user, region, endpoint_type="writer"):
             --dbname=aurora_db',
         shell=True,
     )
+
+    if result.returncode != 0:
+        print(
+            "\n"
+            "There was an error connecting to the db. "
+            'You may need to install psql, run "brew install postgresql"'
+            "\n\n"
+            'Or try running "biomage rds tunnel" before this command if connecting'
+            "to staging/production"
+        )
 
 
 def get_rds_endpoint(input_env, rds_client, endpoint_type):
