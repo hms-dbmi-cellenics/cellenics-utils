@@ -3,6 +3,7 @@ import click
 from biomage.account import account
 from biomage.configure_repo import configure_repo
 from biomage.experiment import experiment
+from biomage.rds import rds
 from biomage.release import release
 from biomage.rotate_ci import rotate_ci
 from biomage.stage import stage
@@ -21,6 +22,7 @@ main.add_command(unstage.unstage)
 main.add_command(experiment.experiment)
 main.add_command(release.release)
 main.add_command(account.account)
+main.add_command(rds.rds)
 
 if __name__ == "__main__":
     main()

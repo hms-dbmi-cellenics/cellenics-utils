@@ -27,6 +27,7 @@ def configure(r, token):
     )
     master.add_required_signatures()
 
+
 @click.command()
 @click.argument("name")
 @click.option(

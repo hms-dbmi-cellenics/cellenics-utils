@@ -193,3 +193,22 @@ Creates new releases from develop branches.
 
 `biomage release` -> creates a new release asking for systems to be released.
 `biomage release --all` -> creates a new release for all repos (ui, api, pipeline, worker).
+
+### rds
+
+Includes many rds connection-related mechanisms. See `biomage rds --help` for more details.
+
+#### rds tunnel
+
+Sets up an ssh tunneling/port forwarding session for the rds server in a given environment.
+
+Example: set up an ssh tunnel to one of the staging rds endpoints
+    biomage rds tunnel -i staging
+
+#### rds login
+
+Logs into a database using psql and IAM if necessary.
+Important: If you're not trying to connect in development, you'll need to run `biomage rds tunnel -i staging` first in a different terminal.
+
+Example: login to staging
+    biomage rds login -i staging

@@ -161,7 +161,7 @@ def add_env_user_to_experiment(cfg):
     if not email:
         raise ValueError(
             "biomage email not available to patch experiment permissions."
-            + ' Set the environment variable "BIOMAGE_EMAIL" with the email you use to log in into cellscope'
+            + ' Set the environment variable "BIOMAGE_EMAIL" with the email you use to log in into cellenics'
             + " and try again."
         )
 

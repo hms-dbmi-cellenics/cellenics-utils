@@ -16,7 +16,7 @@ from .pull import pull
 @click.group()
 def experiment():
     """
-    Manage  Cellscope experiment data and settings.
+    Manage Cellenics experiment data and settings.
     """
     pass
 
