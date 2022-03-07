@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 import string
 import sys
 import time
@@ -7,6 +8,7 @@ from secrets import choice
 from subprocess import PIPE, Popen
 
 import click
+import pandas as pd
 
 from ..utils.constants import PRODUCTION, STAGING
 
@@ -43,9 +45,7 @@ def create_account(full_name, email, userpool):
             --user-attributes \
                 "Name=email,Value={email}" \
                 "Name=name,Value='{full_name}'" \
-                "Name=email_verified,Value=true" """.format(
-            userpool=userpool, email=email, full_name=full_name
-        ),
+                "Name=email_verified,Value=true" """,
         stdin=PIPE,
         stdout=PIPE,
         stderr=PIPE,
@@ -86,9 +86,7 @@ def _change_password(email, password, userpool):
             --user-pool-id "{userpool}" \
             --username "{email}" \
             --password "{password}" \
-            --permanent""".format(
-            userpool=userpool, email=email, password=password
-        ),
+            --permanent""",
         stdin=PIPE,
         stdout=PIPE,
         stderr=PIPE,
@@ -125,6 +123,11 @@ def create_user(full_name, email, password, userpool):
     if not password:
         password = generate_password()
 
+    error = _validate_input(email, full_name)
+    if error:
+        print(error)
+        sys.exit(1)
+
     error = _create_user(full_name, email, password, userpool)
     if error:
         print("Error creating user: %s" % error)
@@ -137,17 +140,58 @@ def _create_user(full_name, email, password, userpool, overwrite=False):
     email = email.lower()
 
     error = create_account(full_name, email, userpool)
-    # if the user already exists, just proceed and change the password
-    # this way, when there's an error creating a list you can just
-    # re-run the whole script and get the correct tmp passwords
+    # Return error if we are not overwriting user password
     if error and ("usernameExistsException" not in str(error) or not overwrite):
         return error
 
-    if error:
-        return error
     error = _change_password(email, password, userpool)
     if error:
         return error
+
+
+def _validate_input(email, full_name):
+    """
+    Check if the information provided for user creation is valid:
+    - Email is valid (according to regex in https://emailregex.com/)
+    - Full name is provided
+    Returns error message if any of the checks fail
+    """
+    if not email or pd.isna(email):
+        return f"ERROR: Email not provided for user {full_name}"
+
+    if not full_name or pd.isna(full_name):
+        return f"ERROR: Full name not provided for user {email}"
+
+    if not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email):
+        return f"ERROR: Email {email} does not match regex"
+
+
+def _user_exists(email, userpool):
+    """
+    Check if the user exists in the user pool.
+    By default function assumes user exists to prevent insertion into database.
+    """
+    exists = True
+
+    p = Popen(
+        f"""aws cognito-idp admin-get-user \
+            --user-pool-id "{userpool}" \
+            --username "{email}" """,
+        stdin=PIPE,
+        stdout=PIPE,
+        stderr=PIPE,
+        shell=True,
+    )
+    output, error = p.communicate(input=b"\n")
+
+    if output and str(output) != "":
+        exists = True
+
+    if error and ("UserNotFoundException" in str(error)):
+        exists = False
+        error = None
+
+    return exists, error
 
 
 @click.command()
@@ -171,7 +215,14 @@ def _create_user(full_name, email, password, userpool, overwrite=False):
     show_default=True,
     help="Input environment to pull the data from.",
 )
-def create_users_list(user_list, header, input_env):
+@click.option(
+    "--overwrite",
+    required=False,
+    default=False,
+    show_default=True,
+    help="Overwrite password for existing user accounts.",
+)
+def create_users_list(user_list, header, input_env, overwrite):
     """
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
@@ -179,7 +230,6 @@ def create_users_list(user_list, header, input_env):
     The second row should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
-    import pandas as pd
 
     userpool = None
     if input_env == PRODUCTION:
@@ -190,14 +240,34 @@ def create_users_list(user_list, header, input_env):
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
         for _, full_name, email in df.itertuples():
+
+            error = _validate_input(email, full_name)
+            if error:
+                print(error)
+                sys.exit()
+
             password = generate_password()
 
             full_name = full_name.title()
             email = email.lower()
+
+            if not overwrite:
+                exists, error = _user_exists(email, userpool)
+                if error:
+                    print(error)
+                    sys.exit(1)
+
+                if exists:
+                    print(
+                        f"Account {email} already exists in the user pool,",
+                        "skipping creation.",
+                    )
+                    continue
+
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
-            error = _create_user(full_name, email, password, userpool, overwrite=True)
+            error = _create_user(full_name, email, password, userpool, overwrite)
             if error:
                 print(error)
                 sys.exit(1)
