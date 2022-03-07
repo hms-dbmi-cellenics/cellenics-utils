@@ -140,8 +140,7 @@ def _create_user(full_name, email, password, userpool, overwrite=False):
     email = email.lower()
 
     error = create_account(full_name, email, userpool)
-    # Return error if we are not overwriting user password
-    if error and ("usernameExistsException" not in str(error) or not overwrite):
+    if error and not ("UsernameExistsException" in str(error) and overwrite):
         return error
 
     error = _change_password(email, password, userpool)
@@ -164,34 +163,6 @@ def _validate_input(email, full_name):
 
     if not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email):
         return f"ERROR: Email {email} does not match regex"
-
-
-def _user_exists(email, userpool):
-    """
-    Check if the user exists in the user pool.
-    By default function assumes user exists to prevent insertion into database.
-    """
-    exists = True
-
-    p = Popen(
-        f"""aws cognito-idp admin-get-user \
-            --user-pool-id "{userpool}" \
-            --username "{email}" """,
-        stdin=PIPE,
-        stdout=PIPE,
-        stderr=PIPE,
-        shell=True,
-    )
-    output, error = p.communicate(input=b"\n")
-
-    if output and str(output) != "":
-        exists = True
-
-    if error and ("UserNotFoundException" in str(error)):
-        exists = False
-        error = None
-
-    return exists, error
 
 
 @click.command()
@@ -251,27 +222,18 @@ def create_users_list(user_list, header, input_env, overwrite):
             full_name = full_name.title()
             email = email.lower()
 
-            if not overwrite:
-                exists, error = _user_exists(email, userpool)
-                if error:
-                    print(error)
-                    sys.exit(1)
-
-                if exists:
-                    print(
-                        f"Account {email} already exists in the user pool,",
-                        "skipping creation.",
-                    )
-                    out.write("%s,%s,'Already have an account'\n" % (full_name, email))
-                    continue
-
-            print("%s,%s,%s" % (full_name, email, password))
-            out.write("%s,%s,%s\n" % (full_name, email, password))
-
             error = _create_user(full_name, email, password, userpool, overwrite)
+            if error and not ("UsernameExistsException" in str(error) and overwrite):
+                out.write("%s,%s,Already have an account\n" % (full_name, email))
+                continue
+
             if error:
+                print("Error creating user {email} with password {password}")
                 print(error)
                 sys.exit(1)
+
+            print("%s,%s,%s\n" % (full_name, email, password))
+            out.write("%s,%s,%s\n" % (full_name, email, password))
 
 
 account.add_command(create_user)
