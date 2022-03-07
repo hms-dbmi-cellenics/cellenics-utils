@@ -262,6 +262,7 @@ def create_users_list(user_list, header, input_env, overwrite):
                         f"Account {email} already exists in the user pool,",
                         "skipping creation.",
                     )
+                    out.write("%s,%s,'Already have an account'\n" % (full_name, email))
                     continue
 
             print("%s,%s,%s" % (full_name, email, password))
