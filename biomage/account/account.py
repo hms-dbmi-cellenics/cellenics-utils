@@ -115,6 +115,11 @@ def _change_password(email, password, userpool):
     required=False,
     help="Password for the new account.",
 )
+@click.option(
+    "--userpool",
+    required=True,
+    help="Userpool to add the new account to.",
+)
 def create_user(full_name, email, password, userpool):
     """
     Creates a new account with the provided password. The user will not receive any
