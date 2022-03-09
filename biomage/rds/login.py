@@ -16,14 +16,6 @@ from ..utils.constants import STAGING
     help="Input environment of the RDS server.",
 )
 @click.option(
-    "-p",
-    "--port",
-    required=False,
-    default=5432,
-    show_default=True,
-    help="Port of the db.",
-)
-@click.option(
     "-u",
     "--user",
     required=False,
@@ -39,18 +31,7 @@ from ..utils.constants import STAGING
     show_default=True,
     help="Region the RDS server is in.",
 )
-# Disabled, it doesn't change anything when there is only one instance
-# and might lead to confusion
-# @click.option(
-#     "-t",
-#     "--endpoint_type",
-#     required=False,
-#     default="reader",
-#     show_default=True,
-#     help="The type of the rds endpoint you want to connect to, can \
-#         be either reader or writer",
-# )
-def login(input_env, port, user, region, endpoint_type="writer"):
+def login(input_env, user, region):
     """
     Logs into a database using psql and IAM if necessary.\n
 
@@ -59,17 +40,12 @@ def login(input_env, port, user, region, endpoint_type="writer"):
     """
     password = None
 
-    internal_port = port
+    internal_port = 5432
 
     if input_env == "development":
         password = "password"
+        internal_port = 5431
     else:
-        internal_port = 5432
-        print(
-            "Only local port 5432 works connecting to staging and prod for now, \
-                so setting it to 5432"
-        )
-
         rds_client = boto3.client("rds")
 
         remote_endpoint = get_rds_endpoint(input_env, rds_client, endpoint_type)
