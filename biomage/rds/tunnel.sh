@@ -7,7 +7,7 @@ ENDPOINT_TYPE=$4
 function show_requirements() {
 	echo '
 ---------------------
-There was an error. 
+There was an error.
 ---------------------
 
 Please check if the following packages are installed: postgresql, jq.
@@ -59,7 +59,7 @@ AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANC
 ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
 echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT -r $REGION\" in a different tab"
-echo 
+echo
 echo "------------------------------"
 echo "Press enter to close session."
 echo "------------------------------"

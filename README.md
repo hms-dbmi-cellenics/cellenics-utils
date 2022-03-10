@@ -205,10 +205,15 @@ Sets up an ssh tunneling/port forwarding session for the rds server in a given e
 Example: set up an ssh tunnel to one of the staging rds endpoints
     biomage rds tunnel -i staging
 
-#### rds login
+#### rds run
 
-Logs into a database using psql and IAM if necessary.
+Run a command in the database cluster using IAM if necessary.
 Important: If you're not trying to connect in development, you'll need to run `biomage rds tunnel -i staging` first in a different terminal.
 
-Example: login to staging
-    biomage rds login -i staging
+Example: login into postgre console in staging
+    biomage rds run psql
+
+Example: dump the in staging
+    biomage rds run psql
+
+See `biomage rds run --help` for more details.
