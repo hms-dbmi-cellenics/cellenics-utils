@@ -1,6 +1,6 @@
 import click
 
-from .login import login
+from .run import run
 from .tunnel import tunnel
 
 
@@ -13,4 +13,4 @@ def rds():
 
 
 rds.add_command(tunnel)
-rds.add_command(login)
+rds.add_command(run)
