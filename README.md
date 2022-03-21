@@ -187,6 +187,9 @@ Compares experiment settings accros development/staging/production environments.
 
     biomage experiment compare my-experiment-id
 
+### account
+A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. 
+
 ### release
 
 Creates new releases from develop branches.
