@@ -256,7 +256,7 @@ def unstage(token, org, sandbox_id):
 
         wf = None
         for workflow in r.get_workflows():
-            if workflow.name == "Remove a staging environment":
+            if workflow.name == "TEST Remove RDS from staging environment":
                 wf = str(workflow.id)
 
         wf = r.get_workflow(wf)
