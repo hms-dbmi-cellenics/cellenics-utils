@@ -205,7 +205,11 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
 
     # if we are in auto mode (non interactive) just generate a random sandbox ID name
     if auto:
-        return random_name.generate_name()
+        return (
+            os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))
+            + "-"
+            + random_name.generate_name()
+        )
 
     fragments = (
         re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
