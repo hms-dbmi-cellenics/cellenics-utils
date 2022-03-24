@@ -202,13 +202,14 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
             if opts.ref != DEFAULT_BRANCH
         ]
     )
+    user_name = re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", "")))
 
     # if we are in auto mode (non interactive) just generate a random sandbox ID name
     if auto:
-        return random_name.generate_name()
+        return (user_name + "-" + random_name.generate_name()).lower()[:26]
 
     fragments = (
-        re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", ""))),
+        user_name,
         pr_ids if pr_ids else manifest_hash,
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
