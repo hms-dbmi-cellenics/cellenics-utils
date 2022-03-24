@@ -23,7 +23,15 @@ from ..utils.constants import STAGING
     show_default=True,
     help="Region the RDS server is in.",
 )
-def tunnel(input_env, region, local_port=5432):
+@click.option(
+    "-s",
+    "--sandbox_id",
+    required=False,
+    default="default",
+    show_default=True,
+    help="Default sandbox id.",
+)
+def tunnel(input_env, region, sandbox_id, local_port=5432):
     """
     Sets up an ssh tunneling/port forwarding session
     for the rds server in a given environment.\n
@@ -38,6 +46,11 @@ def tunnel(input_env, region, local_port=5432):
     endpoint_type = "writer"
     file_dir = pathlib.Path(__file__).parent.resolve()
     run(
-        f"{file_dir}/tunnel.sh {input_env} {region} {local_port} {endpoint_type}",
+        f"{file_dir}/tunnel.sh \
+            {input_env} \
+            {sandbox_id} \
+            {region} \
+            {local_port} \
+            {endpoint_type}",
         shell=True,
     )

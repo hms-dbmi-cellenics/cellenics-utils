@@ -1,8 +1,9 @@
 #!/bin/bash
 ENVIRONMENT=$1
-REGION=$2
-LOCAL_PORT=$3
-ENDPOINT_TYPE=$4
+SANDBOX_ID=$2
+REGION=$3
+LOCAL_PORT=$4
+ENDPOINT_TYPE=$5
 
 function show_requirements() {
 	echo '
@@ -39,7 +40,7 @@ trap cleanup EXIT
 
 RDSHOST="$(aws rds describe-db-cluster-endpoints \
 	--region $REGION \
-	--db-cluster-identifier aurora-cluster-$ENVIRONMENT \
+	--db-cluster-identifier aurora-cluster-$ENVIRONMENT-$SANDBOX_ID \
 	--filter Name=db-cluster-endpoint-type,Values=\'$ENDPOINT_TYPE\' \
 	--query 'DBClusterEndpoints[0].Endpoint' \
 	| tr -d '"')"
@@ -52,13 +53,23 @@ INSTANCE_DATA=$(aws ec2 describe-instances \
 INSTANCE_ID=$(echo $INSTANCE_DATA | jq -r '.[0][0].InstanceId')
 AVAILABILITY_ZONE=$(echo $INSTANCE_DATA | jq -r '.[0][0].AvailabilityZone')
 
+echo $ENVIRONMENT
+echo $SANDBOX_ID
+echo $REGION
+echo $LOCAL_PORT
+echo $ENDPOINT_TYPE
+echo $RDSHOST
+echo $INSTANCE_DATA
+echo $INSTANCE_ID
+echo $AVAILABILITY_ZONE
+
 ssh-keygen -t rsa -f temp -N ''
 
 AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://temp.pub
 
 ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
-echo "Finished setting up, run \"biomage rds login -i $ENVIRONMENT -r $REGION\" in a different tab"
+echo "Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION\" in a different tab"
 echo
 echo "------------------------------"
 echo "Press enter to close session."
