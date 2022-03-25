@@ -78,11 +78,6 @@ def run(command, sandbox_id, input_env, user, region):
 
     print("Token generated", file=sys.stderr)
 
-    print("password", password, file=sys.stderr)
-    print("host", remote_endpoint, file=sys.stderr)
-    print("internal_port", internal_port, file=sys.stderr)
-    print("user", user, file=sys.stderr)
-
     result = sub_run(
         f'PGPASSWORD="{password}" {command} \
             --host={remote_endpoint} \

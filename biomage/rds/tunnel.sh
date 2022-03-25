@@ -53,21 +53,11 @@ INSTANCE_DATA=$(aws ec2 describe-instances \
 INSTANCE_ID=$(echo $INSTANCE_DATA | jq -r '.[0][0].InstanceId')
 AVAILABILITY_ZONE=$(echo $INSTANCE_DATA | jq -r '.[0][0].AvailabilityZone')
 
-echo $ENVIRONMENT
-echo $SANDBOX_ID
-echo $REGION
-echo $LOCAL_PORT
-echo $ENDPOINT_TYPE
-echo $RDSHOST
-echo $INSTANCE_DATA
-echo $INSTANCE_ID
-echo $AVAILABILITY_ZONE
-
 ssh-keygen -t rsa -f temp -N ''
 
 AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://temp.pub
 
-ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
+ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
 echo "Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION\" in a different tab"
 echo
