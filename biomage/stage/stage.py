@@ -206,12 +206,12 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
 
     # if we are in auto mode (non interactive) just generate a random sandbox ID name
     if auto:
-        return user_name + "-" + random_name.generate_name(
+        return (user_name + "-" + random_name.generate_name(
             lists=(
                 random_name.dictionaries.ADJECTIVES,
                 random_name.dictionaries.ANIMALS,
             )
-        ).lower()[:26].strip('-')
+        )).lower()[:26].strip('-')
 
     fragments = (
         user_name,
