@@ -142,3 +142,7 @@ cython_debug/
 .vscode
 .DS_Store
 data/
+
+# Biomage RDS tunnel temporary credentials
+temp
+temp.pub
