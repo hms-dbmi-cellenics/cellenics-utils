@@ -61,7 +61,6 @@ def run(command, sandbox_id, input_env, user, region):
     if input_env == "development":
         password = "password"
         internal_port = 5431
-        remote_endpoint = "localhost"
     else:
         rds_client = boto3.client("rds")
 
@@ -80,7 +79,7 @@ def run(command, sandbox_id, input_env, user, region):
 
     result = sub_run(
         f'PGPASSWORD="{password}" {command} \
-            --host={remote_endpoint} \
+            --host=localhost \
             --port={internal_port} \
             --username={user} \
             --dbname=aurora_db',
