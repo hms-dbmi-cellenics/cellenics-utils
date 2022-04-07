@@ -313,6 +313,22 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
         click.echo("\n".join(f"• {pin}" for pin in pins))
     else:
         click.echo("Not pinning any repository")
+
+    if not auto:
+        questions = [
+            {
+                "type": "confirm",
+                "name": "stage_rds",
+                "message": "Do you want to stage a separate RDS instance for this "
+                "staging environment?",
+                "default": False,
+            }
+        ]
+        click.echo()
+        answer = prompt(questions)
+        if answer["stage_rds"]:
+            with_rds = True
+
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
     manifests = []
