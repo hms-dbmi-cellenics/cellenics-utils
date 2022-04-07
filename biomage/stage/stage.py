@@ -651,7 +651,7 @@ def stage(token, org, deployments, with_rds, auto):
 
     wf = None
     for workflow in r.get_workflows():
-        if workflow.name == "TEST Deploy RDS for staging":
+        if workflow.name == "Deploy a staging environment":
             wf = str(workflow.id)
 
     wf = r.get_workflow(wf)
