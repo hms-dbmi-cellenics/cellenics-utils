@@ -375,11 +375,11 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     )
 
     # Decide the RDS cluster ID
-    rds_cluster_id = sandbox_id if with_rds else "default"
+    rds_sandbox_id = sandbox_id if with_rds else "default"
 
     click.echo()
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
-    manifests = manifests.replace("STAGING_RDS_CLUSTER_ID", rds_cluster_id)
+    manifests = manifests.replace("STAGING_RDS_SANDBOX_ID", rds_sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
     return manifests, sandbox_id
