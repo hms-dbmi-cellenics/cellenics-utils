@@ -206,12 +206,20 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
 
     # if we are in auto mode (non interactive) just generate a random sandbox ID name
     if auto:
-        return (user_name + "-" + random_name.generate_name(
-            lists=(
-                random_name.dictionaries.ADJECTIVES,
-                random_name.dictionaries.ANIMALS,
+        return (
+            (
+                user_name
+                + "-"
+                + random_name.generate_name(
+                    lists=(
+                        random_name.dictionaries.ADJECTIVES,
+                        random_name.dictionaries.ANIMALS,
+                    )
+                )
             )
-        )).lower()[:26].strip('-')
+            .lower()[:26]
+            .strip("-")
+        )
 
     fragments = (
         user_name,
@@ -257,7 +265,7 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
-def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
+def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_rds):
 
     # autopin the repos on the default branch
     if auto:
@@ -305,6 +313,22 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
         click.echo("\n".join(f"• {pin}" for pin in pins))
     else:
         click.echo("Not pinning any repository")
+
+    if not auto:
+        questions = [
+            {
+                "type": "confirm",
+                "name": "stage_rds",
+                "message": "Do you want to stage a separate RDS instance for this "
+                "staging environment?",
+                "default": False,
+            }
+        ]
+        click.echo()
+        answer = prompt(questions)
+        if answer["stage_rds"]:
+            with_rds = True
+
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
     manifests = []
@@ -349,8 +373,13 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto):
     sandbox_id = get_sandbox_id(
         templates, manifests, all_experiments=all_experiments, auto=auto
     )
+
+    # Decide the RDS cluster ID
+    rds_sandbox_id = sandbox_id if with_rds else "default"
+
     click.echo()
     manifests = manifests.replace("STAGING_SANDBOX_ID", sandbox_id)
+    manifests = manifests.replace("STAGING_RDS_SANDBOX_ID", rds_sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
     return manifests, sandbox_id
@@ -543,6 +572,13 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     help="A GitHub Personal Access Token with the required permissions.",
 )
 @click.option(
+    "--with_rds",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Stage a new RDS instance for this staging environment.",
+)
+@click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
     default="hms-dbmi-cellenics",
@@ -558,7 +594,7 @@ def select_staging_experiments(sandbox_id, all_experiments, config):
     " user input. It will pin the default branches, generate a random name for"
     " the sandbox, and will not stage any experiment data.",
 )
-def stage(token, org, deployments, auto):
+def stage(token, org, deployments, with_rds, auto):
     """
     Deploys a custom staging environment.
     """
@@ -576,6 +612,7 @@ def stage(token, org, deployments, auto):
         repo_to_ref=repo_to_ref,
         all_experiments=all_experiments,
         auto=auto,
+        with_rds=with_rds,
     )
 
     click.echo()
@@ -637,14 +674,21 @@ def stage(token, org, deployments, auto):
 
     workflow_started = wf.create_dispatch(
         ref="master",
-        inputs={"manifest": manifest, "sandbox-id": sandbox_id, "secrets": secrets},
+        inputs={
+            "manifest": manifest,
+            "sandbox-id": sandbox_id,
+            # Convert with_rds to string because Github has issues with boolean inputs
+            # https://github.com/actions/runner/issues/1483
+            "with-rds": str(with_rds),
+            "secrets": secrets,
+        },
     )
 
     if not workflow_started:
         click.echo(
             click.style(
-                "❌ Could not run workflow. Does your GitHub token have the required ",
-                f"privileges? See https://github.com/{org}/biomage-utils#setup for",
+                "❌ Could not run workflow. Does your GitHub token have the required "
+                f"privileges? See https://github.com/{org}/biomage-utils#setup for"
                 " more information.",
                 fg="red",
                 bold=True,

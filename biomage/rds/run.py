@@ -20,6 +20,14 @@ ENDPOINT_TYPE = "writer"
     help="Input environment of the RDS server.",
 )
 @click.option(
+    "-s",
+    "--sandbox_id",
+    required=False,
+    default="default",
+    show_default=True,
+    help="Default sandbox id.",
+)
+@click.option(
     "-u",
     "--user",
     required=False,
@@ -36,7 +44,7 @@ ENDPOINT_TYPE = "writer"
     help="Region the RDS server is in.",
 )
 @click.argument("command")
-def run(command, input_env, user, region):
+def run(command, sandbox_id, input_env, user, region):
     """
     Runs the provided command in the cluster using IAM if necessary.
     Use 'psql' to start an interactive session.
@@ -56,9 +64,13 @@ def run(command, input_env, user, region):
     else:
         rds_client = boto3.client("rds")
 
-        remote_endpoint = get_rds_endpoint(input_env, rds_client, ENDPOINT_TYPE)
+        remote_endpoint = get_rds_endpoint(
+            input_env, sandbox_id, rds_client, ENDPOINT_TYPE
+        )
 
-        print(f"Generating temporary token for {input_env}", file=sys.stderr)
+        print(
+            f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
+        )
         password = rds_client.generate_db_auth_token(
             remote_endpoint, internal_port, user, region
         )
@@ -85,9 +97,9 @@ def run(command, input_env, user, region):
         )
 
 
-def get_rds_endpoint(input_env, rds_client, endpoint_type):
+def get_rds_endpoint(input_env, sandbox_id, rds_client, endpoint_type):
     response = rds_client.describe_db_cluster_endpoints(
-        DBClusterIdentifier=f"aurora-cluster-{input_env}",
+        DBClusterIdentifier=f"aurora-cluster-{input_env}-{sandbox_id}",
         Filters=[
             {"Name": "db-cluster-endpoint-type", "Values": [endpoint_type]},
         ],
