@@ -190,13 +190,6 @@ Compares experiment settings accros development/staging/production environments.
 ### account
 A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. 
 
-### release
-
-Creates new releases from develop branches.
-
-`biomage release` -> creates a new release asking for systems to be released.
-`biomage release --all` -> creates a new release for all repos (ui, api, pipeline, worker).
-
 ### rds
 
 Includes many rds connection-related mechanisms. See `biomage rds --help` for more details.
