@@ -35,7 +35,15 @@ ENDPOINT_TYPE = "writer"
     show_default=True,
     help="Region the RDS server is in.",
 )
-def token(input_env, user, region):
+@click.option(
+    "-s",
+    "--sandbox_id",
+    required=False,
+    default="default",
+    show_default=True,
+    help="Default sandbox id.",
+)
+def token(input_env, user, region, sandbox_id):
     """
     Generates a temporary token that can be used to login to the database (through the ssh tunnel).\n
 
@@ -49,7 +57,7 @@ def token(input_env, user, region):
 
     rds_client = boto3.client("rds")
 
-    remote_endpoint = get_rds_endpoint(input_env, rds_client, ENDPOINT_TYPE)
+    remote_endpoint = get_rds_endpoint(input_env, sandbox_id, rds_client, ENDPOINT_TYPE)
 
     print(f"Generating temporary token for {input_env}", file=sys.stderr)
     password = rds_client.generate_db_auth_token(
@@ -60,9 +68,9 @@ def token(input_env, user, region):
     print(f"Password: {password}")
 
 
-def get_rds_endpoint(input_env, rds_client, endpoint_type):
+def get_rds_endpoint(input_env, sandbox_id, rds_client, endpoint_type):
     response = rds_client.describe_db_cluster_endpoints(
-        DBClusterIdentifier=f"aurora-cluster-{input_env}",
+        DBClusterIdentifier=f"aurora-cluster-{input_env}-{sandbox_id}",
         Filters=[
             {"Name": "db-cluster-endpoint-type", "Values": [endpoint_type]},
         ],
