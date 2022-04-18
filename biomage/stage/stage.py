@@ -382,7 +382,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     manifests = manifests.replace("STAGING_RDS_SANDBOX_ID", rds_sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
-    return manifests, sandbox_id
+    return manifests, sandbox_id, with_rds
 
 
 def paginate_experiments(
@@ -606,7 +606,7 @@ def stage(token, org, deployments, with_rds, auto):
 
     all_experiments = get_all_experiments(config["production-experiments-table"])
 
-    manifest, sandbox_id = create_manifest(
+    manifest, sandbox_id, stage_rds = create_manifest(
         templates,
         token,
         repo_to_ref=repo_to_ref,
@@ -677,9 +677,9 @@ def stage(token, org, deployments, with_rds, auto):
         inputs={
             "manifest": manifest,
             "sandbox-id": sandbox_id,
-            # Convert with_rds to string because Github has issues with boolean inputs
+            # Convert stage_rds to string because Github has issues with boolean inputs
             # https://github.com/actions/runner/issues/1483
-            "with-rds": str(with_rds),
+            "with-rds": str(stage_rds),
             "secrets": secrets,
         },
     )
