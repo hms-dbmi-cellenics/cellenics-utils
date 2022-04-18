@@ -314,7 +314,10 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     else:
         click.echo("Not pinning any repository")
 
-    if not auto:
+    # Only ask if we are not in auto mode and with_rds is not passed as flag
+    # In the case staging is not auto and --with_rds is passed as flag
+    # there is no need to ask this question
+    if not auto and not with_rds:
         questions = [
             {
                 "type": "confirm",
@@ -326,8 +329,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
         ]
         click.echo()
         answer = prompt(questions)
-        if answer["stage_rds"]:
-            with_rds = True
+        with_rds = answer["stage_rds"]
 
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
@@ -382,7 +384,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     manifests = manifests.replace("STAGING_RDS_SANDBOX_ID", rds_sandbox_id)
     manifests = base64.b64encode(manifests.encode()).decode()
 
-    return manifests, sandbox_id
+    return manifests, sandbox_id, with_rds
 
 
 def paginate_experiments(
@@ -606,7 +608,7 @@ def stage(token, org, deployments, with_rds, auto):
 
     all_experiments = get_all_experiments(config["production-experiments-table"])
 
-    manifest, sandbox_id = create_manifest(
+    manifest, sandbox_id, stage_rds = create_manifest(
         templates,
         token,
         repo_to_ref=repo_to_ref,
@@ -677,9 +679,9 @@ def stage(token, org, deployments, with_rds, auto):
         inputs={
             "manifest": manifest,
             "sandbox-id": sandbox_id,
-            # Convert with_rds to string because Github has issues with boolean inputs
+            # Convert stage_rds to string because Github has issues with boolean inputs
             # https://github.com/actions/runner/issues/1483
-            "with-rds": str(with_rds),
+            "with-rds": str(stage_rds),
             "secrets": secrets,
         },
     )
