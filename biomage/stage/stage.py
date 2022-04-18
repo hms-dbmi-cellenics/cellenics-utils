@@ -314,7 +314,10 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     else:
         click.echo("Not pinning any repository")
 
-    if not auto:
+    # Only ask if we are not in auto mode and with_rds is not passed as flag
+    # In the case staging is not auto and --with_rds is passed as flag
+    # there is no need to ask this question
+    if not auto and not with_rds:
         questions = [
             {
                 "type": "confirm",
@@ -326,8 +329,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
         ]
         click.echo()
         answer = prompt(questions)
-        if answer["stage_rds"]:
-            with_rds = True
+        with_rds = answer["stage_rds"]
 
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
