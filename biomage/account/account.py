@@ -166,7 +166,7 @@ def _validate_input(email, full_name):
     if not full_name or pd.isna(full_name):
         return f"ERROR: Full name not provided for user {email}"
 
-    if not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email):
+    if not re.match(r"(^[a-zA-Z0-9_.\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+$)", email):
         return f"ERROR: Email {email} does not match regex"
 
 
