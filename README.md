@@ -60,6 +60,8 @@ for Cognito.
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
 
+*  `COGNITO_PRODUCTION_POOL` and `COGNITO_STAGING_POOL`: The Cognito pool ids used for user account administration. It is recommended to set this interactively. For example, run `export COGNITO_PRODUCTION_POOL=eu-west-1_BLAH` before running `biomage account ...`.
+
 
 Utilities
 ---------
@@ -188,7 +190,7 @@ Compares experiment settings accros development/staging/production environments.
     biomage experiment compare my-experiment-id
 
 ### account
-A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. 
+A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. Needs environmental variables `COGNITO_PRODUCTION_POOL` and/or `COGNITO_STAGING_POOL`.
 
 ### rds
 
