@@ -70,6 +70,11 @@ def create_account(full_name, email, userpool):
     required=True,
     help="Password for the new account.",
 )
+@click.option(
+    "--userpool",
+    required=True,
+    help="Userpool of the account to change.",
+)
 def change_password(email, password, userpool):
     print(
         "Changing password for %s to %s in user pool %s..."
