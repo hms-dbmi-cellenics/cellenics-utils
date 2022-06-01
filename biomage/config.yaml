@@ -2,6 +2,8 @@ source-tables:
   - "projects-production"
   - "experiments-production"
   - "samples-production"
+  - "user-access-production"
+  - "invite-access-production"
 
 source-buckets:
   - "processed-matrix-production"
