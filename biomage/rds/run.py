@@ -108,12 +108,13 @@ def run_rds_command(command, sandbox_id, input_env, user, region, capture_output
     if result.returncode != 0:
         print(
             "\n"
-            "There was an error connecting to the db. "
-            'You may need to install psql, run "brew install postgresql"'
-            "\n\n"
-            'Or try running "biomage rds tunnel" before this command if connecting'
-            "to staging/production"
+            "There was an error connecting to the db. Try these steps:\n"
+            '- Make sure the tunnel is running. If not run "biomage rds tunnel"\n'
+            "- If the tunnel is running, try restarting the tunnel\n"
+            '- You may need to install psql, run "brew install postgresql"\n'
         )
+
+        raise Exception("Error connecting to the database")
 
     if capture_output:
         return result.stdout

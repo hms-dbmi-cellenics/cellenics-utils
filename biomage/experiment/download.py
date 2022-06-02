@@ -9,11 +9,7 @@ import click
 from botocore.exceptions import ClientError
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_FILE, DEFAULT_EXPERIMENT_ID,
-                               EXPERIMENTS_FILE, EXPERIMENTS_TABLE,
-                               PLOTS_TABLES_FILE, PROCESSED_RDS_FILE,
-                               PRODUCTION, PROJECTS_FILE, PROJECTS_TABLE,
-                               SAMPLES_FILE, SAMPLES_TABLE, SOURCE_RDS_FILE)
+from ..utils.constants import PRODUCTION, SAMPLES_TABLE
 from .utils import set_modified_date
 
 output_path = "."
@@ -63,10 +59,12 @@ def _process_query_output(result_str):
         .strip()
     )
 
+    if not json_text:
+        raise Exception("No data returned from query")
+
     samples = json.loads(json_text)
 
     # Create a dictionary of samples
-
     result = {}
 
     for sample in samples:
@@ -95,10 +93,54 @@ def _create_sample_mapping(samples_list, output_path):
 
     samples_file.write_text(json.dumps(sample_mapping))
 
-    print(f"Sample mapping downloaded to: {str(samples_file)}.\n")
+    print(f"Sample name to id map downloaded to: {str(samples_file)}.\n")
 
 
-def _download_samples(experiment_id, input_env, output_path):
+def _download_samples_v1(experiment_id, input_env, output_path):
+    bucket = f"biomage-originals-{input_env}"
+    table = f"{SAMPLES_TABLE}-{input_env}"
+
+    dynamodb = boto3.resource("dynamodb")
+    table = dynamodb.Table(table)
+
+    response = table.get_item(Key={"experimentId": experiment_id})
+
+    samples_list = {}
+
+    project_id = response["Item"]["projectUuid"]
+    samples = response["Item"]["samples"]
+
+    num_samples = len(samples)
+    print(f"\n{num_samples} samples found. Downloading sample files...\n")
+
+    for sample_idx, value in enumerate(samples.items()):
+        sample_id, sample = value
+
+        sample_name = sample["name"]
+        samples_list[sample_name] = [{"sample_id": sample_id}]
+
+        print(
+            f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
+        )
+
+        num_files = len(sample["fileNames"])
+
+        for file_idx, file_name in enumerate(sample["fileNames"]):
+            s3_path = f"{project_id}/{sample_id}/{file_name}"
+            file_path = output_path / sample_name / file_name
+
+            print(
+                f"> Downloading {sample_name}/{file_name} (file {file_idx+1}/{num_files})"
+            )
+
+            _download_file(bucket, s3_path, file_path)
+
+        print(f"Sample {sample_name} downloaded.\n")
+
+    _create_sample_mapping(samples_list, output_path)
+
+
+def _download_samples_v2(experiment_id, input_env, output_path):
     """
     Download samples associated with an experiment from a given environment.\n
     """
@@ -132,7 +174,7 @@ def _download_samples(experiment_id, input_env, output_path):
     samples_list = _process_query_output(result_str)
     num_samples = len(samples_list)
 
-    print(f"{len(samples_list)} samples found. Downloading sample files...\n")
+    print(f"{num_samples} samples found. Downloading sample files...\n")
 
     for sample_idx, value in enumerate(samples_list.items()):
         sample_name, samples = value
@@ -153,13 +195,17 @@ def _download_samples(experiment_id, input_env, output_path):
 
             file_path = output_path / sample_name / file_name
 
+            # s3_path only exists for samples uploaded in v2
+            # samples uploaded in v1 is keyed using project_id/sample_id/file_name
+
+            s3client = boto3.client("s3")
+            s3client.head_object(Bucket=bucket, Key=s3_path)
+
             _download_file(bucket, s3_path, file_path)
 
         print(f"Sample {sample_name} downloaded.\n")
 
     _create_sample_mapping(samples_list, output_path)
-
-    print(f"All samples for experiment {experiment_id} have been downloaded.\n")
 
 
 def _download_rds(experiment_id, input_env, output_path):
@@ -246,12 +292,31 @@ def download(experiment_id, input_env, output_path, files):
     for file in list(files):
 
         if file == SAMPLES:
-            _download_samples(experiment_id, input_env, output_path)
+
+            print(f"== Download samples for {experiment_id}.")
+
+            try:
+                _download_samples_v2(experiment_id, input_env, output_path)
+
+            except Exception:
+                _download_samples_v1(experiment_id, input_env, output_path)
+
+            print(f"All samples for experiment {experiment_id} have been downloaded.\n")
 
         elif file == RDS:
+
+            print(f"== Downloading RDS file for {experiment_id}.")
+
             _download_rds(experiment_id, input_env, output_path)
-            pass
+
+            print(f"RDS for experiment {experiment_id} have been downloaded.\n")
 
         elif file == CELLSETS:
+
+            print(f"== Download cellsets file for {experiment_id}.")
+
             _download_cellsets(experiment_id, input_env, output_path)
-            pass
+
+            print(
+                f"Cellsets file for experiment {experiment_id} have been downloaded.\n"
+            )
