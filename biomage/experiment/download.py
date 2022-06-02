@@ -29,33 +29,6 @@ def _download_file(bucket, s3_path, file_path):
     set_modified_date(file_location=file_path, date=s3_obj.last_modified)
 
 
-def _process_query_output(result_str):
-    json_text = (
-        result_str.replace("+", "")
-        .split("\n", 2)[2]
-        .replace("\n", "")
-        .replace("(1 row)", "")
-        .strip()
-    )
-
-    if not json_text:
-        raise Exception("No data returned from query")
-
-    samples = json.loads(json_text)
-
-    # Create a dictionary of samples
-    result = {}
-
-    for sample in samples:
-
-        if not result.get(sample["sample_name"]):
-            result[sample["sample_name"]] = []
-
-        result[sample["sample_name"]].append(sample)
-
-    return result
-
-
 def _create_sample_mapping(samples_list, output_path):
     """
     Create a mapping of sample names to sample ids.
@@ -120,6 +93,33 @@ def _download_samples_v1(experiment_id, input_env, output_path):
         print(f"Sample {sample_name} downloaded.\n")
 
     _create_sample_mapping(samples_list, output_path)
+
+
+def _process_query_output(result_str):
+    json_text = (
+        result_str.replace("+", "")
+        .split("\n", 2)[2]
+        .replace("\n", "")
+        .replace("(1 row)", "")
+        .strip()
+    )
+
+    if not json_text:
+        raise Exception("No data returned from query")
+
+    samples = json.loads(json_text)
+
+    # Create a dictionary of samples
+    result = {}
+
+    for sample in samples:
+
+        if not result.get(sample["sample_name"]):
+            result[sample["sample_name"]] = []
+
+        result[sample["sample_name"]].append(sample)
+
+    return result
 
 
 def _get_samples_v2(experiment_id, input_env):
