@@ -189,6 +189,21 @@ Compares experiment settings accros development/staging/production environments.
 
     biomage experiment compare my-experiment-id
 
+#### experiment download
+
+Download files associated with an experiment.
+
+    biomage experiment download -e my-experiment-id -i environment
+
+Currently download of the following files are supported:
+
+- Sample files
+- Raw RDS file
+- Processed RDS file
+- Cell sets file
+
+**Note** this command needs `biomage rds tunnel` running in another tab to work.
+
 ### account
 A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. Needs environmental variables `COGNITO_PRODUCTION_POOL` and/or `COGNITO_STAGING_POOL`.
 
