@@ -130,21 +130,26 @@ def _download_samples(experiment_id, input_env, output_path):
 
     result_str = run_rds_command(command, SANDBOX_ID, input_env, USER, REGION, True)
     samples_list = _process_query_output(result_str)
+    num_samples = len(samples_list)
 
     print(f"{len(samples_list)} samples found. Downloading sample files...\n")
 
-    for sample_name, samples in samples_list.items():
+    for sample_idx, value in enumerate(samples_list.items()):
+        sample_name, samples = value
 
         print(
-            f"Downloading files for sample {sample_name}",
+            f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
         )
 
-        for sample in samples:
+        num_files = len(samples)
+        for file_idx, sample in enumerate(samples):
 
             s3_path = sample["s3_path"]
             file_name = Path(s3_path).name
 
-            print(f"> Downloading {sample_name}/{file_name}...")
+            print(
+                f"> Downloading {sample_name}/{file_name} (file {file_idx+1}/{num_files})"
+            )
 
             file_path = output_path / sample_name / file_name
 
