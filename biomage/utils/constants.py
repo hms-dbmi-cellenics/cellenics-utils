@@ -22,3 +22,9 @@ PROCESSED_RDS_FILE = "processed-matrix.r.rds"
 SAMPLES_TABLE = "samples"
 EXPERIMENTS_TABLE = "experiments"
 PROJECTS_TABLE = "projects"
+
+# S3 Bucket names
+SAMPLES_BUCKET = "biomage-originals"
+RAW_RDS_BUCKET = "biomage-source"
+PROCESSED_RDS_BUCKET = "processed-matrix"
+CELLSETS_BUCKET = "cell-sets"

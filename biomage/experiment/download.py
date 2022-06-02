@@ -9,7 +9,8 @@ import click
 from botocore.exceptions import ClientError
 
 from ..rds.run import run_rds_command
-from ..utils.constants import PRODUCTION, SAMPLES_TABLE
+from ..utils.constants import (CELLSETS_BUCKET, PROCESSED_RDS_BUCKET,
+                               RAW_RDS_BUCKET, SAMPLES_BUCKET, SAMPLES_TABLE)
 from .utils import set_modified_date
 
 output_path = "."
@@ -17,7 +18,8 @@ output_path = "."
 
 s3 = boto3.resource("s3")
 SAMPLES = "samples"
-RDS = "rds"
+RAW_RDS = "raw_rds"
+PROCESSED_RDS = "qc_rds"
 CELLSETS = "cellsets"
 
 
@@ -52,7 +54,7 @@ def _download_samples_v1(experiment_id, input_env, output_path):
     """
     Download samples associated with an experiment from a given environment for v1.\n
     """
-    bucket = f"biomage-originals-{input_env}"
+    bucket = f"{SAMPLES_BUCKET}-{input_env}"
     table = f"{SAMPLES_TABLE}-{input_env}"
 
     dynamodb = boto3.resource("dynamodb")
@@ -90,7 +92,7 @@ def _download_samples_v1(experiment_id, input_env, output_path):
 
             _download_file(bucket, s3_path, file_path)
 
-        print(f"Sample {sample_name} downloaded.\n")
+        print(f"Sample {sample_name} downloaded.")
 
     _create_sample_mapping(samples_list, output_path)
 
@@ -154,7 +156,7 @@ def _download_samples_v2(experiment_id, input_env, output_path):
     """
     Download samples associated with an experiment from a given environment for v2.\n
     """
-    bucket = f"biomage-originals-{input_env}"
+    bucket = f"{SAMPLES_BUCKET}-{input_env}"
 
     samples_list = _get_samples_v2(experiment_id, input_env)
     num_samples = len(samples_list)
@@ -189,26 +191,33 @@ def _download_samples_v2(experiment_id, input_env, output_path):
     _create_sample_mapping(samples_list, output_path)
 
 
-def _download_rds(experiment_id, input_env, output_path):
-    FILE_NAME = "r.rds"
+def _download_rds(experiment_id, input_env, output_path, processed=False):
+    file_name = None
+    bucket = None
 
-    bucket = f"biomage-source-{input_env}"
-    key = f"{experiment_id}/{FILE_NAME}"
-    file_path = output_path / FILE_NAME
+    if not processed:
+        file_name = "raw_r.rds"
+        bucket = f"{RAW_RDS_BUCKET}-{input_env}"
+    else:
+        file_name = "processed_r.rds"
+        bucket = f"{PROCESSED_RDS_BUCKET}-{input_env}"
+
+    key = f"{experiment_id}/r.rds"
+    file_path = output_path / file_name
 
     _download_file(bucket, key, file_path)
 
-    print(f"RDS file saved to {file_path}\n")
+    print(f"RDS file saved to {file_path}")
 
 
 def _download_cellsets(experiment_id, input_env, output_path):
     FILE_NAME = "cellsets.json"
 
-    bucket = f"cell-sets-{input_env}"
+    bucket = f"{CELLSETS_BUCKET}-{input_env}"
     key = experiment_id
     file_path = output_path / FILE_NAME
     _download_file(bucket, key, file_path)
-    print(f"Cellsets file saved to {file_path}\n")
+    print(f"Cellsets file saved to {file_path}")
 
 
 @click.command()
@@ -221,9 +230,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
 @click.option(
     "-i",
     "--input_env",
-    required=False,
-    default=PRODUCTION,
-    show_default=True,
+    required=True,
     help="Input environment to pull the data from.",
 )
 @click.option(
@@ -234,19 +241,32 @@ def _download_cellsets(experiment_id, input_env, output_path):
     help="Name of output folder. By default this will be the experiment id.",
 )
 @click.option(
+    "-a",
+    "--all",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Download all files for the experiment.",
+)
+@click.option(
     "-f",
     "--files",
     multiple=True,
     required=False,
-    default=[SAMPLES, RDS, CELLSETS],
-    help="Files to download. By default all (samples, rds, cellsets) are downloaded.",
+    default=[SAMPLES],
+    help=(
+        "Files to download. By default only the samples (-f samples) are downloaded. "
+        "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds) and "
+        "processed RDS (-f qc_rds)."
+    ),
 )
-def download(experiment_id, input_env, output_path, files):
+def download(experiment_id, input_env, output_path, files, all):
     """
     Downloads files associated with an experiment from a given environment.\n
 
     E.g.:
-    biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e -f samples -f rds -o output/folder
+    biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
+    -f samples -f cellsets -o output/folder
     """
 
     # Set output path
@@ -258,26 +278,32 @@ def download(experiment_id, input_env, output_path, files):
 
     print("Saving downloaded files to: ", str(output_path))
 
-    # Download S3 object
-    for file in list(files):
+    selected_files = []
+    if all:
+        selected_files = [SAMPLES, CELLSETS, RAW_RDS, PROCESSED_RDS]
+    else:
+        selected_files = list(files)
 
+    for file in selected_files:
         if file == SAMPLES:
-
-            print(f"== Download samples for {experiment_id}.")
+            print("\n== Downloading sample files")
             try:
                 _download_samples_v2(experiment_id, input_env, output_path)
             except Exception:
                 _download_samples_v1(experiment_id, input_env, output_path)
-            print(f"All samples for experiment {experiment_id} have been downloaded.\n")
+            print("All samples for the experiment have been downloaded.")
 
-        elif file == RDS:
-            print(f"== Downloading RDS file for {experiment_id}.")
+        elif file == RAW_RDS:
+            print("\n== Downloading unprocessed RDS file")
             _download_rds(experiment_id, input_env, output_path)
-            print(f"RDS for experiment {experiment_id} have been downloaded.\n")
+            print("Raw RDS file have been downloaded.\n")
+
+        elif file == PROCESSED_RDS:
+            print("\n== Downloading processed RDS file")
+            _download_rds(experiment_id, input_env, output_path, processed=True)
+            print("Procssed RDS have been downloaded.")
 
         elif file == CELLSETS:
-            print(f"== Download cellsets file for {experiment_id}.")
+            print("\n== Download cellsets file")
             _download_cellsets(experiment_id, input_env, output_path)
-            print(
-                f"Cellsets file for experiment {experiment_id} have been downloaded.\n"
-            )
+            print("Cellsets file have been downloaded.")
