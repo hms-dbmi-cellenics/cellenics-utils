@@ -24,6 +24,9 @@ CELLSETS = "cellsets"
 
 
 def _download_file(bucket, s3_path, file_path):
+    """
+    Utility to download file
+    """
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     s3_obj = s3.Object(bucket, s3_path)
@@ -62,6 +65,10 @@ def _download_samples_v1(experiment_id, input_env, output_path):
 
     response = table.get_item(Key={"experimentId": experiment_id})
 
+    if "Item" not in response:
+        print(f"No samples found for experiment {experiment_id}")
+        return
+
     samples_list = {}
 
     project_id = response["Item"]["projectUuid"]
@@ -95,9 +102,13 @@ def _download_samples_v1(experiment_id, input_env, output_path):
         print(f"Sample {sample_name} downloaded.")
 
     _create_sample_mapping(samples_list, output_path)
+    print("All samples for the experiment have been downloaded.")
 
 
 def _process_query_output(result_str):
+    """
+    Process query output
+    """
     json_text = (
         result_str.replace("+", "")
         .split("\n", 2)[2]
@@ -125,6 +136,9 @@ def _process_query_output(result_str):
 
 
 def _get_samples_v2(experiment_id, input_env):
+    """
+    Get samples data for v2
+    """
     SANDBOX_ID = "default"
     REGION = "eu-west-1"
     USER = "dev_role"
@@ -183,12 +197,12 @@ def _download_samples_v2(experiment_id, input_env, output_path):
 
             s3client = boto3.client("s3")
             s3client.head_object(Bucket=bucket, Key=s3_path)
-
             _download_file(bucket, s3_path, file_path)
 
         print(f"Sample {sample_name} downloaded.\n")
 
     _create_sample_mapping(samples_list, output_path)
+    print("All samples for the experiment have been downloaded.")
 
 
 def _download_rds(experiment_id, input_env, output_path, processed=False):
@@ -198,9 +212,11 @@ def _download_rds(experiment_id, input_env, output_path, processed=False):
     if not processed:
         file_name = "raw_r.rds"
         bucket = f"{RAW_RDS_BUCKET}-{input_env}"
+        end_message = "Raw RDS files have been downloaded."
     else:
         file_name = "processed_r.rds"
         bucket = f"{PROCESSED_RDS_BUCKET}-{input_env}"
+        end_message = "Processed RDS files have been downloaded."
 
     key = f"{experiment_id}/r.rds"
     file_path = output_path / file_name
@@ -208,6 +224,7 @@ def _download_rds(experiment_id, input_env, output_path, processed=False):
     _download_file(bucket, key, file_path)
 
     print(f"RDS file saved to {file_path}")
+    print(end_message)
 
 
 def _download_cellsets(experiment_id, input_env, output_path):
@@ -218,6 +235,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
     file_path = output_path / FILE_NAME
     _download_file(bucket, key, file_path)
     print(f"Cellsets file saved to {file_path}")
+    print("Cellsets file have been downloaded.")
 
 
 @click.command()
@@ -291,19 +309,15 @@ def download(experiment_id, input_env, output_path, files, all):
                 _download_samples_v2(experiment_id, input_env, output_path)
             except Exception:
                 _download_samples_v1(experiment_id, input_env, output_path)
-            print("All samples for the experiment have been downloaded.")
 
         elif file == RAW_RDS:
             print("\n== Downloading unprocessed RDS file")
             _download_rds(experiment_id, input_env, output_path)
-            print("Raw RDS file have been downloaded.\n")
 
         elif file == PROCESSED_RDS:
             print("\n== Downloading processed RDS file")
             _download_rds(experiment_id, input_env, output_path, processed=True)
-            print("Procssed RDS have been downloaded.")
 
         elif file == CELLSETS:
             print("\n== Download cellsets file")
             _download_cellsets(experiment_id, input_env, output_path)
-            print("Cellsets file have been downloaded.")
