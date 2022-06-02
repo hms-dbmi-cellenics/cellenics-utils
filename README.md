@@ -198,6 +198,7 @@ Includes many rds connection-related mechanisms. See `biomage rds --help` for mo
 
 In order to run these you will need the following tools installed:
 
+#### installing
 [jq](https://stedolan.github.io/jq/)
 ```brew install jq```
 
