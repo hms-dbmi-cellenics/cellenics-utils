@@ -170,11 +170,23 @@ def _download_rds(experiment_id, input_env, output_path):
 
     _download_file(bucket, key, file_path)
 
-    print(f"RDS file saved to {file_path}")
+    print(f"RDS file saved to {file_path}\n")
 
 
-def _download_cellsets():
-    pass
+def _download_cellsets(experiment_id, input_env, output_path):
+
+    FILE_NAME = "cellsets.json"
+
+    bucket = f"cell-sets-{input_env}"
+    key = experiment_id
+
+    file_path = output_path / FILE_NAME
+
+    print("Downloading cell sets file...")
+
+    _download_file(bucket, key, file_path)
+
+    print(f"Cellsets file saved to {file_path}\n")
 
 
 @click.command()
