@@ -9,23 +9,29 @@ import click
 from botocore.exceptions import ClientError
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_FILE, DEFAULT_EXPERIMENT_ID,
-                               EXPERIMENTS_FILE, EXPERIMENTS_TABLE,
-                               PLOTS_TABLES_FILE, PROCESSED_RDS_FILE,
-                               PRODUCTION, PROJECTS_FILE, PROJECTS_TABLE,
-                               SAMPLES_FILE, SAMPLES_TABLE, SOURCE_RDS_FILE)
+from ..utils.constants import (
+    CELLSETS_FILE,
+    DEFAULT_EXPERIMENT_ID,
+    EXPERIMENTS_FILE,
+    EXPERIMENTS_TABLE,
+    PLOTS_TABLES_FILE,
+    PROCESSED_RDS_FILE,
+    PRODUCTION,
+    PROJECTS_FILE,
+    PROJECTS_TABLE,
+    SAMPLES_FILE,
+    SAMPLES_TABLE,
+    SOURCE_RDS_FILE,
+)
 from .utils import set_modified_date
 
 output_path = "."
 
 
-class FileType(Enum):
-    SAMPLES = "samples"
-    RDS = "rds"
-    CELLSETS = "cellsets"
-
-
 s3 = boto3.resource("s3")
+SAMPLES = "samples"
+RDS = "rds"
+CELLSETS = "cellsets"
 
 # def get_s3_object(experiment_id, input_env, file):
 
@@ -74,6 +80,25 @@ def _process_query_output(result_str):
     return result
 
 
+def _create_sample_mapping(samples_list, output_path):
+    """
+    Create a mapping of sample names to sample ids.
+    """
+
+    MAPPING_FILE_NAME = "sample_mapping.json"
+
+    samples_file = output_path / MAPPING_FILE_NAME
+
+    sample_mapping = {}
+
+    for sample_name, samples in samples_list.items():
+        sample_mapping[sample_name] = samples[0]["sample_id"]
+
+    samples_file.write_text(json.dumps(sample_mapping))
+
+    print(f"Sample mapping downloaded to: {str(samples_file)}.\n")
+
+
 def download_samples(experiment_id, input_env, output_path):
     """
     Download samples associated with an experiment from a given environment.\n
@@ -100,11 +125,11 @@ def download_samples(experiment_id, input_env, output_path):
         INNER JOIN sample ON b.sample_id = sample.id ) as t"\
     """
 
-    user = "dev_role"
+    USER = "dev_role"
 
     print(f"Querying samples for {experiment_id}...")
 
-    result_str = run_rds_command(command, SANDBOX_ID, input_env, user, REGION, True)
+    result_str = run_rds_command(command, SANDBOX_ID, input_env, USER, REGION, True)
     samples_list = _process_query_output(result_str)
 
     print(f"{len(samples_list)} samples found. Downloading sample files...\n")
@@ -132,7 +157,9 @@ def download_samples(experiment_id, input_env, output_path):
 
         print(f"Sample {sample_name} downloaded.\n")
 
-    print(f"All samples for experiment {experiment_id} downloaded.\n")
+    _create_sample_mapping(samples_list, output_path)
+
+    print(f"All samples for experiment {experiment_id} have been downloaded.\n")
 
 
 @click.command()
@@ -151,8 +178,8 @@ def download_samples(experiment_id, input_env, output_path):
     help="Input environment to pull the data from.",
 )
 @click.option(
-    "-d",
-    "--directory",
+    "-o",
+    "--output_path",
     required=False,
     default=None,
     help="Name of output folder. By default this will be the experiment id.",
@@ -162,11 +189,10 @@ def download_samples(experiment_id, input_env, output_path):
     "--files",
     multiple=True,
     required=False,
-    default=[file_type.value for file_type in FileType],
-    show_default=True,
+    default=[SAMPLES, RDS, CELLSETS],
     help="Files to download. By default all (samples, rds, cellsets) are downloaded.",
 )
-def download(experiment_id, input_env, directory, files):
+def download(experiment_id, input_env, output_path, files):
     """
     Downloads files associated with an experiment from a given environment.\n
 
@@ -177,26 +203,23 @@ def download(experiment_id, input_env, directory, files):
 
     # Set output path
     # By default, the output path is named after the experiment id
-    if not directory:
-        directory = experiment_id
+    if not output_path:
+        output_path = experiment_id
 
-    output_path = Path(os.getcwd()) / directory
+    output_path = Path(os.getcwd()) / output_path
 
-    # Create intermediary foldrs if they don't exist
-    if not output_path.exists():
-        print("Creating output folder:", output_path)
-        # output_path.mkdir(parents=True, exist_ok=True)
+    print("Saving downloaded files to: ", str(output_path))
 
-    download_samples(experiment_id, input_env, output_path)
+    # Download S3 object
+    for file in list(files):
 
-    # # Download S3 object
-    # for file in files:
+        if file == SAMPLES:
+            download_samples(experiment_id, input_env, output_path)
 
-    #     if file == FileType.SAMPLES:
-    #         download_samples(experiment_id, input_env, output_path)
+        elif file == RDS:
+            print("*** Downloading RDS files is not yet implemented ***")
+            pass
 
-    #     elif file == FileType.RDS:
-    #         pass
-
-    #     elif file == FileType.CELLSETS:
-    #         pass
+        elif file == CELLSETS:
+            print("*** Downloading cellsets files is not yet implemented ***")
+            pass
