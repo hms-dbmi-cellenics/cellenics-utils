@@ -205,7 +205,7 @@ In order to run these you will need the following tools installed:
 ```brew install postgresql```
 
 
-(aws ssm cli)[https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html]
+[aws ssm cli](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
 ```
 curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
 unzip sessionmanager-bundle.zip
