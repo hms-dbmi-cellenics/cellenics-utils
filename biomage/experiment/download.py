@@ -9,20 +9,11 @@ import click
 from botocore.exceptions import ClientError
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (
-    CELLSETS_FILE,
-    DEFAULT_EXPERIMENT_ID,
-    EXPERIMENTS_FILE,
-    EXPERIMENTS_TABLE,
-    PLOTS_TABLES_FILE,
-    PROCESSED_RDS_FILE,
-    PRODUCTION,
-    PROJECTS_FILE,
-    PROJECTS_TABLE,
-    SAMPLES_FILE,
-    SAMPLES_TABLE,
-    SOURCE_RDS_FILE,
-)
+from ..utils.constants import (CELLSETS_FILE, DEFAULT_EXPERIMENT_ID,
+                               EXPERIMENTS_FILE, EXPERIMENTS_TABLE,
+                               PLOTS_TABLES_FILE, PROCESSED_RDS_FILE,
+                               PRODUCTION, PROJECTS_FILE, PROJECTS_TABLE,
+                               SAMPLES_FILE, SAMPLES_TABLE, SOURCE_RDS_FILE)
 from .utils import set_modified_date
 
 output_path = "."
@@ -53,6 +44,14 @@ CELLSETS = "cellsets"
 #     s3_obj.download_file(filepath)
 
 #     set_modified_date(file_location=filepath, date=s3_obj.last_modified)
+
+
+def _download_file(bucket, s3_path, file_path):
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    s3_obj = s3.Object(bucket, s3_path)
+    s3_obj.download_file(str(file_path))
+    set_modified_date(file_location=file_path, date=s3_obj.last_modified)
 
 
 def _process_query_output(result_str):
@@ -99,7 +98,7 @@ def _create_sample_mapping(samples_list, output_path):
     print(f"Sample mapping downloaded to: {str(samples_file)}.\n")
 
 
-def download_samples(experiment_id, input_env, output_path):
+def _download_samples(experiment_id, input_env, output_path):
     """
     Download samples associated with an experiment from a given environment.\n
     """
@@ -148,18 +147,34 @@ def download_samples(experiment_id, input_env, output_path):
             print(f"> Downloading {sample_name}/{file_name}...")
 
             file_path = output_path / sample_name / file_name
-            file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            s3_obj = s3.Object(bucket, s3_path)
-            s3_obj.download_file(str(file_path))
-
-            set_modified_date(file_location=file_path, date=s3_obj.last_modified)
+            _download_file(bucket, s3_path, file_path)
 
         print(f"Sample {sample_name} downloaded.\n")
 
     _create_sample_mapping(samples_list, output_path)
 
     print(f"All samples for experiment {experiment_id} have been downloaded.\n")
+
+
+def _download_rds(experiment_id, input_env, output_path):
+
+    FILE_NAME = "r.rds"
+
+    bucket = f"biomage-source-{input_env}"
+    key = f"{experiment_id}/{FILE_NAME}"
+
+    file_path = output_path / FILE_NAME
+
+    print("Downloading RDS file...")
+
+    _download_file(bucket, key, file_path)
+
+    print(f"RDS file saved to {file_path}")
+
+
+def _download_cellsets():
+    pass
 
 
 @click.command()
@@ -214,12 +229,12 @@ def download(experiment_id, input_env, output_path, files):
     for file in list(files):
 
         if file == SAMPLES:
-            download_samples(experiment_id, input_env, output_path)
+            _download_samples(experiment_id, input_env, output_path)
 
         elif file == RDS:
-            print("*** Downloading RDS files is not yet implemented ***")
+            _download_rds(experiment_id, input_env, output_path)
             pass
 
         elif file == CELLSETS:
-            print("*** Downloading cellsets files is not yet implemented ***")
+            _download_cellsets(experiment_id, input_env, output_path)
             pass
