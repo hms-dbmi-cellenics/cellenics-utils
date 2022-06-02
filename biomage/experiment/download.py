@@ -20,27 +20,6 @@ SAMPLES = "samples"
 RDS = "rds"
 CELLSETS = "cellsets"
 
-# def get_s3_object(experiment_id, input_env, file):
-
-#     s3_obj = None
-#     file_path = None
-
-#     if file == FileType.SAMPLES:
-#         s3_obj = s3.Object(bucket, key)
-
-
-# def download_file(s3_obj, filepath):
-#     """
-#     Download s3 file to filepath
-#     """
-#     Path(os.path.dirname(filepath)).mkdir(parents=True, exist_ok=True)
-
-#     s3_obj = get_s3_object(experiment_id, input_env, file)
-
-#     s3_obj.download_file(filepath)
-
-#     set_modified_date(file_location=filepath, date=s3_obj.last_modified)
-
 
 def _download_file(bucket, s3_path, file_path):
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,10 +72,13 @@ def _create_sample_mapping(samples_list, output_path):
 
     samples_file.write_text(json.dumps(sample_mapping))
 
-    print(f"Sample name to id map downloaded to: {str(samples_file)}.\n")
+    print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
 
 def _download_samples_v1(experiment_id, input_env, output_path):
+    """
+    Download samples associated with an experiment from a given environment for v1.\n
+    """
     bucket = f"biomage-originals-{input_env}"
     table = f"{SAMPLES_TABLE}-{input_env}"
 
@@ -140,14 +122,10 @@ def _download_samples_v1(experiment_id, input_env, output_path):
     _create_sample_mapping(samples_list, output_path)
 
 
-def _download_samples_v2(experiment_id, input_env, output_path):
-    """
-    Download samples associated with an experiment from a given environment.\n
-    """
-
+def _get_samples_v2(experiment_id, input_env):
     SANDBOX_ID = "default"
     REGION = "eu-west-1"
-    bucket = f"biomage-originals-{input_env}"
+    USER = "dev_role"
 
     command = f"""psql -c "SELECT json_agg(t) FROM ( \
         SELECT sample_file_id , sample_id, s3_path, name AS sample_name FROM ( \
@@ -166,37 +144,40 @@ def _download_samples_v2(experiment_id, input_env, output_path):
         INNER JOIN sample ON b.sample_id = sample.id ) as t"\
     """
 
-    USER = "dev_role"
-
     print(f"Querying samples for {experiment_id}...")
 
     result_str = run_rds_command(command, SANDBOX_ID, input_env, USER, REGION, True)
-    samples_list = _process_query_output(result_str)
+    return _process_query_output(result_str)
+
+
+def _download_samples_v2(experiment_id, input_env, output_path):
+    """
+    Download samples associated with an experiment from a given environment for v2.\n
+    """
+    bucket = f"biomage-originals-{input_env}"
+
+    samples_list = _get_samples_v2(experiment_id, input_env)
     num_samples = len(samples_list)
 
     print(f"{num_samples} samples found. Downloading sample files...\n")
 
     for sample_idx, value in enumerate(samples_list.items()):
         sample_name, samples = value
+        num_files = len(samples)
 
         print(
             f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
         )
 
-        num_files = len(samples)
         for file_idx, sample in enumerate(samples):
 
             s3_path = sample["s3_path"]
             file_name = Path(s3_path).name
+            file_path = output_path / sample_name / file_name
 
             print(
                 f"> Downloading {sample_name}/{file_name} (file {file_idx+1}/{num_files})"
             )
-
-            file_path = output_path / sample_name / file_name
-
-            # s3_path only exists for samples uploaded in v2
-            # samples uploaded in v1 is keyed using project_id/sample_id/file_name
 
             s3client = boto3.client("s3")
             s3client.head_object(Bucket=bucket, Key=s3_path)
@@ -209,15 +190,11 @@ def _download_samples_v2(experiment_id, input_env, output_path):
 
 
 def _download_rds(experiment_id, input_env, output_path):
-
     FILE_NAME = "r.rds"
 
     bucket = f"biomage-source-{input_env}"
     key = f"{experiment_id}/{FILE_NAME}"
-
     file_path = output_path / FILE_NAME
-
-    print("Downloading RDS file...")
 
     _download_file(bucket, key, file_path)
 
@@ -225,18 +202,12 @@ def _download_rds(experiment_id, input_env, output_path):
 
 
 def _download_cellsets(experiment_id, input_env, output_path):
-
     FILE_NAME = "cellsets.json"
 
     bucket = f"cell-sets-{input_env}"
     key = experiment_id
-
     file_path = output_path / FILE_NAME
-
-    print("Downloading cell sets file...")
-
     _download_file(bucket, key, file_path)
-
     print(f"Cellsets file saved to {file_path}\n")
 
 
@@ -275,8 +246,7 @@ def download(experiment_id, input_env, output_path, files):
     Downloads files associated with an experiment from a given environment.\n
 
     E.g.:
-    biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
-    -f samples -f rds -o output/folder
+    biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e -f samples -f rds -o output/folder
     """
 
     # Set output path
@@ -294,29 +264,20 @@ def download(experiment_id, input_env, output_path, files):
         if file == SAMPLES:
 
             print(f"== Download samples for {experiment_id}.")
-
             try:
                 _download_samples_v2(experiment_id, input_env, output_path)
-
             except Exception:
                 _download_samples_v1(experiment_id, input_env, output_path)
-
             print(f"All samples for experiment {experiment_id} have been downloaded.\n")
 
         elif file == RDS:
-
             print(f"== Downloading RDS file for {experiment_id}.")
-
             _download_rds(experiment_id, input_env, output_path)
-
             print(f"RDS for experiment {experiment_id} have been downloaded.\n")
 
         elif file == CELLSETS:
-
             print(f"== Download cellsets file for {experiment_id}.")
-
             _download_cellsets(experiment_id, input_env, output_path)
-
             print(
                 f"Cellsets file for experiment {experiment_id} have been downloaded.\n"
             )
