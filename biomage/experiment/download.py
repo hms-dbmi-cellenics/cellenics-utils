@@ -53,7 +53,7 @@ def _create_sample_mapping(samples_list, output_path):
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
 
-def _download_samples_v1(experiment_id, input_env, output_path):
+def _download_samples_v1(experiment_id, input_env, output_path, name_sample_using_id):
     """
     Download samples associated with an experiment from a given environment for v1.\n
     """
@@ -82,6 +82,9 @@ def _download_samples_v1(experiment_id, input_env, output_path):
 
         sample_name = sample["name"]
         samples_list[sample_name] = [{"sample_id": sample_id}]
+
+        if name_sample_using_id:
+            sample_name = sample_id
 
         print(
             f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
@@ -166,7 +169,7 @@ def _get_samples_v2(experiment_id, input_env):
     return _process_query_output(result_str)
 
 
-def _download_samples_v2(experiment_id, input_env, output_path):
+def _download_samples_v2(experiment_id, input_env, output_path, name_sample_using_id):
     """
     Download samples associated with an experiment from a given environment for v2.\n
     """
@@ -179,6 +182,10 @@ def _download_samples_v2(experiment_id, input_env, output_path):
 
     for sample_idx, value in enumerate(samples_list.items()):
         sample_name, samples = value
+
+        if name_sample_using_id:
+            sample_name = samples[0]["sample_id"]
+
         num_files = len(samples)
 
         print(
@@ -188,6 +195,7 @@ def _download_samples_v2(experiment_id, input_env, output_path):
         for file_idx, sample in enumerate(samples):
 
             s3_path = sample["s3_path"]
+
             file_name = Path(s3_path).name
             file_path = output_path / sample_name / file_name
 
@@ -267,6 +275,13 @@ def _download_cellsets(experiment_id, input_env, output_path):
     help="Download all files for the experiment.",
 )
 @click.option(
+    "--name_with_id",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Use sample id to name samples.",
+)
+@click.option(
     "-f",
     "--files",
     multiple=True,
@@ -278,7 +293,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
         "processed RDS (-f qc_rds)."
     ),
 )
-def download(experiment_id, input_env, output_path, files, all):
+def download(experiment_id, input_env, output_path, files, all, name_with_id):
     """
     Downloads files associated with an experiment from a given environment.\n
 
@@ -306,9 +321,9 @@ def download(experiment_id, input_env, output_path, files, all):
         if file == SAMPLES:
             print("\n== Downloading sample files")
             try:
-                _download_samples_v2(experiment_id, input_env, output_path)
+                _download_samples_v2(experiment_id, input_env, output_path, name_with_id)
             except Exception:
-                _download_samples_v1(experiment_id, input_env, output_path)
+                _download_samples_v1(experiment_id, input_env, output_path, name_with_id)
 
         elif file == RAW_RDS:
             print("\n== Downloading unprocessed RDS file")
