@@ -195,7 +195,7 @@ Download files associated with an experiment.
 
     biomage experiment download -e my-experiment-id -i environment
 
-Currently download of the following files are supported:
+Currently download of the following files is supported:
 
 - Sample files
 - Raw RDS file
