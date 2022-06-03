@@ -115,7 +115,7 @@ def run_rds_command(command, sandbox_id, input_env, user, region, capture_output
         )
 
     if result.returncode != 0:
-        raise Exception("Error connecting to the database")
+        raise Exception(result.stderr)
 
     if capture_output:
         return result.stdout

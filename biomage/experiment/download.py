@@ -19,11 +19,12 @@ RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
 CELLSETS = "cellsets"
 
+SANDBOX_ID = "default"
+REGION = "eu-west-1"
+USER = "dev_role"
+
 
 def _download_file(bucket, s3_path, file_path):
-    """
-    Utility to download file
-    """
     s3 = boto3.resource("s3")
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ def _download_file(bucket, s3_path, file_path):
 
 def _create_sample_mapping(samples_list, output_path):
     """
-    Create a mapping of sample names to sample ids.
+    Create a mapping of sample names to sample ids and writes them to a file.
     """
 
     MAPPING_FILE_NAME = "sample_mapping.json"
@@ -53,9 +54,6 @@ def _create_sample_mapping(samples_list, output_path):
 
 
 def _process_query_output(query_result):
-    """
-    Process query output
-    """
     json_text = (
         query_result.replace("+", "")
         .split("\n", 2)[2]
@@ -67,62 +65,75 @@ def _process_query_output(query_result):
     if not json_text:
         raise Exception("No data returned from query")
 
-    samples = json.loads(json_text)
+    return json.loads(json_text)
 
-    # Create a dictionary of samples
-    result = {}
 
+def _query_db(query, input_env):
+    query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
+
+    return _process_query_output(
+        run_rds_command(query, SANDBOX_ID, input_env, USER, REGION, True)
+    )
+
+
+def _get_experiment_samples(experiment_id, input_env):
+    query = f"""
+        SELECT id as sample_id, name as sample_name \
+            FROM sample WHERE experiment_id = '{experiment_id}'
+    """
+
+    return _query_db(query, input_env)
+
+
+def _get_sample_files(sample_ids, input_env):
+    query = f""" SELECT sample_id, s3_path FROM sample_file \
+            INNER JOIN sample_to_sample_file_map \
+            ON sample_to_sample_file_map.sample_file_id = sample_file.id \
+            WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
+    """
+
+    return _query_db(query, input_env)
+
+
+def _get_samples(experiment_id, input_env):
+    print(f"Querying samples for {experiment_id}...")
+    samples = _get_experiment_samples(experiment_id, input_env)
+
+    sample_id_to_name = {}
     for sample in samples:
+        sample_id_to_name[sample["sample_id"]] = sample["sample_name"]
+
+    print(f"Querying sample files for {experiment_id}...")
+    sample_ids = [entry["sample_id"] for entry in samples]
+    sample_files = _get_sample_files(sample_ids, input_env)
+
+    result = {}
+    for sample_file in sample_files:
+
+        sample_id = sample_file["sample_id"]
+        sample_name = sample_id_to_name[sample_id]
 
         if not result.get(sample["sample_name"]):
             result[sample["sample_name"]] = []
 
-        result[sample["sample_name"]].append(sample)
+        result[sample["sample_name"]].append(
+            {
+                "sample_id": sample_id,
+                "sample_name": sample_name,
+                "s3_path": sample_file["s3_path"],
+            }
+        )
 
     return result
 
 
-def _get_samples(experiment_id, input_env):
-    """
-    Get samples data for v2
-    """
-    SANDBOX_ID = "default"
-    REGION = "eu-west-1"
-    USER = "dev_role"
-
-    command = f"""psql -c "SELECT json_agg(t) FROM ( \
-        SELECT sample_file_id , sample_id, s3_path, name AS sample_name FROM ( \
-            SELECT sample_file_id, sample_id, s3_path FROM ( \
-                SELECT  sample_file_id, sample_id \
-                    FROM sample_to_sample_file_map \
-                    WHERE sample_id \
-                        IN ( \
-                        SELECT id \
-                        FROM sample \
-                        WHERE experiment_id = '{experiment_id}' \
-                    ) \
-            ) AS a \
-            LEFT JOIN sample_file ON a.sample_file_id = sample_file.id \
-        ) AS b \
-        INNER JOIN sample ON b.sample_id = sample.id ) as t"\
-    """
-
-    print(f"Querying samples for {experiment_id}...")
-
-    result_str = run_rds_command(command, SANDBOX_ID, input_env, USER, REGION, True)
-    return _process_query_output(result_str)
-
-
 def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_name):
-    """
-    Download samples associated with an experiment from a given environment for v2.\n
-    """
     bucket = f"{SAMPLES_BUCKET}-{input_env}"
 
     samples_list = _get_samples(experiment_id, input_env)
     num_samples = len(samples_list)
 
-    print(f"{num_samples} samples found. Downloading sample files...\n")
+    print(f"\n{num_samples} samples found. Downloading sample files...\n")
 
     for sample_idx, value in enumerate(samples_list.items()):
         sample_name, samples = value
