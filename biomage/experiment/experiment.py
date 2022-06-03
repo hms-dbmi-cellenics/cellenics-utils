@@ -9,6 +9,7 @@ from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
 from .copy import copy
+from .download import download
 from .ls import ls
 from .pull import pull
 
@@ -227,6 +228,7 @@ def compare(experiment_id):
 
 
 experiment.add_command(compare)
-experiment.add_command(pull)
-experiment.add_command(ls)
 experiment.add_command(copy)
+experiment.add_command(download)
+experiment.add_command(ls)
+experiment.add_command(pull)
