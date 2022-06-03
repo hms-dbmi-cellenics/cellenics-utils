@@ -1,12 +1,9 @@
 import json
 import os
-from enum import Enum
-from fileinput import filename
 from pathlib import Path
 
 import boto3
 import click
-from botocore.exceptions import ClientError
 
 from ..rds.run import run_rds_command
 from ..utils.constants import (
@@ -17,10 +14,6 @@ from ..utils.constants import (
 )
 from .utils import set_modified_date
 
-output_path = "."
-
-
-s3 = boto3.resource("s3")
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
@@ -31,6 +24,8 @@ def _download_file(bucket, s3_path, file_path):
     """
     Utility to download file
     """
+    s3 = boto3.resource("s3")
+
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     s3_obj = s3.Object(bucket, s3_path)
@@ -57,12 +52,12 @@ def _create_sample_mapping(samples_list, output_path):
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
 
-def _process_query_output(result_str):
+def _process_query_output(query_result):
     """
     Process query output
     """
     json_text = (
-        result_str.replace("+", "")
+        query_result.replace("+", "")
         .split("\n", 2)[2]
         .replace("\n", "")
         .replace("(1 row)", "")
@@ -87,7 +82,7 @@ def _process_query_output(result_str):
     return result
 
 
-def _get_samples_v2(experiment_id, input_env):
+def _get_samples(experiment_id, input_env):
     """
     Get samples data for v2
     """
@@ -107,7 +102,7 @@ def _get_samples_v2(experiment_id, input_env):
                         WHERE experiment_id = '{experiment_id}' \
                     ) \
             ) AS a \
-            LEFT JOIN sample_file sf ON a.sample_file_id = sf.id \
+            LEFT JOIN sample_file ON a.sample_file_id = sample_file.id \
         ) AS b \
         INNER JOIN sample ON b.sample_id = sample.id ) as t"\
     """
@@ -118,13 +113,13 @@ def _get_samples_v2(experiment_id, input_env):
     return _process_query_output(result_str)
 
 
-def _download_samples_v2(experiment_id, input_env, output_path, name_sample_using_id):
+def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_name):
     """
     Download samples associated with an experiment from a given environment for v2.\n
     """
     bucket = f"{SAMPLES_BUCKET}-{input_env}"
 
-    samples_list = _get_samples_v2(experiment_id, input_env)
+    samples_list = _get_samples(experiment_id, input_env)
     num_samples = len(samples_list)
 
     print(f"{num_samples} samples found. Downloading sample files...\n")
@@ -132,7 +127,7 @@ def _download_samples_v2(experiment_id, input_env, output_path, name_sample_usin
     for sample_idx, value in enumerate(samples_list.items()):
         sample_name, samples = value
 
-        if name_sample_using_id:
+        if use_sample_id_as_name:
             sample_name = samples[0]["sample_id"]
 
         num_files = len(samples)
@@ -275,9 +270,7 @@ def download(experiment_id, input_env, output_path, files, all, name_with_id):
         if file == SAMPLES:
             print("\n== Downloading sample files")
             try:
-                _download_samples_v2(
-                    experiment_id, input_env, output_path, name_with_id
-                )
+                _download_samples(experiment_id, input_env, output_path, name_with_id)
             except Exception as e:
 
                 message = e.args[0]
