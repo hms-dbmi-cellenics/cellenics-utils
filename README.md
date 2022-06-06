@@ -114,26 +114,6 @@ and `worker` as found under `master`.
 
 The utility will launch an interactive wizard to guide you through creating your environment.
 
-#### *isolated staging environments*
-
-The option to create isolated staging environments is provided during the creation of the staging environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolates your staging environment from changes made by others.
-
-Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully.
-
-If your deployment fails, **you are recommended to use the same sandbox Id that have failed**. The wizard will detect existing staging environemtns and display created experimentIds. If you decide to use a different sandbox ID, [unstage](#unstage) your environment before staging using a new sandbox ID.
-
-During the creation of isolated staging environments, the following files are copied in these S3 buckets into their staging counterpart:
-
-    biomage-source-production
-    processed-matrix-production
-
-Records in the following DynamoDB tables are copied into their staging counterparts:
-
-    experiments-production
-    samples-production
-
-These configurations are read from `config.yaml`
-
 #### Pinning
 
 Pinning is a feature of the utility. When you pin a deployment, you ensure that no changes made
