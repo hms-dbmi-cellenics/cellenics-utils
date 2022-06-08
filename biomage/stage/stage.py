@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import json
-import math
 import os
 import re
 from collections import namedtuple
@@ -17,7 +16,6 @@ from github import Github
 from PyInquirer import prompt
 
 from ..utils.config import get_config
-from ..utils.data import copy_experiments_to
 
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
@@ -369,183 +367,6 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
 
     return manifests, sandbox_id
 
-
-def paginate_experiments(
-    experiments,
-    experiments_per_page=10,
-    previous_text="<< previous <<",
-    next_text=">> next >>",
-    done_text="== done ==",
-):
-    """
-    Helper function to paginate list of experiments to choose for function.
-    This function returns a list of experiment ids, without the accompanying experiment
-    names
-    """
-
-    chosen_experiments = []
-
-    if len(experiments) <= experiments_per_page:
-
-        choices = [
-            {
-                "name": "{} {}".format(
-                    experiment["experimentId"][:40].ljust(40),
-                    experiment["experimentName"],
-                ),
-            }
-            for experiment in experiments
-        ]
-
-        questions = [
-            {
-                "type": "checkbox",
-                "name": "experiments_to_stage",
-                "message": "Which experiments would you like to enable for the"
-                " staging environment?",
-                "choices": choices,
-            }
-        ]
-
-        chosen_experiments = [
-            experiment.split(" ")[0]
-            for experiment in prompt(questions)["experiments_to_stage"]
-        ]
-
-    else:
-
-        max_page = math.ceil(len(experiments) / experiments_per_page)
-        current_page = 0
-        done = False
-
-        while not done:
-
-            idx_start = experiments_per_page * current_page
-            idx_end = (current_page + 1) * experiments_per_page
-
-            choices = [
-                {
-                    "name": "{} {}".format(
-                        experiment["experimentId"].ljust(40),
-                        experiment["experimentName"],
-                    ),
-                    "checked": experiment["experimentId"] in chosen_experiments,
-                }
-                for experiment in experiments[idx_start:idx_end]
-            ]
-
-            # build choice options according to position in page
-            if current_page > 0:
-                choices = [{"name": previous_text}, *choices]
-
-            if current_page < max_page - 1:
-                choices = [*choices, {"name": next_text}]
-
-            choices = [*choices, {"name": done_text}]
-
-            questions = [
-                {
-                    "type": "checkbox",
-                    "name": "experiments_to_stage",
-                    "message": "Which experiments would you like to enable for the"
-                    " staging environment?\n"
-                    "Choose 'done' to exit",
-                    "choices": choices,
-                }
-            ]
-
-            answers = prompt(questions)["experiments_to_stage"]
-            page_action = None
-
-            # Check if any of the pagination options are selected
-            if previous_text in answers:
-                answers.remove(previous_text)
-                page_action = "previous"
-
-            if next_text in answers:
-                answers.remove(next_text)
-                page_action = "next"
-
-            if done_text in answers:
-                answers.remove(done_text)
-                page_action = "done"
-
-            chosen_experiments = {
-                *chosen_experiments,
-                *(experiment.split(" ")[0] for experiment in answers),
-            }
-
-            # Switch according to chosen action
-            if page_action == "next":
-                current_page += 1
-            elif page_action == "previous":
-                current_page -= 1
-            elif page_action == "done":
-                break
-
-    return chosen_experiments
-
-
-def select_staging_experiments(sandbox_id, all_experiments, config):
-    """
-    Present a dialogue to the user to select staging experiments
-    """
-    click.echo()
-    click.echo(
-        click.style("Create isolated staging environment.", fg="yellow", bold=True)
-    )
-    click.echo(
-        "To provide isolation, files and records from existing experimentIds "
-        "will be copied and renamed under unique experimentIds.\n"
-        "You can use these scoped resources to test your changes. "
-        "Be mindful, that creating isolated environments create resources in AWS."
-    )
-
-    staged_experiments = [
-        experiment
-        for experiment in all_experiments
-        if re.match(f"^{sandbox_id}-*", experiment["experimentId"])
-    ]
-
-    # Exclude experiments with the pattern {sandbox_id}-{experiment_id}
-    # and the associated experiment_id to prevent double staging.
-    excluded_experiment_ids = [
-        *[
-            experiment["experimentId"].replace(f"{sandbox_id}-", "")
-            for experiment in staged_experiments
-        ],
-        *[experiment["experimentId"] for experiment in staged_experiments],
-    ]
-
-    unstaged_experiments = [
-        experiment
-        for experiment in all_experiments
-        if experiment["experimentId"] not in excluded_experiment_ids
-    ]
-
-    if len(staged_experiments) > 0:
-        click.echo()
-        click.echo(f"Staged environment(s) exists for the sandbox_id {sandbox_id}:")
-        click.echo(
-            "\n".join(
-                [f"• {experiment['experimentId']}" for experiment in staged_experiments]
-            )
-        )
-        click.echo()
-
-    chosen_experiments = paginate_experiments(unstaged_experiments)
-
-    click.echo()
-    click.echo("Experiments chosen to be staged:")
-    click.echo("\n".join(f"• {experiment_id}" for experiment_id in chosen_experiments))
-
-    staged_experiment_ids = [
-        experiment["experimentId"] for experiment in staged_experiments
-    ]
-
-    return chosen_experiments, staged_experiment_ids
-
-
 @click.command()
 @click.argument("deployments", nargs=-1)
 @click.option(
@@ -602,17 +423,6 @@ def stage(token, org, deployments, with_rds, auto):
 
     click.echo()
     click.echo(f"Sandbox ID: {sandbox_id}")
-
-    experiment_ids_to_stage, staged_experiment_ids = [], []
-    # do not stage automatically any experiment on auto mode
-    if not auto:
-        click.echo("select staging experiments")
-        experiment_ids_to_stage, staged_experiment_ids = select_staging_experiments(
-            sandbox_id, all_experiments, config
-        )
-
-    if len(experiment_ids_to_stage) == 0:
-        click.echo("No experiments chosen.")
 
     # get (secret) access keys
     session = boto3.Session()
@@ -681,9 +491,6 @@ def stage(token, org, deployments, with_rds, auto):
         )
         return
 
-    if len(experiment_ids_to_stage) > 0:
-        copy_experiments_to(experiment_ids_to_stage, sandbox_id, config)
-
     click.echo()
     click.echo(
         click.style(
@@ -711,25 +518,3 @@ def stage(token, org, deployments, with_rds, auto):
             bold=True,
         )
     )
-
-    available_experiments = [*staged_experiment_ids, *experiment_ids_to_stage]
-
-    if len(available_experiments) > 0:
-        click.echo()
-        click.echo(
-            click.style(
-                "✔️ Staging-specific experiments are available at :",
-                fg="green",
-                bold=True,
-            )
-        )
-
-        click.echo(
-            "\n".join(
-                [
-                    f"• https://ui-{sandbox_id}.scp-staging.biomage.net/experiments/"
-                    f"{sandbox_id}-{experiment_id}/data-processing"
-                    for experiment_id in available_experiments
-                ]
-            )
-        )
