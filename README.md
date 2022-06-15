@@ -182,7 +182,7 @@ Currently download of the following files is supported:
 - Processed RDS file
 - Cell sets file
 
-**Note** this command needs `biomage rds tunnel` running in another tab to work.
+**Note** this command needs `biomage rds tunnel` running in another tab to work. By default, `biomage rds tunnel` connects to staging. If you want to use production you need to specify it with the `-i` option (`biomage rds tunnel -i production`).
 
 ### account
 A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. Needs environmental variables `COGNITO_PRODUCTION_POOL` and/or `COGNITO_STAGING_POOL`.
