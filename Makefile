@@ -63,16 +63,27 @@ test: ## Tests that biomage cmd & subcommand are available
 
 	@echo "==> Checking if all subcommands are available..."
 	biomage configure-repo --help > /dev/null
-	biomage experiment --help > /dev/null
-	biomage experiment pull --help > /dev/null
-	biomage experiment ls --help > /dev/null
-	biomage experiment compare --help > /dev/null
-	biomage experiment copy --help > /dev/null
 	biomage rotate-ci --help > /dev/null
+
 	biomage stage --help > /dev/null
 	biomage unstage --help > /dev/null
-	biomage release --help > /dev/null
+
+	biomage experiment --help > /dev/null
+	biomage experiment compare --help > /dev/null
+	biomage experiment copy --help > /dev/null
+	biomage experiment download --help > /dev/null
+	biomage experiment ls --help > /dev/null
+	biomage experiment pull --help > /dev/null
+
 	biomage account --help > /dev/null
+	biomage account change-password --help > /dev/null
+	biomage account create-user --help > /dev/null
+	biomage account create-users-list --help > /dev/null
+
+	biomage rds --help > /dev/null
+	biomage rds run --help > /dev/null
+	biomage rds token --help > /dev/null
+	biomage rds tunnel --help > /dev/null
 	@echo "    [✓]"
 	@echo
 

@@ -54,6 +54,20 @@ def run(command, sandbox_id, input_env, user, region):
         biomage rds run psql\n
         biomage rds run pg_dump > dump.sql
     """
+
+    try:
+        run_rds_command(command, sandbox_id, input_env, user, region)
+    except Exception:
+        print(
+            "\n"
+            "There was an error connecting to the db. Try these steps:\n"
+            '- Make sure the tunnel is running. If not run "biomage rds tunnel"\n'
+            "- If the tunnel is running, try restarting the tunnel\n"
+            '- You may need to install psql, run "brew install postgresql"\n'
+        )
+
+
+def run_rds_command(command, sandbox_id, input_env, user, region, capture_output=False):
     password = None
 
     internal_port = 5432
@@ -77,24 +91,34 @@ def run(command, sandbox_id, input_env, user, region):
 
     print("Token generated", file=sys.stderr)
 
-    result = sub_run(
-        f'PGPASSWORD="{password}" {command} \
-            --host=localhost \
-            --port={internal_port} \
-            --username={user} \
-            --dbname=aurora_db',
-        shell=True,
-    )
+    result = None
+
+    if capture_output:
+        result = sub_run(
+            f'PGPASSWORD="{password}" {command} \
+                --host=localhost \
+                --port={internal_port} \
+                --username={user} \
+                --dbname=aurora_db',
+            capture_output=True,
+            text=True,
+            shell=True,
+        )
+    else:
+        result = sub_run(
+            f'PGPASSWORD="{password}" {command} \
+                --host=localhost \
+                --port={internal_port} \
+                --username={user} \
+                --dbname=aurora_db',
+            shell=True,
+        )
 
     if result.returncode != 0:
-        print(
-            "\n"
-            "There was an error connecting to the db. "
-            'You may need to install psql, run "brew install postgresql"'
-            "\n\n"
-            'Or try running "biomage rds tunnel" before this command if connecting'
-            "to staging/production"
-        )
+        raise Exception(result.stderr)
+
+    if capture_output:
+        return result.stdout
 
 
 def get_rds_endpoint(input_env, sandbox_id, rds_client, endpoint_type):

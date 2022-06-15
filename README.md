@@ -60,6 +60,8 @@ for Cognito.
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
 
+*  `COGNITO_PRODUCTION_POOL` and `COGNITO_STAGING_POOL`: The Cognito pool ids used for user account administration. It is recommended to set this interactively. For example, run `export COGNITO_PRODUCTION_POOL=eu-west-1_BLAH` before running `biomage account ...`.
+
 
 Utilities
 ---------
@@ -111,26 +113,6 @@ This will compose a *sandbox* comprising `api` as found under pull request `25`,
 and `worker` as found under `master`.
 
 The utility will launch an interactive wizard to guide you through creating your environment.
-
-#### *isolated staging environments*
-
-The option to create isolated staging environments is provided during the creation of the staging environment. Creating a new isolated staging environment allows you to modify database records and files without causing changes to other staging environments. This also isolates your staging environment from changes made by others.
-
-Isolated staging environments are created by creating new experimentIds using data from existing experiments. Data and records are copied from source tables and buckets independently of deployment. Therefore, in the event of deployment failure, data and records may be copied successfully.
-
-If your deployment fails, **you are recommended to use the same sandbox Id that have failed**. The wizard will detect existing staging environemtns and display created experimentIds. If you decide to use a different sandbox ID, [unstage](#unstage) your environment before staging using a new sandbox ID.
-
-During the creation of isolated staging environments, the following files are copied in these S3 buckets into their staging counterpart:
-
-    biomage-source-production
-    processed-matrix-production
-
-Records in the following DynamoDB tables are copied into their staging counterparts:
-
-    experiments-production
-    samples-production
-
-These configurations are read from `config.yaml`
 
 #### Pinning
 
@@ -187,12 +169,43 @@ Compares experiment settings accros development/staging/production environments.
 
     biomage experiment compare my-experiment-id
 
+#### experiment download
+
+Download files associated with an experiment.
+
+    biomage experiment download -e my-experiment-id -i environment
+
+Currently download of the following files is supported:
+
+- Sample files
+- Raw RDS file
+- Processed RDS file
+- Cell sets file
+
+**Note** this command needs `biomage rds tunnel` running in another tab to work.
+
 ### account
-A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. 
+A set of helper commands to aid with managing Cellenics account information (creating user accounts, changing passwords). See `biomage account --help` for more information, parameters and default values. Needs environmental variables `COGNITO_PRODUCTION_POOL` and/or `COGNITO_STAGING_POOL`.
 
 ### rds
 
 Includes many rds connection-related mechanisms. See `biomage rds --help` for more details.
+
+In order to run these you will need the following tools installed:
+
+#### installing
+[jq](https://stedolan.github.io/jq/)
+```brew install jq```
+
+[psql](https://www.postgresql.org/docs/current/app-psql.html)
+```brew install postgresql```
+
+[aws ssm cli](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+```
+curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+unzip sessionmanager-bundle.zip
+sudo /usr/local/bin/python3.6 sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+```
 
 #### rds tunnel
 
