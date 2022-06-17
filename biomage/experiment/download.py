@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from pathlib import Path
 
 import boto3
@@ -109,14 +110,13 @@ def _get_samples(experiment_id, input_env):
 
     result = {}
     for sample_file in sample_files:
-
         sample_id = sample_file["sample_id"]
         sample_name = sample_id_to_name[sample_id]
 
-        if not result.get(sample["sample_name"]):
-            result[sample["sample_name"]] = []
+        if not result.get(sample_name):
+            result[sample_name] = []
 
-        result[sample["sample_name"]].append(
+        result[sample_name].append(
             {
                 "sample_id": sample_id,
                 "sample_name": sample_name,
