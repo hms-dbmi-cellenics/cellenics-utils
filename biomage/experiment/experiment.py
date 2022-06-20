@@ -101,7 +101,7 @@ def compare(experiment_id):
         for bucket_name in buckets.keys():
             env_values["s3"][bucket_name] = {}
             for s3_object in s3.list_objects(
-                Bucket=f"{bucket_name}-{env_name}", Prefix=experiment_id
+                Bucket=f"{bucket_name}-{env_name}-242905224710", Prefix=experiment_id
             ).get("Contents", []):
                 file_name = s3_object["Key"].split("/", 1)[1]
                 env_values["s3"][bucket_name][file_name] = {

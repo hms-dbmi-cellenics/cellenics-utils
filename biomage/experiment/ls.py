@@ -18,8 +18,8 @@ def list_bucket_files(bucket):
 )
 def ls(origin):
     """
-    Get all available experiments in the bucket 'biomage-source-{origin} in S3.
+    Get all available experiments in the bucket 'biomage-source-{origin}-242905224710 in S3.
     """
 
-    bucket = f"biomage-source-{origin}"
+    bucket = f"biomage-source-{origin}-242905224710"
     list_bucket_files(bucket)
