@@ -19,6 +19,8 @@ SANDBOX_ID = "default"
 REGION = "eu-west-1"
 USER = "dev_role"
 
+AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "242905224710")
+
 
 def _download_file(bucket, s3_path, file_path):
     s3 = boto3.resource("s3")
@@ -124,7 +126,7 @@ def _get_samples(experiment_id, input_env):
 
 
 def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_name):
-    bucket = f"{SAMPLES_BUCKET}-{input_env}-242905224710"
+    bucket = f"{SAMPLES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
 
     samples_list = _get_samples(experiment_id, input_env)
     num_samples = len(samples_list)
@@ -175,11 +177,11 @@ def _download_rds_file(experiment_id, input_env, output_path, processed=False):
 
     if not processed:
         file_name = "raw_r.rds"
-        bucket = f"{RAW_FILES_BUCKET}-{input_env}-242905224710"
+        bucket = f"{RAW_FILES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
         end_message = "Raw RDS files have been downloaded."
     else:
         file_name = "processed_r.rds"
-        bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-242905224710"
+        bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
         end_message = "Processed RDS files have been downloaded."
 
     key = f"{experiment_id}/r.rds"
@@ -194,7 +196,7 @@ def _download_rds_file(experiment_id, input_env, output_path, processed=False):
 def _download_cellsets(experiment_id, input_env, output_path):
     FILE_NAME = "cellsets.json"
 
-    bucket = f"{CELLSETS_BUCKET}-{input_env}-242905224710"
+    bucket = f"{CELLSETS_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
     key = experiment_id
     file_path = output_path / FILE_NAME
     _download_file(bucket, key, file_path)
