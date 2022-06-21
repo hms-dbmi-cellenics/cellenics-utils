@@ -1,12 +1,7 @@
 import boto3
 import click
-from biomage.experiment.utils import (
-    add_env_user_to_experiment,
-    get_experiment_project_id,
-)
+from biomage.experiment.utils import get_experiment_project_id
 from botocore.exceptions import ClientError
-
-from ..utils.constants import PRODUCTION, STAGING
 
 
 def definitely_equal(target, source):
@@ -146,27 +141,3 @@ def copy_dynamodb_data(experiments, config, origin, destination):
                 f"Copying records from {source_table} to table {target_table}..."
             )
             copy_dynamodb_records(experiment_id, source_table, target_table, config)
-
-
-def copy_experiments_to(experiments, config, origin=PRODUCTION, destination=STAGING):
-    """
-    Copy the list of experiment IDs in experiments from the origin env into
-    destination env.
-    """
-    click.echo()
-    click.echo("Copying items for new experiments...")
-
-    copy_s3_data(
-        experiments=experiments, config=config, origin=origin, destination=destination
-    )
-    click.echo(click.style("S3 files successfully copied.", fg="green", bold=True))
-    click.echo()
-
-    # Copy DynamoDB entries
-    click.echo("Copying DynamoDB records for new experiments...")
-    copy_dynamodb_data(
-        experiments=experiments, config=config, origin=origin, destination=destination
-    )
-    click.echo(
-        click.style("DynamoDB records successfully copied.", fg="green", bold=True)
-    )

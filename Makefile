@@ -70,7 +70,6 @@ test: ## Tests that biomage cmd & subcommand are available
 
 	biomage experiment --help > /dev/null
 	biomage experiment compare --help > /dev/null
-	biomage experiment copy --help > /dev/null
 	biomage experiment download --help > /dev/null
 	biomage experiment ls --help > /dev/null
 	biomage experiment pull --help > /dev/null

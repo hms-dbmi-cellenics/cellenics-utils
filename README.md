@@ -53,10 +53,6 @@ then simply do:
   as the first part of the name of the staging environments created by you:
   `${BIOMAGE_NICK:-${USER}}-...`.
 
-* `BIOMAGE_EMAIL` is used by the `experiment pull/copy` command to automatically add permissions for the downloaded experiment.
-You should specify the email used to log in into the platform in staging. **Note** your current AWS account will need permissions
-for Cognito.
-
 *  `BIOMAGE_DATA_PATH`: where to get the experiment data to populate inframock's S3 and DynamoDB. It is recommended
 to place it outside any other repositories to avoid interactions with git. For example, `export BIOMAGE_DATA_PATH=$HOME/biomage-data` (or next to where your biomage repos live). If this is not set, it will default to `./data`. **Note**: this should be permanently added to your environment (e.g. in `.zshrc`, `.localrc` or similar) because other services like `inframock` or `worker` rely on using the same path.
 
@@ -154,14 +150,6 @@ List available experiments data in a given environment. See `biomage experiment 
 Example: list experiment files in `production`:
 
     biomage experiment ls production
-
-#### experiment copy
-
-Copies one experiment information from a given env to another (default: production to staging), prefxing keys of the copied data and records with `sandbox_id`. It is recommended to set the value of `sandbox_id` to the same value as your staging environment, so that running `biomage unstage` when unstaging the experiment will also delete records of the copied experiment.
-
-To run this command, `BIOMAGE_EMAIL` has to be set with the email you use to login in the staging environment. See `biomage experiment copy --help` for more details.
-
-    biomage experiment copy --experiment_id=my-experiment-id --sandbox_id=my-sandbox-id
 
 #### experiment compare
 
