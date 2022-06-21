@@ -9,7 +9,6 @@ from PyInquirer import prompt
 
 from ..utils.constants import DEVELOPMENT, PRODUCTION, STAGING
 from .download import download
-from .ls import ls
 
 
 @click.group()
@@ -227,4 +226,3 @@ def compare(experiment_id):
 
 experiment.add_command(compare)
 experiment.add_command(download)
-experiment.add_command(ls)

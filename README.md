@@ -135,14 +135,6 @@ to remove your deployment and delete staged environment.
 
 Manages experiment's data and configuration. See `biomage experiment --help` for more details.
 
-#### experiment ls
-
-List available experiments data in a given environment. See `biomage experiment ls --help` for more information, parameters and default values.
-
-Example: list experiment files in `production`:
-
-    biomage experiment ls production
-
 #### experiment compare
 
 Compares experiment settings accros development/staging/production environments. **Note** it needs inframock running in order to work.
