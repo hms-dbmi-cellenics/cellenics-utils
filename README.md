@@ -135,12 +135,6 @@ to remove your deployment and delete staged environment.
 
 Manages experiment's data and configuration. See `biomage experiment --help` for more details.
 
-#### experiment compare
-
-Compares experiment settings accros development/staging/production environments. **Note** it needs inframock running in order to work.
-
-    biomage experiment compare my-experiment-id
-
 #### experiment download
 
 Download files associated with an experiment.
