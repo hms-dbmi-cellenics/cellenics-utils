@@ -135,14 +135,6 @@ to remove your deployment and delete staged environment.
 
 Manages experiment's data and configuration. See `biomage experiment --help` for more details.
 
-#### experiment pull
-
-Downloads experiment data and config files from a given environment into `BIOMAGE_DATA_PATH/experiment_id/`. See `biomage experiment pull --help` for more information, parameters and default values.
-
-E.g. to download experiment `e52b39624588791a7889e39c617f669e` data from `production`:
-
-    biomage experiment pull production e52b39624588791a7889e39c617f669e
-
 #### experiment ls
 
 List available experiments data in a given environment. See `biomage experiment ls --help` for more information, parameters and default values.
