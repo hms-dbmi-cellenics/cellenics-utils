@@ -6,9 +6,12 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_BUCKET, PROCESSED_FILES_BUCKET,
-                               RAW_FILES_BUCKET, SAMPLES_BUCKET)
-from .utils import set_modified_date
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -29,7 +32,6 @@ def _download_file(bucket, s3_path, file_path):
 
     s3_obj = s3.Object(bucket, s3_path)
     s3_obj.download_file(str(file_path))
-    set_modified_date(file_location=file_path, date=s3_obj.last_modified)
 
 
 def _create_sample_mapping(samples_list, output_path):
