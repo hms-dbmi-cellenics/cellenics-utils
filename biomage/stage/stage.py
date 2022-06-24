@@ -18,7 +18,7 @@ from PyInquirer import prompt
 from ..utils.config import get_config
 
 SANDBOX_NAME_REGEX = re.compile(
-    r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
+    r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
 )
 
 DEFAULT_BRANCH = "master"
@@ -258,7 +258,7 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
                 )
             )
         elif SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
-            return sandbox_id
+            return sandbox_id.lower()
         else:
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
