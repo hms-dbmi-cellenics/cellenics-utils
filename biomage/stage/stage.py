@@ -258,7 +258,7 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
                 )
             )
         elif SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
-            return sandbox_id.lower()
+            return sandbox_id
         else:
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
