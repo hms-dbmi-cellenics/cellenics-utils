@@ -15,8 +15,6 @@ import yaml
 from github import Github
 from PyInquirer import prompt
 
-from ..utils.config import get_config
-
 SANDBOX_NAME_REGEX = re.compile(
     r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
 )
@@ -162,34 +160,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     raise Exception("Invalid repository supplied.")
 
 
-def get_all_experiments(source_table="experiments-staging"):
-    """
-    Function to get all experiments from a source_table.
-    This function handles pagination of results returned by DynamoDB scan.
-    """
-    table = boto3.resource("dynamodb").Table(source_table)
-    response = table.scan(
-        AttributesToGet=["experimentId", "experimentName"],
-        ConsistentRead=True,
-    )
-
-    experiment_ids = response.get("Items")
-
-    last_key = response.get("LastEvaluatedKey")
-    while last_key:
-        response = table.scan(
-            AttributesToGet=["experimentId", "experimentName"],
-            ConsistentRead=True,
-            ExclusiveStartKey={"experimentId": last_key.get("experimentId")},
-        )
-        experiment_ids = [*experiment_ids, *response.get("Items")]
-        last_key = response.get("LastEvaluatedKey")
-
-    experiment_ids.sort(key=lambda x: x["experimentId"])
-    return experiment_ids
-
-
-def get_sandbox_id(templates, manifests, all_experiments, auto):
+def get_sandbox_id(templates, manifests, auto):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
@@ -249,21 +220,13 @@ def get_sandbox_id(templates, manifests, all_experiments, auto):
         sandbox_id = prompt(questions)
         sandbox_id = sandbox_id["sandbox_id"]
 
-        if sandbox_id in [experiment["experimentId"] for experiment in all_experiments]:
-            click.echo(
-                click.style(
-                    "Your ID is the same with the name of an experiment. "
-                    "Please use another name",
-                    fg="red",
-                )
-            )
-        elif SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
+        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
             return sandbox_id
         else:
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
-def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_rds):
+def create_manifest(templates, token, repo_to_ref, auto, with_rds):
 
     # autopin the repos on the default branch
     if auto:
@@ -353,9 +316,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     manifests = yaml.dump_all(manifests)
 
     # Write sandbox ID
-    sandbox_id = get_sandbox_id(
-        templates, manifests, all_experiments=all_experiments, auto=auto
-    )
+    sandbox_id = get_sandbox_id(templates, manifests, auto=auto)
 
     # Decide the RDS cluster ID
     rds_sandbox_id = sandbox_id if with_rds else "default"
@@ -366,6 +327,7 @@ def create_manifest(templates, token, repo_to_ref, all_experiments, auto, with_r
     manifests = base64.b64encode(manifests.encode()).decode()
 
     return manifests, sandbox_id
+
 
 @click.command()
 @click.argument("deployments", nargs=-1)
@@ -408,15 +370,10 @@ def stage(token, org, deployments, with_rds, auto):
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
 
-    config = get_config()
-
-    all_experiments = get_all_experiments(config["production-experiments-table"])
-
     manifest, sandbox_id = create_manifest(
         templates,
         token,
         repo_to_ref=repo_to_ref,
-        all_experiments=all_experiments,
         auto=auto,
         with_rds=with_rds,
     )

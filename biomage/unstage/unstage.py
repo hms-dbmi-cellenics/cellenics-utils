@@ -7,8 +7,6 @@ import requests
 from github import Github
 from PyInquirer import prompt
 
-from ..utils.config import get_config
-
 
 def check_if_sandbox_exists(org, sandbox_id):
     url = f"https://raw.githubusercontent.com/{org}/releases/master/staging/{sandbox_id}.yaml"  # noqa: E501
@@ -39,9 +37,6 @@ def unstage(token, org, sandbox_id):
     """
     Removes a custom staging environment.
     """
-
-    # Read configuration
-    config = get_config()
 
     if check_if_sandbox_exists(org, sandbox_id):
         # get (secret) access keys
