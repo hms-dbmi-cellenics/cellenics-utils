@@ -40,7 +40,7 @@ def download_templates(org, repo, ref):
         raise Exception("Ref must be integer, string, or None.")
 
     url = (
-        f"https://raw.githubusercontent.com/{org}/iac/master/releases/"
+        f"https://raw.githubusercontent.com/{org}/releases/master/"
         f"staging-candidates/{repo}/{template}"
     )
 
@@ -127,7 +127,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     branch. If it is False, it returns the name of the default branch.
     """
 
-    # A `git` reference can be git@github.com:hms-dbmi-cellenics/iac
+    # A `git` reference can be git@github.com:hms-dbmi-cellenics/releases
     # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
     org, repo_name = path[1].split("/")

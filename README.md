@@ -87,7 +87,7 @@ and the script should take care of the rest.
 Deploys a staging environment. This utility takes a list of *deployments* as
 arguments. A *deployment* can be one of the following:
 
-* A repository name that publishes a staging candidate file to the `iac` repo, e.g. `ui`.
+* A repository name that publishes a staging candidate file to the `releases` repo, e.g. `ui`.
 In this case, the manifest fetched is the one for the `master` branch of the `ui` repository.
 * A repository name and a pull request ID, e.g. `ui/12`. In this case, the manifest fetched
 is the one for the pull request 12 branch of the `ui` repository.
@@ -122,7 +122,7 @@ as these are commonly the branches that a developer would push features to mid-d
 ### unstage
 
 Removes a staging environment. You must specify the sandbox ID of the staging environment deployed
-previously from [here](https://github.com/hms-dbmi-cellenics/iac/tree/master/releases/staging). Then, run
+previously from [here](https://github.com/hms-dbmi-cellenics/releases/tree/master/staging). Then, run
 
     biomage unstage my-sandbox-id
 
