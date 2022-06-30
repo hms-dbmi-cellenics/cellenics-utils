@@ -15,9 +15,9 @@ import yaml
 from github import Github
 from PyInquirer import prompt
 
-SANDBOX_NAME_REGEX = re.compile(
-    r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
-)
+from ..utils.staging import check_if_sandbox_exists
+
+SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
 
 DEFAULT_BRANCH = "master"
 
@@ -160,7 +160,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     raise Exception("Invalid repository supplied.")
 
 
-def get_sandbox_id(templates, manifests, auto=False):
+def get_sandbox_id(templates, manifests, org, auto=False):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
@@ -200,10 +200,13 @@ def get_sandbox_id(templates, manifests, auto=False):
     click.echo()
     click.echo(click.style("Give a sandbox ID.", fg="yellow", bold=True))
     click.echo(
-        "The sandbox ID must be no more than 26 characters long, consist of "
-        "lower case alphanumeric characters, or `-`, and must\n"
-        "start and end with an alphanumeric character. A unique ID generated from "
-        "the contents of the deployments and your pinning\n"
+        "The sandbox ID must :\n"
+        "- be no more than 26 characters long\n"
+        "- consist only of lower case alphanumeric characters and -.\n"
+        "- start and end with an alphanumeric character\n"
+        "- be different from an existing sandbox IDs\n"
+        "\n"
+        "A unique ID generated from the contents of the deployments and your pinning\n"
         "choices has been provided as a default."
     )
     while True:
@@ -220,13 +223,22 @@ def get_sandbox_id(templates, manifests, auto=False):
         sandbox_id = prompt(questions)
         sandbox_id = sandbox_id["sandbox_id"]
 
-        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
-            return sandbox_id
+        if len(sandbox_id) > 26:
+            click.echo(click.style("Sandbox ID is more than 26 characters.", fg="red"))
+            continue
 
-        click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
+        if not SANDBOX_NAME_REGEX.match(sandbox_id):
+            click.echo(click.style("Check the syntax of your sandbox id.", fg="red"))
+            continue
+
+        if check_if_sandbox_exists(org, sandbox_id):
+            click.echo(click.style("A sandbox with this ID exists.", fg="red"))
+            continue
+
+        return sandbox_id
 
 
-def create_manifest(templates, token, repo_to_ref, auto=False, with_rds=False):
+def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=False):
 
     # autopin the repos on the default branch
     if auto:
@@ -316,7 +328,7 @@ def create_manifest(templates, token, repo_to_ref, auto=False, with_rds=False):
     manifests = yaml.dump_all(manifests)
 
     # Write sandbox ID
-    sandbox_id = get_sandbox_id(templates, manifests, auto=auto)
+    sandbox_id = get_sandbox_id(templates, manifests, org, auto=auto)
 
     # Decide the RDS cluster ID
     rds_sandbox_id = sandbox_id if with_rds else "default"
@@ -373,6 +385,7 @@ def stage(token, org, deployments, with_rds, auto):
     manifest, sandbox_id = create_manifest(
         templates,
         token,
+        org,
         repo_to_ref,
         auto=auto,
         with_rds=with_rds,

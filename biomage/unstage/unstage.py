@@ -3,18 +3,10 @@ import json
 
 import boto3
 import click
-import requests
 from github import Github
 from PyInquirer import prompt
 
-
-def check_if_sandbox_exists(org, sandbox_id):
-    url = f"https://raw.githubusercontent.com/{org}/releases/master/staging/{sandbox_id}.yaml"  # noqa: E501
-
-    s = requests.Session()
-    r = s.get(url)
-
-    return 200 <= r.status_code < 300
+from ..utils.staging import check_if_sandbox_exists
 
 
 @click.command()
