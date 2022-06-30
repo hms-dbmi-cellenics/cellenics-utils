@@ -6,12 +6,8 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (
-    CELLSETS_BUCKET,
-    PROCESSED_FILES_BUCKET,
-    RAW_FILES_BUCKET,
-    SAMPLES_BUCKET,
-)
+from ..utils.constants import (CELLSETS_BUCKET, PROCESSED_FILES_BUCKET,
+                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -22,6 +18,7 @@ SANDBOX_ID = "default"
 REGION = "eu-west-1"
 USER = "dev_role"
 
+DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "242905224710")
 
 
@@ -154,7 +151,7 @@ def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_na
             file_path = output_path / sample_name / file_name
 
             print(
-                f"> Downloading {sample_name}/{file_name} (file {file_idx+1}/{num_files})"
+                f"> Downloading {s3_path} (file {file_idx+1}/{num_files})"
             )
 
             s3client = boto3.client("s3")
@@ -216,14 +213,17 @@ def _download_cellsets(experiment_id, input_env, output_path):
     "-i",
     "--input_env",
     required=True,
+    default=STAGING,
+    show_default=True,
     help="Input environment to pull the data from.",
 )
 @click.option(
     "-o",
     "--output_path",
     required=False,
-    default=None,
-    help="Name of output folder. By default this will be the experiment id.",
+    default=DATA_LOCATION,
+    show_default=True,
+    help="Output path. By default points to BIOMAGE_DATA_PATH/experiment_id.",
 )
 @click.option(
     "-a",
@@ -231,6 +231,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
     required=False,
     is_flag=True,
     default=False,
+    show_default=True,
     help="Download all files for the experiment.",
 )
 @click.option(
@@ -238,6 +239,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
     required=False,
     is_flag=True,
     default=False,
+    show_default=True,
     help="Use sample id to name samples.",
 )
 @click.option(
@@ -246,6 +248,7 @@ def _download_cellsets(experiment_id, input_env, output_path):
     multiple=True,
     required=False,
     default=[SAMPLES],
+    show_default=True,
     help=(
         "Files to download. By default only the samples (-f samples) are downloaded. "
         "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds) and "
@@ -255,6 +258,8 @@ def _download_cellsets(experiment_id, input_env, output_path):
 def download(experiment_id, input_env, output_path, files, all, name_with_id):
     """
     Downloads files associated with an experiment from a given environment.\n
+    It requires an open tunnel to the desired environment to fetch data from SQL:
+    `biomage rds tunnel -i staging`
 
     E.g.:
     biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
@@ -262,11 +267,11 @@ def download(experiment_id, input_env, output_path, files, all, name_with_id):
     """
 
     # Set output path
-    # By default, the output path is named after the experiment id
-    if not output_path:
-        output_path = experiment_id
-
-    output_path = Path(os.getcwd()) / output_path
+    # By default add experiment_id to the output path
+    if output_path == DATA_LOCATION:
+        output_path = Path(os.path.join(DATA_LOCATION, experiment_id))
+    else:
+        output_path = Path(os.getcwd()) / output_path
 
     print("Saving downloaded files to: ", str(output_path))
 
