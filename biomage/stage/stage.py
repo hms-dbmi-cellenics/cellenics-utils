@@ -220,10 +220,10 @@ def get_sandbox_id(templates, manifests, auto=False):
         sandbox_id = prompt(questions)
         sandbox_id = sandbox_id["sandbox_id"]
 
-        if not SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
-            click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
+        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
+            return sandbox_id
 
-        return sandbox_id
+        click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
 
 def create_manifest(templates, token, repo_to_ref, auto=False, with_rds=False):
