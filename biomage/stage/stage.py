@@ -160,7 +160,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     raise Exception("Invalid repository supplied.")
 
 
-def get_sandbox_id(templates, manifests, auto):
+def get_sandbox_id(templates, manifests, auto=False):
     # Generate a sandbox name and ask the user what they want theirs to be called.
     manifest_hash = hashlib.md5(manifests.encode()).digest()
     manifest_hash = anybase32.encode(manifest_hash, anybase32.ZBASE32).decode()
@@ -220,13 +220,13 @@ def get_sandbox_id(templates, manifests, auto):
         sandbox_id = prompt(questions)
         sandbox_id = sandbox_id["sandbox_id"]
 
-        if SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
-            return sandbox_id
-        else:
+        if not SANDBOX_NAME_REGEX.match(sandbox_id) and len(sandbox_id) <= 26:
             click.echo(click.style("Please, verify the syntax of your ID", fg="red"))
 
+        return sandbox_id
 
-def create_manifest(templates, token, repo_to_ref, auto, with_rds):
+
+def create_manifest(templates, token, repo_to_ref, auto=False, with_rds=False):
 
     # autopin the repos on the default branch
     if auto:
@@ -373,7 +373,7 @@ def stage(token, org, deployments, with_rds, auto):
     manifest, sandbox_id = create_manifest(
         templates,
         token,
-        repo_to_ref=repo_to_ref,
+        repo_to_ref,
         auto=auto,
         with_rds=with_rds,
     )

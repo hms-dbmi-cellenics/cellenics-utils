@@ -16,6 +16,7 @@ def check_if_sandbox_exists(org, sandbox_id):
 
     return 200 <= r.status_code < 300
 
+
 @click.command()
 @click.argument("sandbox_id", nargs=1)
 @click.option(
