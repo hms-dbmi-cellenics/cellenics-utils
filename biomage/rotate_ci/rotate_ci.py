@@ -56,8 +56,8 @@ def create_new_iam_users(org, policies):
 
     for repo, policies in policies.items():
         users[f"{format_name_for_cf(repo)}CIUser"] = {
-            "Path": f"/ci-users/{repo}/",
-            "UserName": f"ci-user-{repo}",
+            "Path": f"/ci-users/{org}/{repo}/",
+            "UserName": f"ci-user-{org}-{repo}",
             "Policies": policies,
         }
 
@@ -127,12 +127,12 @@ def create_new_iam_users(org, policies):
     click.echo("Created new users.")
 
 
-def create_new_access_keys(iam, roles):
+def create_new_access_keys(iam, org, roles):
     click.echo("Now creating new access keys for users...")
     keys = {}
 
     for repo in roles:
-        key = iam.create_access_key(UserName=f"ci-user-{repo}")
+        key = iam.create_access_key(UserName=f"ci-user-{org}-{repo}")
         keys[repo] = (
             key["AccessKey"]["AccessKeyId"],
             key["AccessKey"]["SecretAccessKey"],
@@ -183,7 +183,7 @@ def update_github_secrets(keys, token, org):
     return results
 
 
-def rollback_if_necessary(iam, keys, result_codes):
+def rollback_if_necessary(iam, keys, org, result_codes):
     click.echo("Results for each repository:")
 
     success = True
@@ -194,7 +194,7 @@ def rollback_if_necessary(iam, keys, result_codes):
     for repo, code in result_codes.items():
 
         status = None
-        username = f"ci-user-{repo}"
+        username = f"ci-user-{org}-{repo}"
         generated_key_id, _ = keys[repo]
 
         if not 200 <= code <= 299:
@@ -269,11 +269,11 @@ def rotate_ci(token, org):
     create_new_iam_users(org, policies)
 
     iam = boto3.client("iam", config=config)
-    keys = create_new_access_keys(iam, policies)
+    keys = create_new_access_keys(iam, org, policies)
 
     result_codes = update_github_secrets(keys, token, org)
 
-    success = rollback_if_necessary(iam, keys, result_codes)
+    success = rollback_if_necessary(iam, keys, org, result_codes)
 
     if success:
         click.echo(click.style("✔️ All done!", fg="green", bold=True))
