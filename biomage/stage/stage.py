@@ -18,7 +18,7 @@ from PyInquirer import prompt
 from ..utils.config import get_config
 
 SANDBOX_NAME_REGEX = re.compile(
-    r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    r"^[a-z0-9][-a-z0-9]*[a-z0-9]$"
 )
 
 DEFAULT_BRANCH = "master"
