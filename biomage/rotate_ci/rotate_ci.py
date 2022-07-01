@@ -45,11 +45,17 @@ def filter_iam_repos(repo):
     return False
 
 
+# CF template names can't contain underscores or dashes, remove them and capitalize
+# the string
+def format_name_for_cf(repo_name):
+    return repo_name.replace("_", " ").replace("-", " ").title().replace(" ", "")
+
+
 def create_new_iam_users(iam, policies):
     users = {}
 
     for repo, policies in policies.items():
-        users[f"{repo.capitalize()}CIUser"] = {
+        users[f"{format_name_for_cf(repo)}CIUser"] = {
             "Path": f"/ci-users/{repo}/",
             "UserName": f"ci-user-{repo}",
             "Policies": policies,
