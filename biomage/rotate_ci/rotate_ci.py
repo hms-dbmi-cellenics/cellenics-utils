@@ -232,15 +232,25 @@ def rollback_if_necessary(iam, keys, result_codes):
     "-t",
     envvar="GITHUB_API_TOKEN",
     required=True,
+    show_default=True,
     help="A GitHub Personal Access Token with the required permissions.",
 )
 @click.option(
     "--org",
+    "-o",
     envvar="GITHUB_BIOMAGE_ORG",
     default="hms-dbmi-cellenics",
+    show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
-def rotate_ci(token, org):
+@click.option(
+    "--repo",
+    "-r",
+    default="all",
+    show_default=True,
+    help="Name of repo to update e.g. ui",
+)
+def rotate_ci(token, org, repo):
     """
     Rotates and updates repository access credentials.
     """
@@ -249,10 +259,15 @@ def rotate_ci(token, org):
 
     g = Github(token)
     org = g.get_organization(org)
-    repos = org.get_repos()
+    repos = []
+
+    if repo == "all":
+        repos = org.get_repos()
+    else:
+        repos = [org.get_repo(repo)]
 
     click.echo(
-        f"Found {repos.totalCount} "
+        f"Found {len(repos)} "
         f"repositories in organization {org.name} ({org.login}), "
         "finding ones with required CI privileges..."
     )
