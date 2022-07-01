@@ -51,7 +51,7 @@ def format_name_for_cf(repo_name):
     return repo_name.replace("_", " ").replace("-", " ").title().replace(" ", "")
 
 
-def create_new_iam_users(iam, policies):
+def create_new_iam_users(org, policies):
     users = {}
 
     for repo, policies in policies.items():
@@ -75,7 +75,7 @@ def create_new_iam_users(iam, policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": "biomage-ci-users",
+        "StackName": f"biomage-ci-users-{org}",
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
@@ -243,14 +243,7 @@ def rollback_if_necessary(iam, keys, result_codes):
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
-@click.option(
-    "--repo",
-    "-r",
-    default="all",
-    show_default=True,
-    help="Name of repo to update e.g. ui",
-)
-def rotate_ci(token, org, repo):
+def rotate_ci(token, org):
     """
     Rotates and updates repository access credentials.
     """
@@ -259,12 +252,7 @@ def rotate_ci(token, org, repo):
 
     g = Github(token)
     org = g.get_organization(org)
-    repos = []
-
-    if repo == "all":
-        repos = org.get_repos()
-    else:
-        repos = [org.get_repo(repo)]
+    repos = org.get_repos()
 
     click.echo(
         f"Found {len(repos)} "
@@ -278,8 +266,9 @@ def rotate_ci(token, org, repo):
     )
     policies = dict(policies)
 
+    create_new_iam_users(org, policies)
+
     iam = boto3.client("iam", config=config)
-    create_new_iam_users(iam, policies)
     keys = create_new_access_keys(iam, policies)
 
     result_codes = update_github_secrets(keys, token, org)
