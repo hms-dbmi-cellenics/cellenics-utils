@@ -259,15 +259,12 @@ def rotate_ci(token, org, repo):
 
     g = Github(token)
     org = g.get_organization(org)
+    repos = []
 
     if repo == "all":
         repos = org.get_repos()
     else:
-        try:
-            repos = [org.get_repo(repo)]
-        except Exception as e:
-            print(e)
-            exit()
+        repos = [org.get_repo(repo)]
 
     click.echo(
         f"Found {len(repos)} "
