@@ -131,6 +131,9 @@ def create_new_access_keys(iam, roles):
             key["AccessKey"]["AccessKeyId"],
             key["AccessKey"]["SecretAccessKey"],
         )
+        print("******** ", repo)
+        print(key["AccessKey"])
+
 
     return keys
 
@@ -140,11 +143,12 @@ def update_github_secrets(keys, token, org):
 
     s = requests.Session()
     s.headers = {"Authorization": f"token {token}", "User-Agent": "Requests"}
-    url_base = f"https://api.github.com/repos/{org.login}"
 
     results = {}
 
     for repo_name, (access_key_id, secret_access_key) in keys.items():
+            
+        url_base = f"https://api.github.com/repos/{org.login}"
         ci_keys = s.get(f"{url_base}/{repo_name}/actions/secrets/public-key")
 
         if ci_keys.status_code != requests.codes.ok:
@@ -153,24 +157,49 @@ def update_github_secrets(keys, token, org):
 
         ci_keys = ci_keys.json()
 
+        print(access_key_id, secret_access_key, token)
+
         access_key_id = encrypt(ci_keys["key"], access_key_id)
         secret_access_key = encrypt(ci_keys["key"], secret_access_key)
         encrypted_token = encrypt(ci_keys["key"], token)
 
-        r = s.put(
-            f"{url_base}/{repo_name}/actions/secrets/AWS_ACCESS_KEY_ID",
-            json={"encrypted_value": access_key_id, "key_id": ci_keys["key_id"]},
-        )
+        print("****** ", repo_name);
 
-        r = s.put(
-            f"{url_base}/{repo_name}/actions/secrets/AWS_SECRET_ACCESS_KEY",
-            json={"encrypted_value": secret_access_key, "key_id": ci_keys["key_id"]},
-        )
+        if repo_name == "iac":
+            print('putting in iac');
 
-        r = s.put(
-            f"{url_base}/{repo_name}/actions/secrets/API_TOKEN_GITHUB",
-            json={"encrypted_value": encrypted_token, "key_id": ci_keys["key_id"]},
-        )
+            url_base = f"https://api.github.com/repositories/295436732"
+
+            r = s.put(
+                f"{url_base}/environments/Biomage/secrets/AWS_ACCESS_KEY_ID",
+                json={"encrypted_value": access_key_id, "key_id": ci_keys["key_id"]},
+            )
+            r = s.put(
+                f"{url_base}/environments/Biomage/secrets/AWS_SECRET_ACCESS_KEY",
+                json={"encrypted_value": secret_access_key, "key_id": ci_keys["key_id"]},
+            )
+
+            r = s.put(
+                f"{url_base}/environments/Biomage/secrets/API_TOKEN_GITHUB",
+                json={"encrypted_value": encrypted_token, "key_id": ci_keys["key_id"]},
+            )
+
+        else:
+            print('putting in ',repo_name);
+            r = s.put(
+                f"{url_base}/{repo_name}/actions/secrets/AWS_ACCESS_KEY_ID",
+                json={"encrypted_value": access_key_id, "key_id": ci_keys["key_id"]},
+            )
+
+            r = s.put(
+                f"{url_base}/{repo_name}/actions/secrets/AWS_SECRET_ACCESS_KEY",
+                json={"encrypted_value": secret_access_key, "key_id": ci_keys["key_id"]},
+            )
+
+            r = s.put(
+                f"{url_base}/{repo_name}/actions/secrets/API_TOKEN_GITHUB",
+                json={"encrypted_value": encrypted_token, "key_id": ci_keys["key_id"]},
+            )
 
         results[repo_name] = r.status_code
 
