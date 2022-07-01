@@ -3,20 +3,11 @@ import json
 
 import boto3
 import click
-import requests
 from github import Github
 from PyInquirer import prompt
 
-from ..utils.config import get_config
+from ..utils.staging import check_if_sandbox_exists
 
-
-def check_if_sandbox_exists(org, sandbox_id):
-    url = f"https://raw.githubusercontent.com/{org}/iac/master/releases/staging/{sandbox_id}.yaml"  # noqa: E501
-
-    s = requests.Session()
-    r = s.get(url)
-
-    return 200 <= r.status_code < 300
 
 @click.command()
 @click.argument("sandbox_id", nargs=1)
@@ -39,9 +30,6 @@ def unstage(token, org, sandbox_id):
     """
     Removes a custom staging environment.
     """
-
-    # Read configuration
-    config = get_config()
 
     if check_if_sandbox_exists(org, sandbox_id):
         # get (secret) access keys
