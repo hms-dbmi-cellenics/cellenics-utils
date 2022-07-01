@@ -17,7 +17,9 @@ from PyInquirer import prompt
 
 from ..utils.staging import check_if_sandbox_exists
 
-SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
+SANDBOX_NAME_REGEX = re.compile(
+    r"^[a-z0-9][-a-z0-9]*[a-z0-9]$"
+)
 
 DEFAULT_BRANCH = "master"
 
