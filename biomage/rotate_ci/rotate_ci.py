@@ -56,8 +56,8 @@ def create_new_iam_users(org, policies):
 
     for repo, policies in policies.items():
         users[f"{format_name_for_cf(repo)}CIUser"] = {
-            "Path": f"/ci-users/{org}/{repo}/",
-            "UserName": f"ci-user-{org}-{repo}",
+            "Path": f"/ci-users/{org.login}/{repo}/",
+            "UserName": f"ci-user-{org.login}-{repo}",
             "Policies": policies,
         }
 
@@ -75,7 +75,7 @@ def create_new_iam_users(org, policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": f"biomage-ci-users-{org}",
+        "StackName": f"biomage-ci-users-{org.login}",
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
@@ -132,7 +132,7 @@ def create_new_access_keys(iam, org, roles):
     keys = {}
 
     for repo in roles:
-        key = iam.create_access_key(UserName=f"ci-user-{org}-{repo}")
+        key = iam.create_access_key(UserName=f"ci-user-{org.login}-{repo}")
         keys[repo] = (
             key["AccessKey"]["AccessKeyId"],
             key["AccessKey"]["SecretAccessKey"],
@@ -194,7 +194,7 @@ def rollback_if_necessary(iam, keys, org, result_codes):
     for repo, code in result_codes.items():
 
         status = None
-        username = f"ci-user-{org}-{repo}"
+        username = f"ci-user-{org.login}-{repo}"
         generated_key_id, _ = keys[repo]
 
         if not 200 <= code <= 299:
@@ -255,7 +255,7 @@ def rotate_ci(token, org):
     repos = org.get_repos()
 
     click.echo(
-        f"Found {len(repos)} "
+        f"Found {repos.totalCount} "
         f"repositories in organization {org.name} ({org.login}), "
         "finding ones with required CI privileges..."
     )
