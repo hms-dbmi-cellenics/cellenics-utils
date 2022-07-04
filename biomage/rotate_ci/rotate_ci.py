@@ -15,6 +15,8 @@ config = Config(
     region_name="eu-west-1",
 )
 
+DEFAULT_ORG = "hms-dbmi-cellenics"
+
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
@@ -51,13 +53,30 @@ def format_name_for_cf(repo_name):
     return repo_name.replace("_", " ").replace("-", " ").title().replace(" ", "")
 
 
+def get_ci_names(org):
+    stack_name = "biomage-ci-users"
+    path_prefix = "ci-users"
+    name_prefix = "ci-user"
+
+    if org.login != DEFAULT_ORG:
+        org_postfix = org.login
+        stack_name = f"biomage-ci-users-{org_postfix}"
+        path_prefix = f"{path_prefix}/{org_postfix}"
+        name_prefix = f"{name_prefix}-{org_postfix}"
+
+    return stack_name, path_prefix, name_prefix
+
+
 def create_new_iam_users(org, policies):
+
+    stack_name, path_prefix, name_prefix = get_ci_names(org)
+
     users = {}
 
     for repo, policies in policies.items():
         users[f"{format_name_for_cf(repo)}CIUser"] = {
-            "Path": f"/ci-users/{org.login}/{repo}/",
-            "UserName": f"ci-user-{org.login}-{repo}",
+            "Path": f"/{path_prefix}/{repo}/",
+            "UserName": f"{name_prefix}-{repo}",
             "Policies": policies,
         }
 
@@ -75,7 +94,7 @@ def create_new_iam_users(org, policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": f"biomage-ci-users-{org.login}",
+        "StackName": stack_name,
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
@@ -131,8 +150,10 @@ def create_new_access_keys(iam, org, roles):
     click.echo("Now creating new access keys for users...")
     keys = {}
 
+    _, _, name_prefix = get_ci_names(org)
+
     for repo in roles:
-        key = iam.create_access_key(UserName=f"ci-user-{org.login}-{repo}")
+        key = iam.create_access_key(UserName=f"{name_prefix}-{repo}")
         keys[repo] = (
             key["AccessKey"]["AccessKeyId"],
             key["AccessKey"]["SecretAccessKey"],
@@ -188,13 +209,15 @@ def rollback_if_necessary(iam, keys, org, result_codes):
 
     success = True
 
+    _, _, name_prefix = get_ci_names(org)
+
     click.echo(
         "{0:<15}{1:<25}{2:<15}".format("REPOSITORY", "UPDATE STATUS (HTTP)", "STATUS")
     )
     for repo, code in result_codes.items():
 
         status = None
-        username = f"ci-user-{org.login}-{repo}"
+        username = f"{name_prefix}-{repo}"
         generated_key_id, _ = keys[repo]
 
         if not 200 <= code <= 299:
@@ -239,7 +262,7 @@ def rollback_if_necessary(iam, keys, org, result_codes):
     "--org",
     "-o",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="hms-dbmi-cellenics",
+    default=DEFAULT_ORG,
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
