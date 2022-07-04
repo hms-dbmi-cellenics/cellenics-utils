@@ -51,13 +51,13 @@ def format_name_for_cf(repo_name):
     return repo_name.replace("_", " ").replace("-", " ").title().replace(" ", "")
 
 
-def create_new_iam_users(iam, policies):
+def create_new_iam_users(org, policies):
     users = {}
 
     for repo, policies in policies.items():
         users[f"{format_name_for_cf(repo)}CIUser"] = {
-            "Path": f"/ci-users/{repo}/",
-            "UserName": f"ci-user-{repo}",
+            "Path": f"/ci-users/{org.login}/{repo}/",
+            "UserName": f"ci-user-{org.login}-{repo}",
             "Policies": policies,
         }
 
@@ -75,7 +75,7 @@ def create_new_iam_users(iam, policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": "biomage-ci-users",
+        "StackName": f"biomage-ci-users-{org.login}",
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
@@ -127,12 +127,12 @@ def create_new_iam_users(iam, policies):
     click.echo("Created new users.")
 
 
-def create_new_access_keys(iam, roles):
+def create_new_access_keys(iam, org, roles):
     click.echo("Now creating new access keys for users...")
     keys = {}
 
     for repo in roles:
-        key = iam.create_access_key(UserName=f"ci-user-{repo}")
+        key = iam.create_access_key(UserName=f"ci-user-{org.login}-{repo}")
         keys[repo] = (
             key["AccessKey"]["AccessKeyId"],
             key["AccessKey"]["SecretAccessKey"],
@@ -183,7 +183,7 @@ def update_github_secrets(keys, token, org):
     return results
 
 
-def rollback_if_necessary(iam, keys, result_codes):
+def rollback_if_necessary(iam, keys, org, result_codes):
     click.echo("Results for each repository:")
 
     success = True
@@ -194,7 +194,7 @@ def rollback_if_necessary(iam, keys, result_codes):
     for repo, code in result_codes.items():
 
         status = None
-        username = f"ci-user-{repo}"
+        username = f"ci-user-{org.login}-{repo}"
         generated_key_id, _ = keys[repo]
 
         if not 200 <= code <= 299:
@@ -243,14 +243,7 @@ def rollback_if_necessary(iam, keys, result_codes):
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
-@click.option(
-    "--repo",
-    "-r",
-    default="all",
-    show_default=True,
-    help="Name of repo to update e.g. ui",
-)
-def rotate_ci(token, org, repo):
+def rotate_ci(token, org):
     """
     Rotates and updates repository access credentials.
     """
@@ -259,15 +252,10 @@ def rotate_ci(token, org, repo):
 
     g = Github(token)
     org = g.get_organization(org)
-    repos = []
-
-    if repo == "all":
-        repos = org.get_repos()
-    else:
-        repos = [org.get_repo(repo)]
+    repos = org.get_repos()
 
     click.echo(
-        f"Found {len(repos)} "
+        f"Found {repos.totalCount} "
         f"repositories in organization {org.name} ({org.login}), "
         "finding ones with required CI privileges..."
     )
@@ -278,13 +266,14 @@ def rotate_ci(token, org, repo):
     )
     policies = dict(policies)
 
+    create_new_iam_users(org, policies)
+
     iam = boto3.client("iam", config=config)
-    create_new_iam_users(iam, policies)
-    keys = create_new_access_keys(iam, policies)
+    keys = create_new_access_keys(iam, org, policies)
 
     result_codes = update_github_secrets(keys, token, org)
 
-    success = rollback_if_necessary(iam, keys, result_codes)
+    success = rollback_if_necessary(iam, keys, org, result_codes)
 
     if success:
         click.echo(click.style("✔️ All done!", fg="green", bold=True))
