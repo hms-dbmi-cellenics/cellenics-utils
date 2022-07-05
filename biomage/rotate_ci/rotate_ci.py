@@ -225,6 +225,18 @@ def rollback_if_necessary(iam, keys, result_codes):
 
     return success
 
+def exclude_iac_from_rotation(repos, org_name):
+    warning_message = """
+        This script WILL NOT rotate any secrets in the iac repository.
+        If you want to rotate secrets in the iac repository, you will need to do that either manually,
+        or by adjusting this script to fit the environment structure of the secrets in iac.
+    """
+    click.echo(click.style("WARNING: " + warning_message, fg="yellow"))
+    repos_without_iac = []
+    for repo in repos:
+        if repo.full_name != f"{org_name}/iac":
+            repos_without_iac.append(repo)
+    return repos_without_iac
 
 @click.command()
 @click.option(
@@ -256,6 +268,8 @@ def rotate_ci(token, org):
         f"repositories in organization {org.name} ({org.login}), "
         "finding ones with required CI privileges..."
     )
+
+    repos = exclude_iac_from_rotation(repos, org.login)
 
     policies = [ret for ret in (filter_iam_repos(repo) for repo in repos) if ret]
     click.echo(
