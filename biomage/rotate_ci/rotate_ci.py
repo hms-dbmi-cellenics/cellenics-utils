@@ -51,7 +51,7 @@ def format_name_for_cf(repo_name):
     return repo_name.replace("_", " ").replace("-", " ").title().replace(" ", "")
 
 
-def create_new_iam_users(iam, policies):
+def create_new_iam_users(policies):
     users = {}
 
     for repo, policies in policies.items():
@@ -264,7 +264,7 @@ def rotate_ci(token, org):
     policies = dict(policies)
 
     iam = boto3.client("iam", config=config)
-    create_new_iam_users(iam, policies)
+    create_new_iam_users(policies)
     keys = create_new_access_keys(iam, policies)
 
     result_codes = update_github_secrets(keys, token, org)
