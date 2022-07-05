@@ -17,9 +17,7 @@ from PyInquirer import prompt
 
 from ..utils.staging import check_if_sandbox_exists
 
-SANDBOX_NAME_REGEX = re.compile(
-    r"^[a-z0-9][-a-z0-9]*[a-z0-9]$"
-)
+SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
 
 DEFAULT_BRANCH = "master"
 
@@ -127,10 +125,10 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     branch. If it is False, it returns the name of the default branch.
     """
 
-    # A `git` reference can be git@github.com:hms-dbmi-cellenics/releases
+    # A `git` reference can be https://github.com/hms-dbmi-cellenics/releases
     # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
-    org, repo_name = path[1].split("/")
+    org, repo_name = path[1].split("/")[-2:]
 
     g = Github(token)
     org = g.get_organization(org)
