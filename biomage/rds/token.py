@@ -4,7 +4,7 @@ from subprocess import run as sub_run
 import boto3
 import click
 
-from ..utils.constants import STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 
 # we use writer because reader might also point to writer making it not safe
 ENDPOINT_TYPE = "writer"
@@ -43,7 +43,15 @@ ENDPOINT_TYPE = "writer"
     show_default=True,
     help="Default sandbox id.",
 )
-def token(input_env, user, region, sandbox_id):
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+def token(input_env, user, region, sandbox_id, aws_profile):
     """
     Generates a temporary token that can be used to login to the database (through the ssh tunnel).\n
 
@@ -55,7 +63,8 @@ def token(input_env, user, region, sandbox_id):
 
     internal_port = 5432
 
-    rds_client = boto3.client("rds")
+    session = boto3.Session(profile_name=aws_profile)
+    rds_client = session.client("rds")
 
     remote_endpoint = get_rds_endpoint(input_env, sandbox_id, rds_client, ENDPOINT_TYPE)
 

@@ -4,7 +4,7 @@ from subprocess import run as sub_run
 import boto3
 import click
 
-from ..utils.constants import STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 
 # we use writer because reader might also point to writer making it not safe
 ENDPOINT_TYPE = "writer"
@@ -43,8 +43,16 @@ ENDPOINT_TYPE = "writer"
     show_default=True,
     help="Region the RDS server is in.",
 )
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
 @click.argument("command")
-def run(command, sandbox_id, input_env, user, region):
+def run(command, sandbox_id, input_env, user, region, aws_profile):
     """
     Runs the provided command in the cluster using IAM if necessary.
     Use 'psql' to start an interactive session.
@@ -56,7 +64,7 @@ def run(command, sandbox_id, input_env, user, region):
     """
 
     try:
-        run_rds_command(command, sandbox_id, input_env, user, region)
+        run_rds_command(command, sandbox_id, input_env, user, region, aws_profile)
     except Exception:
         print(
             "\n"
@@ -67,7 +75,11 @@ def run(command, sandbox_id, input_env, user, region):
         )
 
 
-def run_rds_command(command, sandbox_id, input_env, user, region, capture_output=False):
+def run_rds_command(
+    command, sandbox_id, input_env, user, region, aws_profile, capture_output=False
+):
+    session = boto3.Session(profile_name=aws_profile)
+
     password = None
 
     internal_port = 5432
@@ -76,7 +88,7 @@ def run_rds_command(command, sandbox_id, input_env, user, region, capture_output
         password = "password"
         internal_port = 5431
     else:
-        rds_client = boto3.client("rds")
+        rds_client = session.client("rds")
 
         remote_endpoint = get_rds_endpoint(
             input_env, sandbox_id, rds_client, ENDPOINT_TYPE
