@@ -78,7 +78,7 @@ def run(command, sandbox_id, input_env, user, region, aws_profile):
 def run_rds_command(
     command, sandbox_id, input_env, user, region, aws_profile, capture_output=False
 ):
-    session = boto3.Session(profile_name=aws_profile)
+    aws_session = boto3.Session(profile_name=aws_profile)
 
     password = None
 
@@ -88,7 +88,7 @@ def run_rds_command(
         password = "password"
         internal_port = 5431
     else:
-        rds_client = session.client("rds")
+        rds_client = aws_session.client("rds")
 
         remote_endpoint = get_rds_endpoint(
             input_env, sandbox_id, rds_client, ENDPOINT_TYPE

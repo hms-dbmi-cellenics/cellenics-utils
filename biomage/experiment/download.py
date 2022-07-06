@@ -6,8 +6,14 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_BUCKET, PROCESSED_FILES_BUCKET,
-                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+    STAGING,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -19,11 +25,10 @@ REGION = "eu-west-1"
 USER = "dev_role"
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
-AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "242905224710")
 
 
-def _download_file(bucket, s3_path, file_path):
-    s3 = boto3.resource("s3")
+def _download_file(bucket, s3_path, file_path, boto3_session):
+    s3 = boto3_session.resource("s3")
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -65,36 +70,38 @@ def _process_query_output(query_result):
     return json.loads(json_text)
 
 
-def _query_db(query, input_env):
+def _query_db(query, input_env, aws_profile):
     query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
 
     return _process_query_output(
-        run_rds_command(query, SANDBOX_ID, input_env, USER, REGION, True)
+        run_rds_command(
+            query, SANDBOX_ID, input_env, USER, REGION, aws_profile, capture_output=True
+        )
     )
 
 
-def _get_experiment_samples(experiment_id, input_env):
+def _get_experiment_samples(experiment_id, input_env, aws_profile):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return _query_db(query, input_env)
+    return _query_db(query, input_env, aws_profile)
 
 
-def _get_sample_files(sample_ids, input_env):
+def _get_sample_files(sample_ids, input_env, aws_profile):
     query = f""" SELECT sample_id, s3_path FROM sample_file \
             INNER JOIN sample_to_sample_file_map \
             ON sample_to_sample_file_map.sample_file_id = sample_file.id \
             WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
     """
 
-    return _query_db(query, input_env)
+    return _query_db(query, input_env, aws_profile)
 
 
-def _get_samples(experiment_id, input_env):
+def _get_samples(experiment_id, input_env, aws_profile):
     print(f"Querying samples for {experiment_id}...")
-    samples = _get_experiment_samples(experiment_id, input_env)
+    samples = _get_experiment_samples(experiment_id, input_env, aws_profile)
 
     sample_id_to_name = {}
     for sample in samples:
@@ -102,7 +109,7 @@ def _get_samples(experiment_id, input_env):
 
     print(f"Querying sample files for {experiment_id}...")
     sample_ids = [entry["sample_id"] for entry in samples]
-    sample_files = _get_sample_files(sample_ids, input_env)
+    sample_files = _get_sample_files(sample_ids, input_env, aws_profile)
 
     result = {}
     for sample_file in sample_files:
@@ -123,10 +130,18 @@ def _get_samples(experiment_id, input_env):
     return result
 
 
-def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_name):
-    bucket = f"{SAMPLES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
+def _download_samples(
+    experiment_id,
+    input_env,
+    output_path,
+    use_sample_id_as_name,
+    boto3_session,
+    aws_account_id,
+    aws_profile,
+):
+    bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
-    samples_list = _get_samples(experiment_id, input_env)
+    samples_list = _get_samples(experiment_id, input_env, aws_profile)
     num_samples = len(samples_list)
 
     print(f"\n{num_samples} samples found. Downloading sample files...\n")
@@ -150,13 +165,11 @@ def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_na
             file_name = Path(s3_path).name
             file_path = output_path / sample_name / file_name
 
-            print(
-                f"> Downloading {s3_path} (file {file_idx+1}/{num_files})"
-            )
+            print(f"> Downloading {s3_path} (file {file_idx+1}/{num_files})")
 
-            s3client = boto3.client("s3")
+            s3client = boto3_session.client("s3")
             s3client.head_object(Bucket=bucket, Key=s3_path)
-            _download_file(bucket, s3_path, file_path)
+            _download_file(bucket, s3_path, file_path, boto3_session)
 
         print(f"Sample {sample_name} downloaded.\n")
 
@@ -169,35 +182,44 @@ def _download_samples(experiment_id, input_env, output_path, use_sample_id_as_na
     )
 
 
-def _download_rds_file(experiment_id, input_env, output_path, processed=False):
+def _download_rds_file(
+    experiment_id,
+    input_env,
+    output_path,
+    boto3_session,
+    aws_account_id,
+    processed=False,
+):
     file_name = None
     bucket = None
 
     if not processed:
         file_name = "raw_r.rds"
-        bucket = f"{RAW_FILES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
+        bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
         end_message = "Raw RDS files have been downloaded."
     else:
         file_name = "processed_r.rds"
-        bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
+        bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{aws_account_id}"
         end_message = "Processed RDS files have been downloaded."
 
     key = f"{experiment_id}/r.rds"
     file_path = output_path / file_name
 
-    _download_file(bucket, key, file_path)
+    _download_file(bucket, key, file_path, boto3_session)
 
     print(f"RDS file saved to {file_path}")
     click.echo(click.style(f"{end_message}", fg="green"))
 
 
-def _download_cellsets(experiment_id, input_env, output_path):
+def _download_cellsets(
+    experiment_id, input_env, output_path, boto3_session, aws_account_id
+):
     FILE_NAME = "cellsets.json"
 
-    bucket = f"{CELLSETS_BUCKET}-{input_env}-{AWS_ACCOUNT_ID}"
+    bucket = f"{CELLSETS_BUCKET}-{input_env}-{aws_account_id}"
     key = experiment_id
     file_path = output_path / FILE_NAME
-    _download_file(bucket, key, file_path)
+    _download_file(bucket, key, file_path, boto3_session)
     print(f"Cellsets file saved to {file_path}")
     click.echo(click.style("Cellsets file have been downloaded.", fg="green"))
 
@@ -255,7 +277,17 @@ def _download_cellsets(experiment_id, input_env, output_path):
         "processed RDS (-f processed_rds)."
     ),
 )
-def download(experiment_id, input_env, output_path, files, all, name_with_id):
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+def download(
+    experiment_id, input_env, output_path, files, all, name_with_id, aws_profile
+):
     """
     Downloads files associated with an experiment from a given environment.\n
     It requires an open tunnel to the desired environment to fetch data from SQL:
@@ -265,6 +297,9 @@ def download(experiment_id, input_env, output_path, files, all, name_with_id):
     biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
     -f samples -f cellsets -o output/folder
     """
+
+    boto3_session = boto3.Session(profile_name=aws_profile)
+    aws_account_id = boto3_session.client("sts").get_caller_identity().get("Account")
 
     # Set output path
     # By default add experiment_id to the output path
@@ -285,7 +320,15 @@ def download(experiment_id, input_env, output_path, files, all, name_with_id):
         if file == SAMPLES:
             print("\n== Downloading sample files")
             try:
-                _download_samples(experiment_id, input_env, output_path, name_with_id)
+                _download_samples(
+                    experiment_id,
+                    input_env,
+                    output_path,
+                    name_with_id,
+                    boto3_session,
+                    aws_account_id,
+                    aws_profile,
+                )
             except Exception as e:
 
                 message = e.args[0]
@@ -303,12 +346,23 @@ def download(experiment_id, input_env, output_path, files, all, name_with_id):
 
         elif file == RAW_FILE:
             print("\n== Downloading raw RDS file")
-            _download_rds_file(experiment_id, input_env, output_path)
+            _download_rds_file(
+                experiment_id, input_env, output_path, boto3_session, aws_account_id
+            )
 
         elif file == PROCESSED_FILE:
             print("\n== Downloading processed RDS file")
-            _download_rds_file(experiment_id, input_env, output_path, processed=True)
+            _download_rds_file(
+                experiment_id,
+                input_env,
+                output_path,
+                boto3_session,
+                aws_account_id,
+                processed=True,
+            )
 
         elif file == CELLSETS:
             print("\n== Download cellsets file")
-            _download_cellsets(experiment_id, input_env, output_path)
+            _download_cellsets(
+                experiment_id, input_env, output_path, boto3_session, aws_account_id
+            )
