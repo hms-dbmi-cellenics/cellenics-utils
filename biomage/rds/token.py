@@ -61,17 +61,15 @@ def token(input_env, user, region, sandbox_id, aws_profile):
     """
     password = None
 
-    internal_port = 5432
+    db_port = 5432
 
-    aws_session = boto3.Session(profile_name=aws_profile)
-    rds_client = aws_session.client("rds")
+    session = boto3.Session(profile_name=aws_profile)
+    rds_client = session.client("rds")
 
     remote_endpoint = get_rds_endpoint(input_env, sandbox_id, rds_client, ENDPOINT_TYPE)
 
     print(f"Generating temporary token for {input_env}", file=sys.stderr)
-    password = rds_client.generate_db_auth_token(
-        remote_endpoint, internal_port, user, region
-    )
+    password = rds_client.generate_db_auth_token(remote_endpoint, db_port, user, region)
 
     print(f"User: {user}")
     print(f"Password: {password}")

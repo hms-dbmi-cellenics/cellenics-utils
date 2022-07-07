@@ -44,6 +44,14 @@ ENDPOINT_TYPE = "writer"
     help="Region the RDS server is in.",
 )
 @click.option(
+    "-lp",
+    "--local_port",
+    required=False,
+    default=None,
+    show_default=True,
+    help="Port to use locally for the tunnel, default is 5431 for inframock db, 5432 otherwise.",
+)
+@click.option(
     "-p",
     "--aws_profile",
     required=False,
@@ -52,7 +60,7 @@ ENDPOINT_TYPE = "writer"
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 @click.argument("command")
-def run(command, sandbox_id, input_env, user, region, aws_profile):
+def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
     """
     Runs the provided command in the cluster using IAM if necessary.
     Use 'psql' to start an interactive session.
@@ -64,7 +72,9 @@ def run(command, sandbox_id, input_env, user, region, aws_profile):
     """
 
     try:
-        run_rds_command(command, sandbox_id, input_env, user, region, aws_profile)
+        run_rds_command(
+            command, sandbox_id, input_env, user, region, aws_profile, local_port
+        )
     except Exception:
         print(
             "\n"
@@ -76,17 +86,24 @@ def run(command, sandbox_id, input_env, user, region, aws_profile):
 
 
 def run_rds_command(
-    command, sandbox_id, input_env, user, region, aws_profile, capture_output=False
+    command,
+    sandbox_id,
+    input_env,
+    user,
+    region,
+    aws_profile,
+    local_port=None,
+    capture_output=False,
 ):
     aws_session = boto3.Session(profile_name=aws_profile)
 
     password = None
 
-    internal_port = 5432
+    local_port = local_port or 5432
 
     if input_env == "development":
         password = "password"
-        internal_port = 5431
+        local_port = local_port or 5431
     else:
         rds_client = aws_session.client("rds")
 
@@ -98,7 +115,7 @@ def run_rds_command(
             f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
         )
         password = rds_client.generate_db_auth_token(
-            remote_endpoint, internal_port, user, region
+            remote_endpoint, 5432, user, region
         )
 
     print("Token generated", file=sys.stderr)
@@ -109,7 +126,7 @@ def run_rds_command(
         result = sub_run(
             f'PGPASSWORD="{password}" {command} \
                 --host=localhost \
-                --port={internal_port} \
+                --port={local_port} \
                 --username={user} \
                 --dbname=aurora_db',
             capture_output=True,
@@ -120,7 +137,7 @@ def run_rds_command(
         result = sub_run(
             f'PGPASSWORD="{password}" {command} \
                 --host=localhost \
-                --port={internal_port} \
+                --port={local_port} \
                 --username={user} \
                 --dbname=aurora_db',
             shell=True,

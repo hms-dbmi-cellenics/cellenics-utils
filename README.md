@@ -170,6 +170,13 @@ unzip sessionmanager-bundle.zip
 sudo /usr/local/bin/python3.6 sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
 ```
 
+These commands have a --profile (-p) parameter that represents one of the credential sets stored usually in ~/.aws/credentials.
+By adding more than one credential set here, you can run, for example, 
+biomage rds tunnel -p {first_profile_name} -lp 5432
+biomage rds tunnel -p {second_profile_name} -lp 5433
+
+This will establish 2 tunnels that can be used to connect to the dbs in the first and second accounts corresponding to the profiles simultaneously.
+
 #### rds tunnel
 
 Sets up an ssh tunneling/port forwarding session for the rds server in a given environment.

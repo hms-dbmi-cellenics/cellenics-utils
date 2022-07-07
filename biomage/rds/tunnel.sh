@@ -37,8 +37,8 @@ function cleanup() {
 	fi
 
 
-	ssh -O exit -S temp-ssh.sock *
-	rm temp*
+	ssh -O exit -S $tmp_socket_prefix-ssh.sock *
+	rm $tmp_socket_prefix*
 	echo "Finished cleaning up"
 }
 
@@ -66,11 +66,13 @@ then
 	exit 1
 fi
 
-ssh-keygen -t rsa -f temp -N ''
+tmp_socket_prefix=tmp-$RANDOM
 
-AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://temp.pub --profile $AWS_PROFILE
+ssh-keygen -t rsa -f $tmp_socket_prefix -N ''
 
-ssh -i temp -N -f -M -S temp-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
+AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://$tmp_socket_prefix.pub --profile $AWS_PROFILE
+
+ssh -i $tmp_socket_prefix -N -f -M -S $tmp_socket_prefix-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"
 
 echo "Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab"
 echo

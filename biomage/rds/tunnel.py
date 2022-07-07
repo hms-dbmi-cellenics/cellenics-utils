@@ -37,7 +37,7 @@ from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
     required=False,
     default=5432,
     show_default=True,
-    help="Default port to use locally for the tunnel.",
+    help="Port to use locally for the tunnel.",
 )
 @click.option(
     "-p",
