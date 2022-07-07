@@ -3,7 +3,7 @@ from subprocess import run
 
 import click
 
-from ..utils.constants import STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 
 
 @click.command()
@@ -31,7 +31,23 @@ from ..utils.constants import STAGING
     show_default=True,
     help="Default sandbox id.",
 )
-def tunnel(input_env, region, sandbox_id, local_port=5432):
+@click.option(
+    "-lp",
+    "--local_port",
+    required=False,
+    default=5432,
+    show_default=True,
+    help="Port to use locally for the tunnel.",
+)
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     """
     Sets up an ssh tunneling/port forwarding session
     for the rds server in a given environment.\n
@@ -51,6 +67,7 @@ def tunnel(input_env, region, sandbox_id, local_port=5432):
             {sandbox_id} \
             {region} \
             {local_port} \
-            {endpoint_type}",
+            {endpoint_type} \
+            {aws_profile}",
         shell=True,
     )

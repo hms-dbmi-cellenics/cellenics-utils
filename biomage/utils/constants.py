@@ -3,6 +3,8 @@ DEVELOPMENT = "development"
 STAGING = "staging"
 PRODUCTION = "production"
 
+DEFAULT_AWS_PROFILE = "default"
+
 # S3 Bucket names
 SAMPLES_BUCKET = "biomage-originals"
 RAW_FILES_BUCKET = "biomage-source"
