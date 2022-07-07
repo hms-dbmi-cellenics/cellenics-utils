@@ -24,6 +24,12 @@ SANDBOX_ID = "default"
 REGION = "eu-west-1"
 USER = "dev_role"
 
+file_type_to_name_map = {
+    "features10x": "features.tsv.gz",
+    "matrix10x": "matrix.mtx.gz",
+    "barcodes10x": "barcodes.tsv.gz",
+}
+
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
 
@@ -90,7 +96,7 @@ def _get_experiment_samples(experiment_id, input_env, aws_profile):
 
 
 def _get_sample_files(sample_ids, input_env, aws_profile):
-    query = f""" SELECT sample_id, s3_path FROM sample_file \
+    query = f""" SELECT sample_id, s3_path, sample_file_type FROM sample_file \
             INNER JOIN sample_to_sample_file_map \
             ON sample_to_sample_file_map.sample_file_id = sample_file.id \
             WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
@@ -124,6 +130,9 @@ def _get_samples(experiment_id, input_env, aws_profile):
                 "sample_id": sample_id,
                 "sample_name": sample_name,
                 "s3_path": sample_file["s3_path"],
+                "sample_file_name": file_type_to_name_map[
+                    sample_file["sample_file_type"]
+                ],
             }
         )
 
@@ -147,22 +156,21 @@ def _download_samples(
     print(f"\n{num_samples} samples found. Downloading sample files...\n")
 
     for sample_idx, value in enumerate(samples_list.items()):
-        sample_name, samples = value
+        sample_name, sample_files = value
 
         if use_sample_id_as_name:
-            sample_name = samples[0]["sample_id"]
+            sample_name = sample_files[0]["sample_id"]
 
-        num_files = len(samples)
+        num_files = len(sample_files)
 
         print(
             f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
         )
 
-        for file_idx, sample in enumerate(samples):
+        for file_idx, sample_file in enumerate(sample_files):
+            s3_path = sample_file["s3_path"]
 
-            s3_path = sample["s3_path"]
-
-            file_name = Path(s3_path).name
+            file_name = sample_file["sample_file_name"]
             file_path = output_path / sample_name / file_name
 
             print(f"> Downloading {s3_path} (file {file_idx+1}/{num_files})")
