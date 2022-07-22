@@ -222,15 +222,15 @@ def create_users_list(user_list, header, input_env, overwrite):
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
         for _, full_name, email in df.itertuples():
 
+            full_name = full_name.title().strip()
+            email = email.lower().strip()
+
             error = _validate_input(email, full_name)
             if error:
                 print(error)
                 sys.exit()
 
             password = generate_password()
-
-            full_name = full_name.title()
-            email = email.lower()
 
             error = _create_user(full_name, email, password, userpool, overwrite)
             if error and not ("UsernameExistsException" in str(error) and overwrite):
