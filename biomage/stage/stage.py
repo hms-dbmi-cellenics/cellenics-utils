@@ -26,6 +26,48 @@ def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
+def get_manifests(templates, pins, token, repo_to_ref):
+    manifests = []
+
+    # Open each template and iterate through the documents. If we
+    # find a `fluxcd.io/automated` annotation, set it to the appropriate
+    # value depending on the pinning request.
+    for name, template in templates.items():
+        documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
+
+        for document in documents:
+            # disable automatic image fetching if pinning is on
+            if recursive_get(
+                document, "metadata", "annotations", "fluxcd.io/automated"
+            ):
+                document["metadata"]["annotations"]["fluxcd.io/automated"] = str(
+                    name not in pins
+                ).lower()
+
+            # pin chart version if pinning is on
+            if recursive_get(document, "spec", "chart", "ref"):
+                if name in pins:
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"],
+                        token,
+                        repo_to_ref=repo_to_ref,
+                        return_sha=True,
+                    )
+                else:
+                    document["spec"]["chart"]["ref"] = get_branch_ref(
+                        document["spec"]["chart"],
+                        token,
+                        repo_to_ref=repo_to_ref,
+                        return_sha=False,
+                    )
+
+            manifests.append(document)
+
+    manifests = yaml.dump_all(manifests)
+
+    return manifests
+
+
 def download_templates(org, repo, ref):
     # If no pull request ID was specified in the command.
     if isinstance(ref, int):
@@ -173,23 +215,6 @@ def get_sandbox_id(templates, manifests, org, auto=False):
     )
     user_name = re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", "")))
 
-    # if we are in auto mode (non interactive) just generate a random sandbox ID name
-    if auto:
-        return (
-            (
-                user_name
-                + "-"
-                + random_name.generate_name(
-                    lists=(
-                        random_name.dictionaries.ADJECTIVES,
-                        random_name.dictionaries.ANIMALS,
-                    )
-                )
-            )
-            .lower()[:26]
-            .strip("-")
-        )
-
     fragments = (
         user_name,
         pr_ids if pr_ids else manifest_hash,
@@ -289,43 +314,7 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
 
     # Find the latest SHA of the iac
     # Generate a list of manifests from all the url's we collected.
-    manifests = []
-
-    # Open each template and iterate through the documents. If we
-    # find a `fluxcd.io/automated` annotation, set it to the appropriate
-    # value depending on the pinning request.
-    for name, template in templates.items():
-        documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
-
-        for document in documents:
-            # disable automatic image fetching if pinning is on
-            if recursive_get(
-                document, "metadata", "annotations", "fluxcd.io/automated"
-            ):
-                document["metadata"]["annotations"]["fluxcd.io/automated"] = str(
-                    name not in pins
-                ).lower()
-
-            # pin chart version if pinning is on
-            if recursive_get(document, "spec", "chart", "ref"):
-                if name in pins:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
-                        token,
-                        repo_to_ref=repo_to_ref,
-                        return_sha=True,
-                    )
-                else:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
-                        token,
-                        repo_to_ref=repo_to_ref,
-                        return_sha=False,
-                    )
-
-            manifests.append(document)
-
-    manifests = yaml.dump_all(manifests)
+    manifests = get_manifests(templates, pins, token, repo_to_ref)
 
     # Write sandbox ID
     sandbox_id = get_sandbox_id(templates, manifests, org, auto=auto)
