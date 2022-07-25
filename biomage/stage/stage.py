@@ -221,6 +221,9 @@ def get_sandbox_id(templates, manifests, org, auto=False):
     )
     sandbox_id = "-".join([bit for bit in fragments if bit]).lower()[:26]
 
+    if auto:
+        return sandbox_id
+
     # Ask the user to provide one if they want
     click.echo()
     click.echo(click.style("Give a sandbox ID.", fg="yellow", bold=True))
