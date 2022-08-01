@@ -99,12 +99,12 @@ def run_rds_command(
 
     password = None
 
-    local_port = local_port or 5432
-
     if input_env == "development":
         password = "password"
         local_port = local_port or 5431
     else:
+        local_port = local_port or 5432
+
         rds_client = aws_session.client("rds")
 
         remote_endpoint = get_rds_endpoint(
