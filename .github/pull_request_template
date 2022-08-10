@@ -19,8 +19,8 @@ Your changes will be ready for merging after each of the steps below have been c
 - [ ] Run make test
 - [ ] Test any modified command
 
-To set up easy local testing with inframock, follow the instructions here: https://github.com/hms-dbmi-cellenics/inframock
-To deploy to the staging environment, follow the instructions here: https://github.com/hms-dbmi-cellenics/biomage-utils
+To set up easy local testing with inframock, follow the instructions here: https://github.com/biomage-org/inframock
+To deploy to the staging environment, follow the instructions here: https://github.com/biomage-org/biomage-utils
 
 ### Documentation updates
 Is all relevant documentation updated to reflect the proposed changes in this PR?
