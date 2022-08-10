@@ -249,7 +249,7 @@ def exclude_iac_from_rotation(repos, org_name):
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="hms-dbmi-cellenics",
+    default="biomage-org",
     help="The GitHub organization to perform the operation in.",
 )
 def rotate_ci(token, org):

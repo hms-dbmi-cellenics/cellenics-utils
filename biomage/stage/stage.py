@@ -167,7 +167,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
     branch. If it is False, it returns the name of the default branch.
     """
 
-    # A `git` reference can be https://github.com/hms-dbmi-cellenics/releases
+    # A `git` reference can be https://github.com/biomage-org/releases
     # Here we extract the repository and organization from the string.
     path = chart["git"].split(":")
     org, repo_name = path[1].split("/")[-2:]
@@ -353,7 +353,7 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="hms-dbmi-cellenics",
+    default="biomage-org",
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
@@ -456,7 +456,7 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo()
     click.echo(
         click.style(
-            "✔️ Deployment submitted. You can check your progress at "
+            "✔️ Deployment submitted. You can check your progress at dlksfhdsfjdsfjkskjsdsjk"
             f"https://github.com/{org}/iac/actions. When the deployment is done"
             " run the following command to trigger flux synchronization and "
             " speed up the process:",
