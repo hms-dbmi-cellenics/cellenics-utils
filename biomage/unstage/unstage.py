@@ -22,7 +22,7 @@ from ..utils.staging import check_if_sandbox_exists
 @click.option(
     "--org",
     envvar="GITHUB_BIOMAGE_ORG",
-    default="hms-dbmi-cellenics",
+    default="biomage-org",
     show_default=True,
     help="The GitHub organization to perform the operation in.",
 )
