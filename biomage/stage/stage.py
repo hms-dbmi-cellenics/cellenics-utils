@@ -456,7 +456,7 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo()
     click.echo(
         click.style(
-            "✔️ Deployment submitted. You can check your progress at dlksfhdsfjdsfjkskjsdsjk"
+            "✔️ Deployment submitted. You can check your progress at "
             f"https://github.com/{org}/iac/actions. When the deployment is done"
             " run the following command to trigger flux synchronization and "
             " speed up the process:",
