@@ -19,6 +19,7 @@ SAMPLES = "samples"
 RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
 CELLSETS = "cellsets"
+SAMPLE_MAPPING = "sample_mapping"
 
 SANDBOX_ID = "default"
 REGION = "eu-west-1"
@@ -185,6 +186,22 @@ def _download_samples(
     click.echo(
         click.style(
             "All samples for the experiment have been downloaded.",
+            fg="green",
+        )
+    )
+
+
+def _download_sample_mapping(
+    experiment_id,
+    input_env,
+    output_path,
+    aws_profile,
+):
+    samples_list = _get_samples(experiment_id, input_env, aws_profile)
+    _create_sample_mapping(samples_list, output_path)
+    click.echo(
+        click.style(
+            "Sample mapping for the experiment has been downloaded.",
             fg="green",
         )
     )
@@ -413,3 +430,7 @@ def download(
             _download_cellsets(
                 experiment_id, input_env, output_path, boto3_session, aws_account_id
             )
+
+        elif file == SAMPLE_MAPPING:
+            print("\n== Download sample mapping file")
+            _download_sample_mapping(experiment_id, input_env, output_path, aws_profile)
