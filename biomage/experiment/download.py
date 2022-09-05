@@ -19,6 +19,7 @@ SAMPLES = "samples"
 RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
 CELLSETS = "cellsets"
+SAMPLE_MAPPING = "sample_mapping"
 
 SANDBOX_ID = "default"
 REGION = "eu-west-1"
@@ -190,25 +191,75 @@ def _download_samples(
     )
 
 
-def _download_rds_file(
+def _download_sample_mapping(
+    experiment_id,
+    input_env,
+    output_path,
+    aws_profile,
+):
+    samples_list = _get_samples(experiment_id, input_env, aws_profile)
+    _create_sample_mapping(samples_list, output_path)
+    click.echo(
+        click.style(
+            "Sample mapping for the experiment has been downloaded.",
+            fg="green",
+        )
+    )
+
+
+def _download_raw_rds_files(
+    experiment_id,
+    input_env,
+    output_path,
+    use_sample_id_as_name,
+    boto3_session,
+    aws_account_id,
+    aws_profile,
+):
+
+    bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
+
+    sample_list = _get_experiment_samples(experiment_id, input_env, aws_profile)
+    num_samples = len(sample_list)
+
+    print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
+
+    bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
+    end_message = "Raw RDS files have been downloaded."
+
+    for sample_idx, sample in enumerate(sample_list):
+
+        s3_path = f"{experiment_id}/{sample['sample_id']}/r.rds"
+
+        if use_sample_id_as_name:
+            file_name = f"{sample['sample_id']}.rds"
+        else:
+            file_name = f"{sample['sample_name']}.rds"
+
+        file_path = output_path / "raw" / f"{file_name}.rds"
+
+        print(f"Downloading {file_name} ({sample_idx+1}/{num_samples})")
+
+        s3client = boto3_session.client("s3")
+        s3client.head_object(Bucket=bucket, Key=s3_path)
+        _download_file(bucket, s3_path, file_path, boto3_session)
+
+        print(f"Sample {sample['sample_name']} downloaded.\n")
+
+    print(end_message)
+
+
+def _download_processed_rds_file(
     experiment_id,
     input_env,
     output_path,
     boto3_session,
     aws_account_id,
-    processed=False,
 ):
-    file_name = None
-    bucket = None
 
-    if not processed:
-        file_name = "raw_r.rds"
-        bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
-        end_message = "Raw RDS files have been downloaded."
-    else:
-        file_name = "processed_r.rds"
-        bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{aws_account_id}"
-        end_message = "Processed RDS files have been downloaded."
+    file_name = "processed_r.rds"
+    bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{aws_account_id}"
+    end_message = "Processed RDS files have been downloaded."
 
     key = f"{experiment_id}/r.rds"
     file_path = output_path / file_name
@@ -354,19 +405,24 @@ def download(
 
         elif file == RAW_FILE:
             print("\n== Downloading raw RDS file")
-            _download_rds_file(
-                experiment_id, input_env, output_path, boto3_session, aws_account_id
+            _download_raw_rds_files(
+                experiment_id,
+                input_env,
+                output_path,
+                name_with_id,
+                boto3_session,
+                aws_account_id,
+                aws_profile,
             )
 
         elif file == PROCESSED_FILE:
             print("\n== Downloading processed RDS file")
-            _download_rds_file(
+            _download_processed_rds_file(
                 experiment_id,
                 input_env,
                 output_path,
                 boto3_session,
                 aws_account_id,
-                processed=True,
             )
 
         elif file == CELLSETS:
@@ -374,3 +430,7 @@ def download(
             _download_cellsets(
                 experiment_id, input_env, output_path, boto3_session, aws_account_id
             )
+
+        elif file == SAMPLE_MAPPING:
+            print("\n== Download sample mapping file")
+            _download_sample_mapping(experiment_id, input_env, output_path, aws_profile)
