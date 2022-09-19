@@ -232,9 +232,9 @@ def _download_raw_rds_files(
         s3_path = f"{experiment_id}/{sample['sample_id']}/r.rds"
 
         if use_sample_id_as_name:
-            file_name = f"{sample['sample_id']}.rds"
+            file_name = f"{sample['sample_id']}"
         else:
-            file_name = f"{sample['sample_name']}.rds"
+            file_name = f"{sample['sample_name']}"
 
         file_path = output_path / "raw" / f"{file_name}.rds"
 
