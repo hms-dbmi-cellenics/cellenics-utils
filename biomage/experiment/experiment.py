@@ -1,6 +1,7 @@
 import click
 
 from .download import download
+from .upload import upload
 
 
 @click.group()
@@ -12,3 +13,4 @@ def experiment():
 
 
 experiment.add_command(download)
+experiment.add_command(upload)
