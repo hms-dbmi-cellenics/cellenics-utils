@@ -6,18 +6,14 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (
-    CELLSETS_BUCKET,
-    DEFAULT_AWS_PROFILE,
-    PROCESSED_FILES_BUCKET,
-    RAW_FILES_BUCKET,
-    SAMPLES_BUCKET,
-    STAGING,
-)
+from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
+                               FILTERED_CELLS_BUCKET, PROCESSED_FILES_BUCKET,
+                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
+FILTERED_CELLS = "filtered_cells"
 CELLSETS = "cellsets"
 SAMPLE_MAPPING = "sample_mapping"
 
@@ -270,6 +266,33 @@ def _download_processed_rds_file(
     click.echo(click.style(f"{end_message}", fg="green"))
 
 
+def _download_filtered_cells(
+    experiment_id,
+    input_env,
+    output_path,
+    boto3_session,
+    aws_account_id,
+):
+    bucket = f"{FILTERED_CELLS_BUCKET}-{input_env}-{aws_account_id}"
+    end_message = "Filtered cells files have been downloaded."
+
+    s3client = boto3_session.client("s3")
+
+    paginator = s3client.get_paginator("list_objects")
+    operation_parameters = {"Bucket": bucket, "Prefix": experiment_id}
+    page_iterator = paginator.paginate(**operation_parameters)
+    files = []
+    for page in page_iterator:
+        files.extend([x["Key"] for x in page["Contents"]])
+        for file in page["Contents"]:
+            key = file["Key"]
+            file_path = output_path / key.replace(experiment_id, "filtered-cells")
+            _download_file(bucket, key, file_path, boto3_session)
+            print(f"RDS file saved to {file_path}")
+
+    click.echo(click.style(f"{end_message}", fg="green"))
+
+
 def _download_cellsets(
     experiment_id, input_env, output_path, boto3_session, aws_account_id
 ):
@@ -332,8 +355,8 @@ def _download_cellsets(
     show_default=True,
     help=(
         "Files to download. By default only the samples (-f samples) are downloaded. "
-        "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds) and "
-        "processed RDS (-f processed_rds)."
+        "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds), "
+        "processed RDS (-f processed_rds), and filtered cells (-f filtered_cells)."
     ),
 )
 @click.option(
@@ -418,6 +441,15 @@ def download(
         elif file == PROCESSED_FILE:
             print("\n== Downloading processed RDS file")
             _download_processed_rds_file(
+                experiment_id,
+                input_env,
+                output_path,
+                boto3_session,
+                aws_account_id,
+            )
+        elif file == FILTERED_CELLS:
+            print("\n== Downloading filtered cells files")
+            _download_filtered_cells(
                 experiment_id,
                 input_env,
                 output_path,
