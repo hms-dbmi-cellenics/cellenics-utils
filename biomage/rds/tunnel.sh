@@ -36,13 +36,12 @@ function cleanup() {
 		show_requirements
 	fi
 
-
 	ssh -O exit -S $tmp_socket_prefix-ssh.sock *
 	rm $tmp_socket_prefix*
 	echo "Finished cleaning up"
 }
 
-trap cleanup EXIT
+trap cleanup INT TERM
 
 RDSHOST="$(aws rds describe-db-cluster-endpoints \
 	--region $REGION \
@@ -66,7 +65,9 @@ then
 	exit 1
 fi
 
-tmp_socket_prefix=tmp-$RANDOM
+tmp_socket_prefix=/tmp/tmp-tunnel
+
+rm "${tmp_socket_prefix}"
 
 ssh-keygen -t rsa -f $tmp_socket_prefix -N ''
 
@@ -80,4 +81,5 @@ echo "------------------------------"
 echo "Press enter to close session."
 echo "------------------------------"
 read
+cleanup
 echo
