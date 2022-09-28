@@ -33,13 +33,7 @@ DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
     s3 = boto3_session.resource('s3')
     bucket = s3.Bucket(bucket_name)
-
-    print("local_folder_pathDEBUG")
-    print(local_folder_path)
-
-    print("bucket_nameDebug")
-    print(bucket_name)
-
+    
     for object in bucket.objects.filter(Prefix=s3_path):
         # Join local path with subsequent s3 path
         local_file_path = os.path.join(local_folder_path, os.path.relpath(object.key, s3_path))
