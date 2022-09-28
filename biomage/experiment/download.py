@@ -29,14 +29,40 @@ file_type_to_name_map = {
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
+# Copied from https://stackoverflow.com/a/62945526
+def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
+    s3 = boto3_session.resource('s3')
+    bucket = s3.Bucket(bucket_name)
 
-def _download_file(bucket, s3_path, file_path, boto3_session):
+    print("local_folder_pathDEBUG")
+    print(local_folder_path)
+
+    print("bucket_nameDebug")
+    print(bucket_name)
+
+    for object in bucket.objects.filter(Prefix=s3_path):
+        # Join local path with subsequent s3 path
+        local_file_path = os.path.join(local_folder_path, os.path.relpath(object.key, s3_path))
+
+        # Create local folder 
+        if not os.path.exists(os.path.dirname(local_file_path)):
+            os.makedirs(os.path.dirname(local_file_path))
+
+        if object.key[-1] == '/':
+            continue
+
+        print(f"Downloading {object.key}")
+
+        bucket.download_file(object.key, local_file_path)
+
+
+def _download_file(bucket, s3_path, local_file_path, boto3_session):
     s3 = boto3_session.resource("s3")
 
-    file_path.parent.mkdir(parents=True, exist_ok=True)
+    local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
     s3_obj = s3.Object(bucket, s3_path)
-    s3_obj.download_file(str(file_path))
+    s3_obj.download_file(str(local_file_path))
 
 
 def _create_sample_mapping(samples_list, output_path):
@@ -208,20 +234,25 @@ def _download_raw_rds_files(
     input_env,
     output_path,
     use_sample_id_as_name,
+    without_tunnel,
     boto3_session,
     aws_account_id,
     aws_profile,
 ):
+    end_message = "Raw RDS files have been downloaded."
 
-    bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
+    bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
+
+    # Download all the files prefixed with experiment_id, no added checks
+    if without_tunnel:
+        _download_folder(bucket, experiment_id, output_path, boto3_session)
+        print(end_message)
+        return
 
     sample_list = _get_experiment_samples(experiment_id, input_env, aws_profile)
     num_samples = len(sample_list)
 
     print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
-
-    bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
-    end_message = "Raw RDS files have been downloaded."
 
     for sample_idx, sample in enumerate(sample_list):
 
@@ -347,6 +378,17 @@ def _download_cellsets(
     help="Use sample id to name samples.",
 )
 @click.option(
+    "--without_tunnel",
+    required=False,
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help=(
+        "Dont use the rds tunnel, some features will be disabled. "
+        "Disabled features: -f samples and mapping from sample ids to sample names"
+    ),
+)
+@click.option(
     "-f",
     "--files",
     multiple=True,
@@ -368,7 +410,7 @@ def _download_cellsets(
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 def download(
-    experiment_id, input_env, output_path, files, all, name_with_id, aws_profile
+    experiment_id, input_env, output_path, files, all, name_with_id, without_tunnel, aws_profile
 ):
     """
     Downloads files associated with an experiment from a given environment.\n
@@ -397,6 +439,11 @@ def download(
         selected_files = [SAMPLES, CELLSETS, RAW_FILE, PROCESSED_FILE]
     else:
         selected_files = list(files)
+
+    if (without_tunnel):
+        incompatible_file_types = [SAMPLES, SAMPLE_MAPPING]
+        if (name_with_id == True or any(file in selected_files for file in incompatible_file_types)):
+            raise Exception("'--without_tunnel' cannot be used together with '-f samples, sample_mapping' or '--name_with_id'")
 
     for file in selected_files:
         if file == SAMPLES:
@@ -433,6 +480,7 @@ def download(
                 input_env,
                 output_path,
                 name_with_id,
+                without_tunnel,
                 boto3_session,
                 aws_account_id,
                 aws_profile,
