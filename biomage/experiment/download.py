@@ -239,7 +239,9 @@ def _download_raw_rds_files(
 
     # Download all the files prefixed with experiment_id, no added checks
     if without_tunnel:
-        _download_folder(bucket, experiment_id, output_path, boto3_session)
+
+        folder_path = output_path / "raw"
+        _download_folder(bucket, experiment_id, folder_path, boto3_session)
         print(end_message)
         return
 
