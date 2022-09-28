@@ -28,7 +28,6 @@ file_type_to_name_map = {
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
-
 def _upload_file(bucket, s3_path, file_path, boto3_session):
     s3 = boto3_session.resource("s3")
 
@@ -182,11 +181,12 @@ def _upload_raw_rds_files(
     s3 = boto3_session.resource("s3")
 
     bucket = f"{RAW_FILES_BUCKET}-{output_env}-{aws_account_id}"
+    local_folder_path = os.path.join(input_path, f"{experiment_id}/raw") 
     end_message = "Raw RDS files have been uploaded."
 
     if (without_tunnel):
         print("IMPORTANT: rds tunnel disabled, local folder is expected to have the structure <experiment_id>/<sample_id>/r.rds")
-        for root, dirs, files in os.walk(input_path):
+        for root, dirs, files in os.walk(local_folder_path):
             for file_name in files:
                 local_path = os.path.join(root, file_name)
 
@@ -278,7 +278,7 @@ def _upload_cellsets(
     "-i",
     "--input_path",
     required=False,
-    default=".",
+    default=DATA_LOCATION,
     show_default=True,
     help="Input path. By default points to BIOMAGE_DATA_PATH/experiment_id.",
 )
