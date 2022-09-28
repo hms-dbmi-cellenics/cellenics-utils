@@ -33,7 +33,7 @@ DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
     s3 = boto3_session.resource('s3')
     bucket = s3.Bucket(bucket_name)
-    
+
     for object in bucket.objects.filter(Prefix=s3_path):
         # Join local path with subsequent s3 path
         local_file_path = os.path.join(local_folder_path, os.path.relpath(object.key, s3_path))
@@ -437,7 +437,7 @@ def download(
     if (without_tunnel):
         incompatible_file_types = [SAMPLES, SAMPLE_MAPPING]
         if (name_with_id == True or any(file in selected_files for file in incompatible_file_types)):
-            raise Exception("'--without_tunnel' cannot be used together with '-f samples, sample_mapping' or '--name_with_id'")
+            raise Exception("'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'")
 
     for file in selected_files:
         if file == SAMPLES:
