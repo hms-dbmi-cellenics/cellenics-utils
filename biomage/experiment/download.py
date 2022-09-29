@@ -6,18 +6,14 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (
-    CELLSETS_BUCKET,
-    DEFAULT_AWS_PROFILE,
-    PROCESSED_FILES_BUCKET,
-    RAW_FILES_BUCKET,
-    SAMPLES_BUCKET,
-    STAGING,
-)
+from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
+                               FILTERED_CELLS_BUCKET, PROCESSED_FILES_BUCKET,
+                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
 PROCESSED_FILE = "processed_rds"
+FILTERED_CELLS = "filtered_cells"
 CELLSETS = "cellsets"
 SAMPLE_MAPPING = "sample_mapping"
 
@@ -33,14 +29,34 @@ file_type_to_name_map = {
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
+# Copied from https://stackoverflow.com/a/62945526
+def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
+    s3 = boto3_session.resource('s3')
+    bucket = s3.Bucket(bucket_name)
 
-def _download_file(bucket, s3_path, file_path, boto3_session):
+    for object in bucket.objects.filter(Prefix=s3_path):
+        # Join local path with subsequent s3 path
+        local_file_path = os.path.join(local_folder_path, os.path.relpath(object.key, s3_path))
+
+        # Create local folder 
+        if not os.path.exists(os.path.dirname(local_file_path)):
+            os.makedirs(os.path.dirname(local_file_path))
+
+        if object.key[-1] == '/':
+            continue
+
+        print(f"Downloading {object.key}")
+
+        bucket.download_file(object.key, local_file_path)
+
+
+def _download_file(bucket, s3_path, local_file_path, boto3_session):
     s3 = boto3_session.resource("s3")
 
-    file_path.parent.mkdir(parents=True, exist_ok=True)
+    local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
     s3_obj = s3.Object(bucket, s3_path)
-    s3_obj.download_file(str(file_path))
+    s3_obj.download_file(str(local_file_path))
 
 
 def _create_sample_mapping(samples_list, output_path):
@@ -212,20 +228,27 @@ def _download_raw_rds_files(
     input_env,
     output_path,
     use_sample_id_as_name,
+    without_tunnel,
     boto3_session,
     aws_account_id,
     aws_profile,
 ):
+    end_message = "Raw RDS files have been downloaded."
 
-    bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
+    bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
+
+    # Download all the files prefixed with experiment_id, no added checks
+    if without_tunnel:
+
+        folder_path = output_path / "raw"
+        _download_folder(bucket, experiment_id, folder_path, boto3_session)
+        print(end_message)
+        return
 
     sample_list = _get_experiment_samples(experiment_id, input_env, aws_profile)
     num_samples = len(sample_list)
 
     print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
-
-    bucket = f"{RAW_FILES_BUCKET}-{input_env}-{aws_account_id}"
-    end_message = "Raw RDS files have been downloaded."
 
     for sample_idx, sample in enumerate(sample_list):
 
@@ -267,6 +290,33 @@ def _download_processed_rds_file(
     _download_file(bucket, key, file_path, boto3_session)
 
     print(f"RDS file saved to {file_path}")
+    click.echo(click.style(f"{end_message}", fg="green"))
+
+
+def _download_filtered_cells(
+    experiment_id,
+    input_env,
+    output_path,
+    boto3_session,
+    aws_account_id,
+):
+    bucket = f"{FILTERED_CELLS_BUCKET}-{input_env}-{aws_account_id}"
+    end_message = "Filtered cells files have been downloaded."
+
+    s3client = boto3_session.client("s3")
+
+    paginator = s3client.get_paginator("list_objects")
+    operation_parameters = {"Bucket": bucket, "Prefix": experiment_id}
+    page_iterator = paginator.paginate(**operation_parameters)
+    files = []
+    for page in page_iterator:
+        files.extend([x["Key"] for x in page["Contents"]])
+        for file in page["Contents"]:
+            key = file["Key"]
+            file_path = output_path / key.replace(experiment_id, "filtered-cells")
+            _download_file(bucket, key, file_path, boto3_session)
+            print(f"RDS file saved to {file_path}")
+
     click.echo(click.style(f"{end_message}", fg="green"))
 
 
@@ -324,6 +374,17 @@ def _download_cellsets(
     help="Use sample id to name samples.",
 )
 @click.option(
+    "--without_tunnel",
+    required=False,
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help=(
+        "Dont use the rds tunnel, some features will be disabled. "
+        "Disabled features: -f samples and mapping from sample ids to sample names"
+    ),
+)
+@click.option(
     "-f",
     "--files",
     multiple=True,
@@ -332,8 +393,8 @@ def _download_cellsets(
     show_default=True,
     help=(
         "Files to download. By default only the samples (-f samples) are downloaded. "
-        "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds) and "
-        "processed RDS (-f processed_rds)."
+        "You can also download cellsets (-f cellsets), raw RDS (-f raw_rds), "
+        "processed RDS (-f processed_rds), and filtered cells (-f filtered_cells)."
     ),
 )
 @click.option(
@@ -345,7 +406,7 @@ def _download_cellsets(
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 def download(
-    experiment_id, input_env, output_path, files, all, name_with_id, aws_profile
+    experiment_id, input_env, output_path, files, all, name_with_id, without_tunnel, aws_profile
 ):
     """
     Downloads files associated with an experiment from a given environment.\n
@@ -374,6 +435,11 @@ def download(
         selected_files = [SAMPLES, CELLSETS, RAW_FILE, PROCESSED_FILE]
     else:
         selected_files = list(files)
+
+    if (without_tunnel):
+        incompatible_file_types = [SAMPLES, SAMPLE_MAPPING]
+        if (name_with_id == True or any(file in selected_files for file in incompatible_file_types)):
+            raise Exception("'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'")
 
     for file in selected_files:
         if file == SAMPLES:
@@ -410,6 +476,7 @@ def download(
                 input_env,
                 output_path,
                 name_with_id,
+                without_tunnel,
                 boto3_session,
                 aws_account_id,
                 aws_profile,
@@ -418,6 +485,15 @@ def download(
         elif file == PROCESSED_FILE:
             print("\n== Downloading processed RDS file")
             _download_processed_rds_file(
+                experiment_id,
+                input_env,
+                output_path,
+                boto3_session,
+                aws_account_id,
+            )
+        elif file == FILTERED_CELLS:
+            print("\n== Downloading filtered cells files")
+            _download_filtered_cells(
                 experiment_id,
                 input_env,
                 output_path,
