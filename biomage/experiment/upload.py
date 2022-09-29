@@ -338,7 +338,7 @@ def upload(experiment_id, output_env, input_path, files, all, without_tunnel, aw
     # Set output path
     # By default add experiment_id to the output path
     if input_path == DATA_LOCATION:
-        input_path = Path(DATA_LOCATION)
+        input_path = Path(os.path.join(DATA_LOCATION, experiment_id))
     else:
         input_path = Path(os.getcwd()) / input_path
 
