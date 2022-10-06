@@ -6,9 +6,15 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
-                               FILTERED_CELLS_BUCKET, PROCESSED_FILES_BUCKET,
-                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    FILTERED_CELLS_BUCKET,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+    STAGING,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -31,18 +37,20 @@ DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
 # Copied from https://stackoverflow.com/a/62945526
 def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
-    s3 = boto3_session.resource('s3')
+    s3 = boto3_session.resource("s3")
     bucket = s3.Bucket(bucket_name)
 
     for object in bucket.objects.filter(Prefix=s3_path):
         # Join local path with subsequent s3 path
-        local_file_path = os.path.join(local_folder_path, os.path.relpath(object.key, s3_path))
+        local_file_path = os.path.join(
+            local_folder_path, os.path.relpath(object.key, s3_path)
+        )
 
-        # Create local folder 
+        # Create local folder
         if not os.path.exists(os.path.dirname(local_file_path)):
             os.makedirs(os.path.dirname(local_file_path))
 
-        if object.key[-1] == '/':
+        if object.key[-1] == "/":
             continue
 
         print(f"Downloading {object.key}")
@@ -406,7 +414,14 @@ def _download_cellsets(
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 def download(
-    experiment_id, input_env, output_path, files, all, name_with_id, without_tunnel, aws_profile
+    experiment_id,
+    input_env,
+    output_path,
+    files,
+    all,
+    name_with_id,
+    without_tunnel,
+    aws_profile,
 ):
     """
     Downloads files associated with an experiment from a given environment.\n
@@ -436,10 +451,14 @@ def download(
     else:
         selected_files = list(files)
 
-    if (without_tunnel):
+    if without_tunnel:
         incompatible_file_types = [SAMPLES, SAMPLE_MAPPING]
-        if (name_with_id == True or any(file in selected_files for file in incompatible_file_types)):
-            raise Exception("'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'")
+        if name_with_id is True or any(
+            file in selected_files for file in incompatible_file_types
+        ):
+            raise Exception(
+                "'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'"
+            )
 
     for file in selected_files:
         if file == SAMPLES:
@@ -510,3 +529,5 @@ def download(
         elif file == SAMPLE_MAPPING:
             print("\n== Download sample mapping file")
             _download_sample_mapping(experiment_id, input_env, output_path, aws_profile)
+        else:
+            print(f"\n== Unknown file option {file}")

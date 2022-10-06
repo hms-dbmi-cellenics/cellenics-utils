@@ -6,9 +6,14 @@ import boto3
 import click
 
 from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
-                               PROCESSED_FILES_BUCKET, RAW_FILES_BUCKET,
-                               SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+    STAGING,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -27,6 +32,7 @@ file_type_to_name_map = {
 }
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
+
 
 def _upload_file(bucket, s3_path, file_path, boto3_session):
     s3 = boto3_session.resource("s3")
@@ -181,17 +187,19 @@ def _upload_raw_rds_files(
     s3 = boto3_session.resource("s3")
 
     bucket = f"{RAW_FILES_BUCKET}-{output_env}-{aws_account_id}"
-    local_folder_path = os.path.join(input_path, f"{experiment_id}/raw") 
+    local_folder_path = os.path.join(input_path, f"{experiment_id}/raw")
     end_message = "Raw RDS files have been uploaded."
 
-    if (without_tunnel):
-        print("IMPORTANT: rds tunnel disabled, local folder is expected to have the structure <experiment_id>/<sample_id>/r.rds")
+    if without_tunnel:
+        print(
+            "IMPORTANT: rds tunnel disabled, local folder is expected to have the structure <experiment_id>/<sample_id>/r.rds"
+        )
         for root, dirs, files in os.walk(local_folder_path):
             for file_name in files:
                 local_path = os.path.join(root, file_name)
 
                 # root ends with /<sample_id>
-                sample_id = root.split('/')[-1]
+                sample_id = root.split("/")[-1]
 
                 s3_path = f"{experiment_id}/{sample_id}/r.rds"
 
@@ -199,8 +207,7 @@ def _upload_raw_rds_files(
                 _upload_file(bucket, s3_path, local_path, boto3_session)
         print(end_message)
 
-        return 
-
+        return
 
     sample_list = _get_experiment_samples(experiment_id, output_env, aws_profile)
     num_samples = len(sample_list)
@@ -321,7 +328,9 @@ def _upload_cellsets(
     show_default=True,
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
-def upload(experiment_id, output_env, input_path, files, all, without_tunnel, aws_profile):
+def upload(
+    experiment_id, output_env, input_path, files, all, without_tunnel, aws_profile
+):
     """
     Uploads the files in input_path into the specified experiment_id and environment.\n
     It requires an open tunnel to the desired environment to fetch data from SQL:
@@ -382,3 +391,5 @@ def upload(experiment_id, output_env, input_path, files, all, without_tunnel, aw
             _upload_cellsets(
                 experiment_id, output_env, input_path, boto3_session, aws_account_id
             )
+        else:
+            print(f"\n== Unknown file option {file}")
