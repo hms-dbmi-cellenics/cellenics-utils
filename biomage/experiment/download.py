@@ -76,38 +76,38 @@ def _process_query_output(query_result):
     return json.loads(json_text)
 
 
-def _query_db(query, input_env, aws_profile):
+def _query_db(query, input_env, aws_profile, aws_region):
     query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
 
     return _process_query_output(
         run_rds_command(
-            query, SANDBOX_ID, input_env, USER, REGION, aws_profile, capture_output=True
+            query, SANDBOX_ID, input_env, USER, aws_region, aws_profile, capture_output=True
         )
     )
 
 
-def _get_experiment_samples(experiment_id, input_env, aws_profile):
+def _get_experiment_samples(experiment_id, input_env, aws_profile, aws_region):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return _query_db(query, input_env, aws_profile)
+    return _query_db(query, input_env, aws_profile, aws_region)
 
 
-def _get_sample_files(sample_ids, input_env, aws_profile):
+def _get_sample_files(sample_ids, input_env, aws_profile, aws_region):
     query = f""" SELECT sample_id, s3_path, sample_file_type FROM sample_file \
             INNER JOIN sample_to_sample_file_map \
             ON sample_to_sample_file_map.sample_file_id = sample_file.id \
             WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
     """
 
-    return _query_db(query, input_env, aws_profile)
+    return _query_db(query, input_env, aws_profile, aws_region)
 
 
-def _get_samples(experiment_id, input_env, aws_profile):
+def _get_samples(experiment_id, input_env, aws_profile, aws_region):
     print(f"Querying samples for {experiment_id}...")
-    samples = _get_experiment_samples(experiment_id, input_env, aws_profile)
+    samples = _get_experiment_samples(experiment_id, input_env, aws_profile, aws_region)
 
     sample_id_to_name = {}
     for sample in samples:
@@ -115,7 +115,7 @@ def _get_samples(experiment_id, input_env, aws_profile):
 
     print(f"Querying sample files for {experiment_id}...")
     sample_ids = [entry["sample_id"] for entry in samples]
-    sample_files = _get_sample_files(sample_ids, input_env, aws_profile)
+    sample_files = _get_sample_files(sample_ids, input_env, aws_profile, aws_region)
 
     result = {}
     for sample_file in sample_files:
@@ -147,10 +147,11 @@ def _download_samples(
     boto3_session,
     aws_account_id,
     aws_profile,
+    aws_region,
 ):
     bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
-    samples_list = _get_samples(experiment_id, input_env, aws_profile)
+    samples_list = _get_samples(experiment_id, input_env, aws_profile, aws_region)
     num_samples = len(samples_list)
 
     print(f"\n{num_samples} samples found. Downloading sample files...\n")
@@ -248,6 +249,14 @@ def _download_cellsets(
     help="Input environment to pull the data from.",
 )
 @click.option(
+    "-r",
+    "--aws_region",
+    required=True,
+    default=REGION,
+    show_default=True,
+    help="AWS region.",
+)
+@click.option(
     "-o",
     "--output_path",
     required=False,
@@ -294,7 +303,7 @@ def _download_cellsets(
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 def download(
-    experiment_id, input_env, output_path, files, all, name_with_id, aws_profile
+    experiment_id, input_env, output_path, files, all, name_with_id, aws_profile, aws_region
 ):
     """
     Downloads files associated with an experiment from a given environment.\n
@@ -336,6 +345,7 @@ def download(
                     boto3_session,
                     aws_account_id,
                     aws_profile,
+                    aws_region,
                 )
             except Exception as e:
 
