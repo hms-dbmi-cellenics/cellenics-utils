@@ -30,7 +30,7 @@ file_type_to_name_map = {
     "barcodes10x": "barcodes.tsv.gz",
 }
 
-DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
+DATA_LOCATION = os.getenv("CELLENICS_DATA_PATH", "./data")
 
 
 def _download_file(bucket, s3_path, file_path, boto3_session):
@@ -262,7 +262,7 @@ def _download_cellsets(
     required=False,
     default=DATA_LOCATION,
     show_default=True,
-    help="Output path. By default points to BIOMAGE_DATA_PATH/experiment_id.",
+    help="Output path. By default points to CELLENICS_DATA_PATH/experiment_id.",
 )
 @click.option(
     "-a",
@@ -308,10 +308,10 @@ def download(
     """
     Downloads files associated with an experiment from a given environment.\n
     It requires an open tunnel to the desired environment to fetch data from SQL:
-    `biomage rds tunnel -i staging`
+    `cellenics rds tunnel -i staging`
 
     E.g.:
-    biomage experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
+    cellenics experiment download -i staging -e 2093e95fd17372fb558b81b9142f230e
     -f samples -f cellsets -o output/folder
     """
 

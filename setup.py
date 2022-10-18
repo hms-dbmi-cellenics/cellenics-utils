@@ -10,16 +10,13 @@ with open("dev-requirements.txt") as f:
     dev_requirements = f.readlines()
 
 setup(
-    name="biomage-utils",
+    name="cellenics-utils",
     version="0.0.1",
 
-    author="Biomage Ltd.",
-    author_email="hello@biomage.net",
-
-    description="A CLI package for managing Biomage infrastructure and codebase.",
+    description="A CLI package for managing Cellenics infrastructure and codebase.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/hms-dbmi-cellenics/biomage-utils",
+    url="https://github.com/hms-dbmi-cellenics/cellenics-utils",
 
     packages=find_packages(),
     package_data={
@@ -27,7 +24,7 @@ setup(
     },
 
     entry_points={
-        "console_scripts": ["biomage = biomage.__main__:main"],
+        "console_scripts": ["cellenics = cellenics.__main__:main"],
     },
 
     python_requires=">=3.7",

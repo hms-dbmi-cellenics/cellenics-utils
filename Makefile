@@ -7,15 +7,15 @@
 # Variables
 #--------------------------------------------------
 ifeq ($(shell uname -s),Darwin)
-    ENTRY_POINT=/usr/local/bin/biomage
+    ENTRY_POINT=/usr/local/bin/cellenics
 else
-    ENTRY_POINT=/usr/bin/biomage
+    ENTRY_POINT=/usr/bin/cellenics
 endif
 
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
-install: clean ## Creates venv, and adds biomage as system command
+install: clean ## Creates venv, and adds cellenics as system command
 	@echo "==> Creating virtual environment..."
 	@python3 -m venv venv/
 	@echo "    [✓]"
@@ -24,13 +24,13 @@ install: clean ## Creates venv, and adds biomage as system command
 	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
 	@venv/bin/pip install -e .
-	@sudo ln -sf '$(CURDIR)/venv/bin/biomage' $(ENTRY_POINT)
+	@sudo ln -sf '$(CURDIR)/venv/bin/cellenics' $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
 
 uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
-	@venv/bin/pip uninstall -y biomage-utils
+	@venv/bin/pip uninstall -y cellenics-utils
 	@rm -rf venv/
 	@sudo rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
@@ -44,42 +44,42 @@ develop: ## Installs development dependencies
 
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
-	@venv/bin/black biomage/
-	@venv/bin/isort --sp isort.cfg biomage/
+	@venv/bin/black cellenics/
+	@venv/bin/isort --sp isort.cfg cellenics/
 	@echo "    [✓]"
 	@echo
 
 check: develop ## Checks code for linting/construct errors
 	@echo "==> Checking if files are well formatted..."
-	@venv/bin/flake8 biomage/
+	@venv/bin/flake8 cellenics/
 	@echo "    [✓]"
 	@echo
 
-test: ## Tests that biomage cmd & subcommand are available
-	@echo "==> Checking if biomage is in path..."
-	biomage > /dev/null
+test: ## Tests that cellenics cmd & subcommand are available
+	@echo "==> Checking if cellenics is in path..."
+	cellenics > /dev/null
 	@echo "    [✓]"
 	@echo
 
 	@echo "==> Checking if all subcommands are available..."
-	biomage configure-repo --help > /dev/null
-	biomage rotate-ci --help > /dev/null
+	cellenics configure-repo --help > /dev/null
+	cellenics rotate-ci --help > /dev/null
 
-	biomage stage --help > /dev/null
-	biomage unstage --help > /dev/null
+	cellenics stage --help > /dev/null
+	cellenics unstage --help > /dev/null
 
-	biomage experiment --help > /dev/null
-	biomage experiment download --help > /dev/null
+	cellenics experiment --help > /dev/null
+	cellenics experiment download --help > /dev/null
 
-	biomage account --help > /dev/null
-	biomage account change-password --help > /dev/null
-	biomage account create-user --help > /dev/null
-	biomage account create-users-list --help > /dev/null
+	cellenics account --help > /dev/null
+	cellenics account change-password --help > /dev/null
+	cellenics account create-user --help > /dev/null
+	cellenics account create-users-list --help > /dev/null
 
-	biomage rds --help > /dev/null
-	biomage rds run --help > /dev/null
-	biomage rds token --help > /dev/null
-	biomage rds tunnel --help > /dev/null
+	cellenics rds --help > /dev/null
+	cellenics rds run --help > /dev/null
+	cellenics rds token --help > /dev/null
+	cellenics rds tunnel --help > /dev/null
 	@echo "    [✓]"
 	@echo
 

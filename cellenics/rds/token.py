@@ -56,8 +56,8 @@ def token(input_env, user, region, sandbox_id, aws_profile):
     Generates a temporary token that can be used to login to the database (through the ssh tunnel).\n
 
     Examples.:\n
-        biomage rds token\n
-        biomage rds token -i staging
+        cellenics rds token\n
+        cellenics rds token -i staging
     """
     password = None
 

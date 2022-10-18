@@ -1,11 +1,11 @@
-name: Test biomage-utils
+name: Test cellenics-utils
 on:
   push:
     branches:
       - master
 jobs:
   test:
-    name: Test biomage-utils
+    name: Test cellenics-utils
     runs-on: ubuntu-20.04
     steps:
     - id: checkout
