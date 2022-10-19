@@ -376,8 +376,6 @@ def stage(token, org, deployments, with_rds, auto):
     elif org == 'biomage-org':
         staging_url = 'scp-staging.biomage.net'
 
-    print(staging_url)
-    exit()
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
 
