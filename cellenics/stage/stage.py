@@ -371,6 +371,13 @@ def stage(token, org, deployments, with_rds, auto):
     Deploys a custom staging environment.
     """
 
+    if org == 'hms-dbmi-cellenics':
+        staging_url = 'staging.single-cell-platform.net'
+    elif org == 'biomage-org':
+        staging_url = 'scp-staging.biomage.net'
+
+    print(staging_url)
+    exit()
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
 
@@ -468,14 +475,14 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo()
     click.echo(
         "\tfluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
-        "242905224710:cluster/cellenics-staging",
+        "242905224710:cluster/biomage-staging",
     )
     click.echo()
 
     click.echo(
         click.style(
             "✔️ The deployment, when done, should be available at "
-            f"https://ui-{sandbox_id}.staging.single-cell-platform.net/",
+            f"https://ui-{sandbox_id}.{staging_url}",
             fg="green",
             bold=True,
         )
