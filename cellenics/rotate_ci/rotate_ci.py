@@ -64,7 +64,7 @@ def create_new_iam_users(policies):
     stack_cfg = {
         "AWSTemplateFormatVersion": "2010-09-09",
         "Description": "Set up GitHub CI users with appropriate rights "
-        "[managed by github.com/biomage-utils, command `biomage rotate-ci`]",
+        "[managed by github.com/cellenics-utils, command `cellenics rotate-ci`]",
         "Resources": {
             name: {"Type": "AWS::IAM::User", "Properties": properties}
             for name, properties in users.items()
@@ -75,7 +75,7 @@ def create_new_iam_users(policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": "biomage-ci-users",
+        "StackName": "cellenics-ci-users",
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
@@ -248,7 +248,7 @@ def exclude_iac_from_rotation(repos, org_name):
 )
 @click.option(
     "--org",
-    envvar="GITHUB_BIOMAGE_ORG",
+    envvar="GITHUB_CELLENICS_ORG",
     default="hms-dbmi-cellenics",
     help="The GitHub organization to perform the operation in.",
 )

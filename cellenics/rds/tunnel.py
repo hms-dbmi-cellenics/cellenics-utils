@@ -53,7 +53,7 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     for the rds server in a given environment.\n
 
     E.g.:
-    biomage rds tunnel -i staging
+    cellenics rds tunnel -i staging
     """
 
     # we use the writer endpoint because the reader endpoint might still connect to

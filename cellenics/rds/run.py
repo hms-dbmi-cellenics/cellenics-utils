@@ -67,8 +67,8 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
     Use 'pg_dump' to get a dump of the database.\n
 
     Examples.:\n
-        biomage rds run psql\n
-        biomage rds run pg_dump > dump.sql
+        cellenics rds run psql\n
+        cellenics rds run pg_dump > dump.sql
     """
 
     try:
@@ -79,7 +79,7 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
         print(
             "\n"
             "There was an error connecting to the db. Try these steps:\n"
-            '- Make sure the tunnel is running. If not run "biomage rds tunnel"\n'
+            '- Make sure the tunnel is running. If not run "cellenics rds tunnel"\n'
             "- If the tunnel is running, try restarting the tunnel\n"
             '- You may need to install psql, run "brew install postgresql"\n'
         )

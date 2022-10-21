@@ -21,7 +21,7 @@ from ..utils.staging import check_if_sandbox_exists
 )
 @click.option(
     "--org",
-    envvar="GITHUB_BIOMAGE_ORG",
+    envvar="GITHUB_CELLENICS_ORG",
     default="hms-dbmi-cellenics",
     show_default=True,
     help="The GitHub organization to perform the operation in.",

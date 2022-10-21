@@ -213,7 +213,7 @@ def get_sandbox_id(templates, manifests, org, auto=False):
             if opts.ref != DEFAULT_BRANCH
         ]
     )
-    user_name = re.sub(r"[^\w\s]", "", os.getenv("BIOMAGE_NICK", os.getenv("USER", "")))
+    user_name = re.sub(r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", "")))
 
     fragments = (
         user_name,
@@ -352,7 +352,7 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
 )
 @click.option(
     "--org",
-    envvar="GITHUB_BIOMAGE_ORG",
+    envvar="GITHUB_CELLENICS_ORG",
     default="hms-dbmi-cellenics",
     show_default=True,
     help="The GitHub organization to perform the operation in.",
@@ -370,6 +370,11 @@ def stage(token, org, deployments, with_rds, auto):
     """
     Deploys a custom staging environment.
     """
+
+    if org == 'hms-dbmi-cellenics':
+        staging_url = 'staging.single-cell-platform.net'
+    elif org == 'biomage-org':
+        staging_url = 'scp-staging.biomage.net'
 
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
@@ -445,7 +450,7 @@ def stage(token, org, deployments, with_rds, auto):
         click.echo(
             click.style(
                 "❌ Could not run workflow. Does your GitHub token have the required "
-                f"privileges? See https://github.com/{org}/biomage-utils#setup for"
+                f"privileges? See https://github.com/{org}/cellenics-utils#setup for"
                 " more information.",
                 fg="red",
                 bold=True,
@@ -475,7 +480,7 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo(
         click.style(
             "✔️ The deployment, when done, should be available at "
-            f"https://ui-{sandbox_id}.scp-staging.biomage.net/",
+            f"https://ui-{sandbox_id}.{staging_url}",
             fg="green",
             bold=True,
         )
