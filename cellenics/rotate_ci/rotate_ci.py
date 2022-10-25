@@ -75,7 +75,7 @@ def create_new_iam_users(policies):
     cf = boto3.client("cloudformation", config=config)
 
     kwargs = {
-        "StackName": "cellenics-ci-users",
+        "StackName": "biomage-ci-users",
         "TemplateBody": stack_cfg,
         "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
     }
