@@ -45,17 +45,18 @@ def get_manifests(templates, pins, token, repo_to_ref):
                 ).lower()
 
             # pin chart version if pinning is on
-            if recursive_get(document, "spec", "chart", "ref"):
+            if recursive_get(document, "spec", "url"):
                 if name in pins:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
+                    # Remove commit from ref, and use branch instead
+                    document["spec"]["ref"]["commit"] = get_branch_ref(
+                        document["spec"]["url"],
                         token,
                         repo_to_ref=repo_to_ref,
                         return_sha=True,
                     )
                 else:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
+                    document["spec"]["ref"]["branch"] = get_branch_ref(
+                        document["spec"]["url"],
                         token,
                         repo_to_ref=repo_to_ref,
                         return_sha=False,
@@ -80,7 +81,7 @@ def download_templates(org, repo, ref):
         raise Exception("Ref must be integer, string, or None.")
 
     url = (
-        f"https://raw.githubusercontent.com/{org}/releases/master/"
+        f"https://raw.githubusercontent.com/{org}/flux-v2-migration/master/"
         f"staging-candidates/{repo}/{template}"
     )
 
@@ -152,7 +153,7 @@ def compile_requirements(org, deployments):
     return templates, repo_to_ref
 
 
-def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
+def get_branch_ref(url, token, repo_to_ref=None, return_sha=False):
     """
     Get a reference to a branch given the chart information (git, path, ref)
     supplied.
@@ -169,7 +170,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
 
     # A `git` reference can be https://github.com/biomage-org/releases
     # Here we extract the repository and organization from the string.
-    path = chart["git"].split(":")
+    path = url.split(":")
     org, repo_name = path[1].split("/")[-2:]
 
     g = Github(token)
@@ -184,11 +185,12 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
         ref = repo_to_ref[repo_name]
 
     if isinstance(ref, int):
-        target_branch = f"refs/pull/{ref}/head"
+        pr = repo.get_pull(ref)
+        target_branch = pr.head.ref
     elif isinstance(ref, str):
-        target_branch = f"refs/heads/{ref}"
+        target_branch = ref
     else:
-        target_branch = f"refs/heads/{repo.default_branch}"
+        target_branch = repo.default_branch
 
     # if no specific reference was specified (e.g. `api` instead of `api/22`)
     # and no SHA was requested, return the name of the branch
@@ -430,7 +432,7 @@ def stage(token, org, deployments, with_rds, auto):
     wf = r.get_workflow(wf)
 
     workflow_started = wf.create_dispatch(
-        ref="master",
+        ref="flux-v2-migration",
         inputs={
             "manifest": manifest,
             "sandbox-id": sandbox_id,
