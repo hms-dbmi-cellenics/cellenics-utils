@@ -22,6 +22,7 @@ SANDBOX_ID = "default"
 REGION = "eu-west-1"
 USER = "dev_role"
 
+
 def _get_experiment_info(db, experiment_id):
     query = f"""
         SELECT id as experiment_id, name as experiment_name, created_at \
@@ -65,8 +66,12 @@ def _get_experiment_users(db, experiment_id, env):
             FROM user_access WHERE experiment_id = '{experiment_id}'
     """
 
-    users = db(query)
-    return _get_user_cognito_info(users, env)
+    try:
+        users = db(query)
+        return _get_user_cognito_info(users, env)
+    except:
+        return []
+
 
 def _get_experiment_samples(db, experiment_id):
     query = f"""
@@ -74,7 +79,11 @@ def _get_experiment_samples(db, experiment_id):
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return db(query)
+    try:
+        return db(query)
+    except:
+        return []
+
 
 def _get_experiment_runs(db, experiment_id):
     query = f"""
@@ -82,15 +91,20 @@ def _get_experiment_runs(db, experiment_id):
             FROM experiment_execution WHERE experiment_id = '{experiment_id}'
     """
 
-    return db(query)
+    try:
+        return db(query)
+    except:
+        return []
 
 
 def _print_tabbed(key, value):
     print(f"{key}\t\t: {value}")
 
+
 def _format_item(details):
     for key, value in details.items():
         _print_tabbed(key, value)
+
 
 def _format_table(content):
 
@@ -102,8 +116,8 @@ def _format_table(content):
 
     print(tabulate(table, header, tablefmt="simple"))
 
-def _format_runs(content):
 
+def _format_runs(content):
     for run in content:
         print(run['pipeline_type'].upper())
         _print_tabbed('execution_arn', run['execution_arn'])
@@ -133,11 +147,18 @@ def _pretty_print(result):
     _format_table(result['users'])
     print()
 
-    print("=" * WIDTH , "RUNS", "=" * WIDTH, "\n")
-    _format_runs(result['runs'])
-
     print("=" * WIDTH , "SAMPLES", "=" * WIDTH, "\n")
-    _format_table(result['samples'])
+    if len(result['samples']):
+        _format_table(result['samples'])
+    else:
+        print("No samples uploaded")
+    print()
+
+    print("=" * WIDTH , "RUNS", "=" * WIDTH, "\n")
+    if len(result['runs']):
+        _format_runs(result['runs'])
+    else:
+        print("Experiment has not been processed")
 
 
 @click.command()
