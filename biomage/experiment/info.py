@@ -8,7 +8,7 @@ import click
 from tabulate import tabulate
 
 from ..rds.run import run_rds_command
-from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE, PRODUCTION
 from ..utils.db import init_db
 
 SAMPLES = "samples"
@@ -151,7 +151,7 @@ def _pretty_print(result):
     "-i",
     "--input_env",
     required=True,
-    default=STAGING,
+    default=PRODUCTION,
     show_default=True,
     help="Input environment to pull the data from.",
 )
