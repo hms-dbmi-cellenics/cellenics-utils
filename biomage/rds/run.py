@@ -94,6 +94,7 @@ def run_rds_command(
     aws_profile,
     local_port=None,
     capture_output=False,
+    verbose=True
 ):
     aws_session = boto3.Session(profile_name=aws_profile)
 
@@ -111,14 +112,17 @@ def run_rds_command(
             input_env, sandbox_id, rds_client, ENDPOINT_TYPE
         )
 
-        print(
-            f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
-        )
+        if verbose:
+            print(
+                f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
+            )
+
         password = rds_client.generate_db_auth_token(
             remote_endpoint, 5432, user, region
         )
 
-    print("Token generated", file=sys.stderr)
+    if verbose:
+        print("Token generated", file=sys.stderr)
 
     result = None
 
