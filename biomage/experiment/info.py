@@ -8,7 +8,7 @@ import click
 from tabulate import tabulate
 
 from ..rds.run import run_rds_command
-from ..utils.constants import DEFAULT_AWS_PROFILE, PRODUCTION
+from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 from ..utils.db import init_db
 
 SAMPLES = "samples"
@@ -126,7 +126,7 @@ def _format_runs(content):
 
         _print_tabbed('status\t', run_details['status'])
         if(run_details['status'] != "SUCCEEDED"):
-            _print_tabbed('error\t', f"{run_details['error']['error']}: {run_details['error']['cause']}")
+            _print_tabbed('error\t', f"{run_details['error']['error']}: {run_details['error'].get('cause')}")
 
         _print_tabbed('start_date', run_details['startDate'])
         _print_tabbed('stop_date', run_details['stopDate'])
@@ -172,7 +172,7 @@ def _pretty_print(result):
     "-i",
     "--input_env",
     required=True,
-    default=PRODUCTION,
+    default=STAGING,
     show_default=True,
     help="Input environment to pull the data from.",
 )
@@ -204,7 +204,7 @@ def info(
     `biomage rds tunnel -i production`
 
     E.g.:
-    biomage experiment info -e 2093e95fd17372fb558b81b9142f230e
+    biomage experiment info -e 2093e95fd17372fb558b81b9142f230e -i production
     """
 
     db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
