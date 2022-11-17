@@ -1,7 +1,5 @@
 import json
-import os
 import re
-from pathlib import Path
 
 import boto3
 import click
