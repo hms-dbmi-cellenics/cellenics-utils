@@ -25,7 +25,7 @@ def _get_experiment_info(aurora_client, experiment_id):
         SELECT id as experiment_id, name as experiment_name, created_at, pod_cpus, pod_memory \
             FROM experiment WHERE id = '{experiment_id}'
     """
-    return aurora_client.run_query(query)[0]
+    return aurora_client.select(query)[0]
 
 
 def _get_user_cognito_info(
@@ -64,7 +64,7 @@ def _get_experiment_users(aurora_client, experiment_id, env):
     """
 
     try:
-        users = aurora_client.run_query(query)
+        users = aurora_client.select(query)
         return _get_user_cognito_info(users, env)
     except:
         return []
@@ -77,7 +77,7 @@ def _get_experiment_samples(aurora_client, experiment_id):
     """
 
     try:
-        return aurora_client.run_query(query)
+        return aurora_client.select(query)
     except:
         return []
 
@@ -89,7 +89,7 @@ def _get_experiment_runs(aurora_client, experiment_id):
     """
 
     try:
-        return aurora_client.run_query(query)
+        return aurora_client.select(query)
     except:
         return []
 

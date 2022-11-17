@@ -7,7 +7,7 @@ from ..rds.tunnel import close_tunnel as close_tunnel_cmd
 from ..rds.tunnel import open_tunnel as open_tunnel_cmd
 
 
-def _process_query_output(query_result):
+def _process_output_as_json(query_result):
     json_text = (
         query_result.replace("+", "")
         .split("\n", 2)[2]
@@ -49,9 +49,22 @@ class AuroraClient():
         open_tunnel_cmd(self.env, self.region, self.sandbox_id, self.tunnel_port, self.aws_profile)
 
     def run_query(self, query):
-        query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
+        return run_rds_command(
+            query,
+            self.sandbox_id,
+            self.env,
+            self.user,
+            self.region,
+            self.aws_profile,
+            local_port=self.tunnel_port,
+            capture_output=True,
+            verbose=False
+        )
 
-        return _process_query_output(
+    def select(self, query, as_json = True):
+        query = f"""psql -c "SELECT {"json_agg(q)" if as_json else "q" } FROM ( {query} ) AS q" """
+
+        return _process_output_as_json(
             run_rds_command(
                 query,
                 self.sandbox_id,
