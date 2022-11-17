@@ -5,9 +5,8 @@ import boto3
 import click
 from tabulate import tabulate
 
-from ..rds.run import run_rds_command
+from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
-from ..utils.db import init_db
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -21,12 +20,12 @@ REGION = "eu-west-1"
 USER = "dev_role"
 
 
-def _get_experiment_info(db, experiment_id):
+def _get_experiment_info(aurora_client, experiment_id):
     query = f"""
         SELECT id as experiment_id, name as experiment_name, created_at, pod_cpus, pod_memory \
             FROM experiment WHERE id = '{experiment_id}'
     """
-    return db(query)[0]
+    return aurora_client.run_query(query)[0]
 
 
 def _get_user_cognito_info(
@@ -58,39 +57,39 @@ def _get_user_cognito_info(
     return users
 
 
-def _get_experiment_users(db, experiment_id, env):
+def _get_experiment_users(aurora_client, experiment_id, env):
     query = f"""
         SELECT user_id, access_role \
             FROM user_access WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        users = db(query)
+        users = aurora_client.run_query(query)
         return _get_user_cognito_info(users, env)
     except:
         return []
 
 
-def _get_experiment_samples(db, experiment_id):
+def _get_experiment_samples(aurora_client, experiment_id):
     query = f"""
         SELECT id as sample_id, name, sample_technology, options \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        return db(query)
+        return aurora_client.run_query(query)
     except:
         return []
 
 
-def _get_experiment_runs(db, experiment_id):
+def _get_experiment_runs(aurora_client, experiment_id):
     query = f"""
         SELECT pipeline_type, execution_arn, last_status_response \
             FROM experiment_execution WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        return db(query)
+        return aurora_client.run_query(query)
     except:
         return []
 
@@ -214,9 +213,11 @@ def info(
     biomage experiment info -e 2093e95fd17372fb558b81b9142f230e -i production
     """
 
-    db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
+    aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
 
-    info = _get_experiment_info(db, experiment_id)
+    aurora_client.open_tunnel()
+
+    info = _get_experiment_info(aurora_client, experiment_id)
 
     pipeline_runner = {
         'pipeline_runner': "Batch" if info['pod_cpus'] else "Fargate",
@@ -227,9 +228,11 @@ def info(
     del info['pod_cpus']
     del info['pod_memory']
 
-    users = _get_experiment_users(db, experiment_id, input_env)
-    samples = _get_experiment_samples(db, experiment_id)
-    runs = _get_experiment_runs(db, experiment_id)
+    users = _get_experiment_users(aurora_client, experiment_id, input_env)
+    samples = _get_experiment_samples(aurora_client, experiment_id)
+    runs = _get_experiment_runs(aurora_client, experiment_id)
+
+    aurora_client.close_tunnel()
 
     result = {
         "info": info,

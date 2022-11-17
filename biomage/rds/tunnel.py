@@ -62,6 +62,19 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     biomage rds tunnel -i staging
     """
 
+    open_tunnel(input_env, region, sandbox_id, local_port, aws_profile)
+
+    input("""
+Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab
+
+------------------------------
+Press enter to close session.
+------------------------------
+""")
+
+    close_tunnel()
+
+def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     signal.signal(signal.SIGINT, force_exit_handler)
 
     # we use the writer endpoint because the reader endpoint might still connect to
@@ -78,14 +91,8 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
             {endpoint_type} \
             {aws_profile}",
         shell=True,
-    )
+    ) 
 
-    input("""
-Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab
-
-------------------------------
-Press enter to close session.
-------------------------------
-""")
-
+def close_tunnel():
+    file_dir = pathlib.Path(__file__).parent.resolve()
     run(f"{file_dir}/cleanup_tunnel.sh", shell=True)
