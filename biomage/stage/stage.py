@@ -9,11 +9,11 @@ from functools import reduce
 import anybase32
 import boto3
 import click
-import random_name
 import requests
 import yaml
 from github import Github
-from PyInquirer import prompt
+from inquirer import Checkbox, Confirm, Text, prompt
+from inquirer.themes import GreenPassion
 
 from ..utils.staging import check_if_sandbox_exists
 
@@ -239,17 +239,16 @@ def get_sandbox_id(templates, manifests, org, auto=False):
     )
     while True:
         questions = [
-            {
-                "type": "input",
-                "name": "sandbox_id",
-                "message": "Provide an ID:",
-                "default": sandbox_id,
-            }
+            Text(
+                name="sandbox_id",
+                message="Provide an ID:",
+                default=sandbox_id,
+            )
         ]
 
         click.echo()
-        sandbox_id = prompt(questions)
-        sandbox_id = sandbox_id["sandbox_id"]
+        answer = prompt(questions, theme=GreenPassion())
+        sandbox_id = answer["sandbox_id"]
 
         if len(sandbox_id) > 26:
             click.echo(click.style("Sandbox ID is more than 26 characters.", fg="red"))
@@ -294,19 +293,20 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
             "likely to be testing (e.g. pull requests) are not.",
         )
         questions = [
-            {
-                "type": "checkbox",
-                "name": "pins",
-                "message": "Which deployments would you like to pin?",
-                "choices": [
-                    {"name": name, "checked": props.ref == DEFAULT_BRANCH}
-                    for name, props in templates.items()
+            Checkbox(
+                name="pins",
+                message="Which deployments would you like to pin?",
+                choices=[
+                    name for name in templates.keys()
                 ],
-            }
+                default=[
+                    name for name, props in templates.items() if props.ref == DEFAULT_BRANCH
+                ]
+            )
         ]
 
         click.echo()
-        answer = prompt(questions)
+        answer = prompt(questions, theme=GreenPassion())
         pins = set(answer["pins"])
 
     if len(pins) > 0:
@@ -406,16 +406,15 @@ def stage(token, org, deployments, with_rds, auto):
 
     if not auto:
         questions = [
-            {
-                "type": "confirm",
-                "name": "create",
-                "message": "Are you sure you want to create this deployment?",
-                "default": False,
-            }
+            Confirm(
+                name = "create",
+                message = "Are you sure you want to create this deployment?",
+                default = False,
+            )
         ]
         click.echo()
-        answers = prompt(questions)
-        if not answers["create"]:
+        answer = prompt(questions, theme=GreenPassion())
+        if not answer["create"]:
             exit(1)
 
     g = Github(token)
