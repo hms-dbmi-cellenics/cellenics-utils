@@ -1,6 +1,6 @@
 import pathlib
 import signal
-from subprocess import run
+from subprocess import DEVNULL, run
 
 import click
 
@@ -53,7 +53,15 @@ def force_exit_handler(signum, frame):
     show_default=True,
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
-def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
+@click.option(
+    "-v",
+    "--verbose",
+    required=False,
+    default=True,
+    show_default=True,
+    help="Verbosity of the command.",
+)
+def tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose):
     """
     Sets up an ssh tunneling/port forwarding session
     for the rds server in a given environment.\n
@@ -62,7 +70,7 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     biomage rds tunnel -i staging
     """
 
-    open_tunnel(input_env, region, sandbox_id, local_port, aws_profile)
+    open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose = verbose)
 
     input("""
 Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab
@@ -74,7 +82,7 @@ Press enter to close session.
 
     close_tunnel()
 
-def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile):
+def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose = False):
     signal.signal(signal.SIGINT, force_exit_handler)
 
     # we use the writer endpoint because the reader endpoint might still connect to
@@ -82,16 +90,19 @@ def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     # sense of safety
     endpoint_type = "writer"
     file_dir = pathlib.Path(__file__).parent.resolve()
+
     run(
-        f"{file_dir}/tunnel.sh \
-            {input_env} \
-            {sandbox_id} \
-            {region} \
-            {local_port} \
-            {endpoint_type} \
-            {aws_profile}",
-        shell=True,
-    ) 
+        [
+            f"{file_dir}/tunnel.sh",
+            input_env,
+            sandbox_id,
+            region,
+            str(local_port),
+            endpoint_type,
+            aws_profile,
+        ],
+        stdout = None if verbose else DEVNULL
+    )
 
 def close_tunnel():
     file_dir = pathlib.Path(__file__).parent.resolve()
