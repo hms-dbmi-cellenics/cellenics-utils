@@ -124,7 +124,12 @@ def _format_runs(content):
 
         _print_tabbed('status\t', run_details['status'])
         if(run_details['status'] != "SUCCEEDED"):
-            _print_tabbed('error\t', f"{run_details['error']['error']}: {run_details['error'].get('cause')}")
+
+            error_string = f"{run_details['error']['error']}"
+            if(run_details['error'].get('cause')):
+                error_string += run_details['error']['cause']
+
+            _print_tabbed('error\t', error_string)
 
         _print_tabbed('start_date', run_details['startDate'])
         _print_tabbed('stop_date', run_details['stopDate'])
