@@ -1,10 +1,16 @@
 import pathlib
+import signal
 from subprocess import run
 
 import click
 
 from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 
+
+def force_exit_handler(signum, frame):
+    file_dir = pathlib.Path(__file__).parent.resolve()
+    run(f"{file_dir}/cleanup_tunnel.sh", shell=True)
+    exit()
 
 @click.command()
 @click.option(
@@ -56,6 +62,8 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
     biomage rds tunnel -i staging
     """
 
+    signal.signal(signal.SIGINT, force_exit_handler)
+
     # we use the writer endpoint because the reader endpoint might still connect to
     # the writer endpoint when there's a single instance and provide a false
     # sense of safety
@@ -71,3 +79,13 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile):
             {aws_profile}",
         shell=True,
     )
+
+    input("""
+Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab
+
+------------------------------
+Press enter to close session.
+------------------------------
+""")
+
+    run(f"{file_dir}/cleanup_tunnel.sh", shell=True)
