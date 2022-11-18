@@ -6,10 +6,15 @@ import boto3
 import click
 from botocore.exceptions import ClientError
 
-from ..rds.run import run_rds_command
-from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
-                               FILTERED_CELLS_BUCKET, PROCESSED_FILES_BUCKET,
-                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    FILTERED_CELLS_BUCKET,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+    STAGING,
+)
 from ..utils.db import init_db
 
 SAMPLES = "samples"
@@ -81,12 +86,13 @@ def _create_sample_mapping(samples_list, output_path):
 
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
+
 def _get_experiment_samples(query_db, experiment_id):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
-    
+
     return query_db(query)
 
 
@@ -141,7 +147,7 @@ def _download_samples(
     output_path,
     use_sample_id_as_name,
     boto3_session,
-    aws_account_id
+    aws_account_id,
 ):
     bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
@@ -159,7 +165,8 @@ def _download_samples(
         num_files = len(sample_files)
 
         print(
-            f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
+            f"Downloading files for sample {sample_name} \
+                (sample {sample_idx+1}/{num_samples})",
         )
 
         for file_idx, sample_file in enumerate(sample_files):
@@ -429,7 +436,8 @@ def download(
             file in selected_files for file in incompatible_file_types
         ):
             raise Exception(
-                "'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'"
+                "'--without_tunnel' is incompatible with '-f samples', '-f \
+                sample_mapping' and '--name_with_id'"
             )
 
     for file in selected_files:
@@ -443,7 +451,7 @@ def download(
                     output_path,
                     name_with_id,
                     boto3_session,
-                    aws_account_id
+                    aws_account_id,
                 )
             except Exception as e:
 
@@ -471,7 +479,7 @@ def download(
                     name_with_id,
                     without_tunnel,
                     boto3_session,
-                    aws_account_id
+                    aws_account_id,
                 )
             except ClientError as e:
                 print(e)
@@ -487,7 +495,10 @@ def download(
                     aws_account_id,
                 )
             except ClientError as e:
-                print(e)
+                if e.response["Error"]["Code"] == "404":
+                    print(e)
+                else:
+                    raise (e)
 
         elif file == FILTERED_CELLS:
             print("\n== Downloading filtered cells files")
@@ -500,7 +511,10 @@ def download(
                     aws_account_id,
                 )
             except ClientError as e:
-                print(e)
+                if e.response["Error"]["Code"] == "404":
+                    print(e)
+                else:
+                    raise (e)
 
         elif file == CELLSETS:
             print("\n== Download cellsets file")
@@ -509,14 +523,22 @@ def download(
                     experiment_id, input_env, output_path, boto3_session, aws_account_id
                 )
             except ClientError as e:
-                print(e)
+                if e.response["Error"]["Code"] == "404":
+                    print(e)
+                else:
+                    raise (e)
 
         elif file == SAMPLE_MAPPING:
             print("\n== Download sample mapping file")
             try:
-                _download_sample_mapping(query_db, experiment_id, input_env, output_path)
+                _download_sample_mapping(
+                    query_db, experiment_id, input_env, output_path
+                )
             except ClientError as e:
-                print(e)
+                if e.response["Error"]["Code"] == "404":
+                    print(e)
+                else:
+                    raise (e)
 
         else:
             print(f"\n== Unknown file option {file}")
