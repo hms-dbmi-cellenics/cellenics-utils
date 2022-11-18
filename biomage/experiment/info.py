@@ -157,10 +157,6 @@ def _pretty_print(result):
         print("No samples uploaded")
     print()
 
-    print("=" * WIDTH , "PIPELINE RUNNER", "=" * WIDTH, "\n")
-    _format_item(result['pipeline_runner'])
-    print()
-
     print("=" * WIDTH , "RUNS", "=" * WIDTH, "\n")
     if len(result['runs']):
         _format_runs(result['runs'])
@@ -217,23 +213,12 @@ def info(
     db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
 
     info = _get_experiment_info(db, experiment_id)
-
-    pipeline_runner = {
-        'pipeline_runner': "Batch" if info['pod_cpus'] else "Fargate",
-        "pod_cpus": f"{info['pod_cpus'] } cores" if info['pod_cpus'] else "16 cores",
-        "pod_memory": f"{info['pod_memory'] / 1024} GB" if info['pod_memory'] else "28 GB"
-    }
-
-    del info['pod_cpus']
-    del info['pod_memory']
-
     users = _get_experiment_users(db, experiment_id, input_env)
     samples = _get_experiment_samples(db, experiment_id)
     runs = _get_experiment_runs(db, experiment_id)
 
     result = {
         "info": info,
-        "pipeline_runner": pipeline_runner,
         "users": users,
         "runs": runs,
         "samples": samples
