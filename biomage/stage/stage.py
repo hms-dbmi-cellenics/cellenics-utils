@@ -296,12 +296,12 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
             Checkbox(
                 name="pins",
                 message="Which deployments would you like to pin?",
-                choices=[
-                    name for name in templates.keys()
-                ],
-                default=[
-                    name for name, props in templates.items() if props.ref == DEFAULT_BRANCH
-                ]
+                choices=list(name for name in templates.keys()),
+                default=list(
+                    name
+                    for name, props in templates.items()
+                    if props.ref == DEFAULT_BRANCH
+                ),
             )
         ]
 
@@ -407,9 +407,9 @@ def stage(token, org, deployments, with_rds, auto):
     if not auto:
         questions = [
             Confirm(
-                name = "create",
-                message = "Are you sure you want to create this deployment?",
-                default = False,
+                name="create",
+                message="Are you sure you want to create this deployment?",
+                default=False,
             )
         ]
         click.echo()
