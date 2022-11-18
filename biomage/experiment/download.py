@@ -4,7 +4,6 @@ from pathlib import Path
 
 import boto3
 import click
-from botocore.exceptions import ClientError
 
 from ..utils.constants import (
     CELLSETS_BUCKET,
@@ -32,6 +31,7 @@ file_type_to_name_map = {
     "features10x": "features.tsv.gz",
     "matrix10x": "matrix.mtx.gz",
     "barcodes10x": "barcodes.tsv.gz",
+    "rhapsody": "Expression_Data.gz",
 }
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
@@ -426,7 +426,7 @@ def download(
 
     selected_files = []
     if all:
-        selected_files = [SAMPLES, CELLSETS, RAW_FILE, PROCESSED_FILE]
+        selected_files = [SAMPLES, RAW_FILE, PROCESSED_FILE, CELLSETS]
     else:
         selected_files = list(files)
 
@@ -470,75 +470,46 @@ def download(
 
         elif file == RAW_FILE:
             print("\n== Downloading raw RDS file")
-            try:
-                _download_raw_rds_files(
-                    query_db,
-                    experiment_id,
-                    input_env,
-                    output_path,
-                    name_with_id,
-                    without_tunnel,
-                    boto3_session,
-                    aws_account_id,
-                )
-            except ClientError as e:
-                print(e)
+            _download_raw_rds_files(
+                query_db,
+                experiment_id,
+                input_env,
+                output_path,
+                name_with_id,
+                without_tunnel,
+                boto3_session,
+                aws_account_id,
+            )
 
         elif file == PROCESSED_FILE:
             print("\n== Downloading processed RDS file")
-            try:
-                _download_processed_rds_file(
-                    experiment_id,
-                    input_env,
-                    output_path,
-                    boto3_session,
-                    aws_account_id,
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    print(e)
-                else:
-                    raise (e)
+            _download_processed_rds_file(
+                experiment_id,
+                input_env,
+                output_path,
+                boto3_session,
+                aws_account_id,
+            )
 
         elif file == FILTERED_CELLS:
             print("\n== Downloading filtered cells files")
-            try:
-                _download_filtered_cells(
-                    experiment_id,
-                    input_env,
-                    output_path,
-                    boto3_session,
-                    aws_account_id,
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    print(e)
-                else:
-                    raise (e)
+            _download_filtered_cells(
+                experiment_id,
+                input_env,
+                output_path,
+                boto3_session,
+                aws_account_id,
+            )
 
         elif file == CELLSETS:
             print("\n== Download cellsets file")
-            try:
-                _download_cellsets(
-                    experiment_id, input_env, output_path, boto3_session, aws_account_id
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    print(e)
-                else:
-                    raise (e)
+            _download_cellsets(
+                experiment_id, input_env, output_path, boto3_session, aws_account_id
+            )
 
         elif file == SAMPLE_MAPPING:
             print("\n== Download sample mapping file")
-            try:
-                _download_sample_mapping(
-                    query_db, experiment_id, input_env, output_path
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
-                    print(e)
-                else:
-                    raise (e)
+            _download_sample_mapping(query_db, experiment_id, input_env, output_path)
 
         else:
             print(f"\n== Unknown file option {file}")
