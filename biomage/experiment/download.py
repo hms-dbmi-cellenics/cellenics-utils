@@ -6,9 +6,15 @@ import boto3
 import click
 
 from ..utils.AuroraClient import AuroraClient
-from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
-                               FILTERED_CELLS_BUCKET, PROCESSED_FILES_BUCKET,
-                               RAW_FILES_BUCKET, SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    FILTERED_CELLS_BUCKET,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    SAMPLES_BUCKET,
+    STAGING,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -80,6 +86,7 @@ def _create_sample_mapping(samples_list, output_path):
 
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
+
 def _get_experiment_samples(experiment_id, aurora_client):
     query = f"""
         SELECT id as sample_id, name as sample_name \
@@ -132,6 +139,7 @@ def _get_samples(experiment_id, aurora_client):
 
     return result
 
+
 def _download_samples(
     experiment_id,
     input_env,
@@ -139,7 +147,7 @@ def _download_samples(
     use_sample_id_as_name,
     boto3_session,
     aws_account_id,
-    aurora_client
+    aurora_client,
 ):
     bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
@@ -472,7 +480,7 @@ def download(
                 without_tunnel,
                 boto3_session,
                 aws_account_id,
-                aurora_client
+                aurora_client,
             )
 
         elif file == PROCESSED_FILE:
@@ -506,6 +514,6 @@ def download(
             _download_sample_mapping(experiment_id, output_path, aurora_client)
         else:
             print(f"\n== Unknown file option {file}")
-    
+
     if not without_tunnel:
         aurora_client.close_tunnel()
