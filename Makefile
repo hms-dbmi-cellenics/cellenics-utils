@@ -70,6 +70,8 @@ test: ## Tests that biomage cmd & subcommand are available
 
 	biomage experiment --help > /dev/null
 	biomage experiment download --help > /dev/null
+	biomage experiment upload --help > /dev/null
+	biomage experiment info --help > /dev/null
 
 	biomage account --help > /dev/null
 	biomage account change-password --help > /dev/null

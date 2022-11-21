@@ -4,7 +4,8 @@ import json
 import boto3
 import click
 from github import Github
-from PyInquirer import prompt
+from inquirer import Confirm, prompt
+from inquirer.themes import GreenPassion
 
 from ..utils.staging import check_if_sandbox_exists
 
@@ -51,16 +52,14 @@ def unstage(token, org, sandbox_id):
         secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
 
         questions = [
-            {
-                "type": "confirm",
-                "name": "delete",
-                "default": False,
-                "message": "Are you sure you want to remove the sandbox "
+            Confirm('delete',
+                default=False,
+                message="Are you sure you want to remove the sandbox "
                 f"with ID `{sandbox_id}`. This cannot be undone.",
-            }
+            )
         ]
         click.echo()
-        answers = prompt(questions)
+        answers = prompt(questions, theme=GreenPassion())
         if not answers["delete"]:
             exit(1)
 

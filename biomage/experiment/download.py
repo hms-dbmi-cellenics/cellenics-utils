@@ -5,7 +5,6 @@ from pathlib import Path
 import boto3
 import click
 
-from ..rds.run import run_rds_command
 from ..utils.constants import (
     CELLSETS_BUCKET,
     DEFAULT_AWS_PROFILE,
@@ -15,6 +14,7 @@ from ..utils.constants import (
     SAMPLES_BUCKET,
     STAGING,
 )
+from ..utils.db import init_db
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -31,6 +31,7 @@ file_type_to_name_map = {
     "features10x": "features.tsv.gz",
     "matrix10x": "matrix.mtx.gz",
     "barcodes10x": "barcodes.tsv.gz",
+    "rhapsody": "Expression_Data.gz",
 }
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
@@ -86,53 +87,28 @@ def _create_sample_mapping(samples_list, output_path):
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
 
-def _process_query_output(query_result):
-    json_text = (
-        query_result.replace("+", "")
-        .split("\n", 2)[2]
-        .replace("\n", "")
-        .replace("(1 row)", "")
-        .strip()
-    )
-
-    if not json_text:
-        raise Exception("No data returned from query")
-
-    return json.loads(json_text)
-
-
-def _query_db(query, input_env, aws_profile):
-    query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
-
-    return _process_query_output(
-        run_rds_command(
-            query, SANDBOX_ID, input_env, USER, REGION, aws_profile, capture_output=True
-        )
-    )
-
-
-def _get_experiment_samples(experiment_id, input_env, aws_profile):
+def _get_experiment_samples(query_db, experiment_id):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return _query_db(query, input_env, aws_profile)
+    return query_db(query)
 
 
-def _get_sample_files(sample_ids, input_env, aws_profile):
+def _get_sample_files(query_db, sample_ids):
     query = f""" SELECT sample_id, s3_path, sample_file_type FROM sample_file \
             INNER JOIN sample_to_sample_file_map \
             ON sample_to_sample_file_map.sample_file_id = sample_file.id \
             WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
     """
 
-    return _query_db(query, input_env, aws_profile)
+    return query_db(query)
 
 
-def _get_samples(experiment_id, input_env, aws_profile):
+def _get_samples(query_db, experiment_id, input_env):
     print(f"Querying samples for {experiment_id}...")
-    samples = _get_experiment_samples(experiment_id, input_env, aws_profile)
+    samples = _get_experiment_samples(query_db, experiment_id)
 
     sample_id_to_name = {}
     for sample in samples:
@@ -140,7 +116,7 @@ def _get_samples(experiment_id, input_env, aws_profile):
 
     print(f"Querying sample files for {experiment_id}...")
     sample_ids = [entry["sample_id"] for entry in samples]
-    sample_files = _get_sample_files(sample_ids, input_env, aws_profile)
+    sample_files = _get_sample_files(query_db, sample_ids)
 
     result = {}
     for sample_file in sample_files:
@@ -165,17 +141,17 @@ def _get_samples(experiment_id, input_env, aws_profile):
 
 
 def _download_samples(
+    query_db,
     experiment_id,
     input_env,
     output_path,
     use_sample_id_as_name,
     boto3_session,
     aws_account_id,
-    aws_profile,
 ):
     bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
-    samples_list = _get_samples(experiment_id, input_env, aws_profile)
+    samples_list = _get_samples(query_db, experiment_id, input_env)
     num_samples = len(samples_list)
 
     print(f"\n{num_samples} samples found. Downloading sample files...\n")
@@ -189,7 +165,8 @@ def _download_samples(
         num_files = len(sample_files)
 
         print(
-            f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
+            f"Downloading files for sample {sample_name} \
+                (sample {sample_idx+1}/{num_samples})",
         )
 
         for file_idx, sample_file in enumerate(sample_files):
@@ -216,12 +193,12 @@ def _download_samples(
 
 
 def _download_sample_mapping(
+    query_db,
     experiment_id,
     input_env,
     output_path,
-    aws_profile,
 ):
-    samples_list = _get_samples(experiment_id, input_env, aws_profile)
+    samples_list = _get_samples(query_db, experiment_id, input_env)
     _create_sample_mapping(samples_list, output_path)
     click.echo(
         click.style(
@@ -232,6 +209,7 @@ def _download_sample_mapping(
 
 
 def _download_raw_rds_files(
+    query_db,
     experiment_id,
     input_env,
     output_path,
@@ -239,7 +217,6 @@ def _download_raw_rds_files(
     without_tunnel,
     boto3_session,
     aws_account_id,
-    aws_profile,
 ):
     end_message = "Raw RDS files have been downloaded."
 
@@ -253,7 +230,7 @@ def _download_raw_rds_files(
         print(end_message)
         return
 
-    sample_list = _get_experiment_samples(experiment_id, input_env, aws_profile)
+    sample_list = _get_experiment_samples(query_db, experiment_id)
     num_samples = len(sample_list)
 
     print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
@@ -436,6 +413,8 @@ def download(
     boto3_session = boto3.Session(profile_name=aws_profile)
     aws_account_id = boto3_session.client("sts").get_caller_identity().get("Account")
 
+    query_db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
+
     # Set output path
     # By default add experiment_id to the output path
     if output_path == DATA_LOCATION:
@@ -447,7 +426,7 @@ def download(
 
     selected_files = []
     if all:
-        selected_files = [SAMPLES, CELLSETS, RAW_FILE, PROCESSED_FILE]
+        selected_files = [SAMPLES, RAW_FILE, PROCESSED_FILE, CELLSETS]
     else:
         selected_files = list(files)
 
@@ -457,7 +436,8 @@ def download(
             file in selected_files for file in incompatible_file_types
         ):
             raise Exception(
-                "'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'"
+                "'--without_tunnel' is incompatible with '-f samples', '-f \
+                sample_mapping' and '--name_with_id'"
             )
 
     for file in selected_files:
@@ -465,13 +445,13 @@ def download(
             print("\n== Downloading sample files")
             try:
                 _download_samples(
+                    query_db,
                     experiment_id,
                     input_env,
                     output_path,
                     name_with_id,
                     boto3_session,
                     aws_account_id,
-                    aws_profile,
                 )
             except Exception as e:
 
@@ -491,6 +471,7 @@ def download(
         elif file == RAW_FILE:
             print("\n== Downloading raw RDS file")
             _download_raw_rds_files(
+                query_db,
                 experiment_id,
                 input_env,
                 output_path,
@@ -498,7 +479,6 @@ def download(
                 without_tunnel,
                 boto3_session,
                 aws_account_id,
-                aws_profile,
             )
 
         elif file == PROCESSED_FILE:
@@ -510,6 +490,7 @@ def download(
                 boto3_session,
                 aws_account_id,
             )
+
         elif file == FILTERED_CELLS:
             print("\n== Downloading filtered cells files")
             _download_filtered_cells(
@@ -528,6 +509,7 @@ def download(
 
         elif file == SAMPLE_MAPPING:
             print("\n== Download sample mapping file")
-            _download_sample_mapping(experiment_id, input_env, output_path, aws_profile)
+            _download_sample_mapping(query_db, experiment_id, input_env, output_path)
+
         else:
             print(f"\n== Unknown file option {file}")
