@@ -23,7 +23,9 @@
 		"python.linting.flake8Enabled": true,
 		"markdownlint.config": {
 			"default": true,
-			"MD003": { "style": "setext_with_atx" },
+			"MD003": {
+				"style": "setext_with_atx"
+			},
 		}
 	}
 }
