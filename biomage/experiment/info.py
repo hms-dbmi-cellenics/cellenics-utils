@@ -196,16 +196,11 @@ def info(experiment_id, input_env, aws_profile, output):
     biomage experiment info -e 2093e95fd17372fb558b81b9142f230e -i production
     """
 
-    aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
-
-    aurora_client.open_tunnel()
-    
-    info = _get_experiment_info(aurora_client, experiment_id)
-    users = _get_experiment_users(aurora_client, experiment_id, input_env)
-    samples = _get_experiment_samples(aurora_client, experiment_id)
-    runs = _get_experiment_runs(aurora_client, experiment_id)
-
-    aurora_client.close_tunnel()
+    with AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile) as aurora_client:
+        info = _get_experiment_info(aurora_client, experiment_id)
+        users = _get_experiment_users(aurora_client, experiment_id, input_env)
+        samples = _get_experiment_samples(aurora_client, experiment_id)
+        runs = _get_experiment_runs(aurora_client, experiment_id)
 
     result = {"info": info, "users": users, "runs": runs, "samples": samples}
 
