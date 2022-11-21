@@ -22,37 +22,31 @@ USER = "dev_role"
 
 def _get_experiment_info(aurora_client, experiment_id):
     query = f"""
-        SELECT id as experiment_id, name as experiment_name, created_at, pod_cpus, pod_memory \
-            FROM experiment WHERE id = '{experiment_id}'
+        SELECT id as experiment_id, name as experiment_name, created_at, \
+            pod_cpus, pod_memory FROM experiment WHERE id = '{experiment_id}'
     """
     return aurora_client.select(query)[0]
 
 
 def _get_user_cognito_info(
-        users,
-        env,
-        attributes=['name', 'email', 'custom:agreed_terms', 'custom:agreed_emails'],
-    ):
-    cognito = boto3.client('cognito-idp')
+    users,
+    env,
+    attributes=["name", "email", "custom:agreed_terms", "custom:agreed_emails"],
+):
+    cognito = boto3.client("cognito-idp")
 
-    userpools = cognito.list_user_pools(
-        MaxResults=60
-    )['UserPools']
+    userpools = cognito.list_user_pools(MaxResults=60)["UserPools"]
 
     userpool = [
-        pool for pool in userpools
-        if re.match(f'biomage-.*-{env}', pool['Name'])
+        pool for pool in userpools if re.match(f"biomage-.*-{env}", pool["Name"])
     ][0]
 
     for user in users:
-        u = cognito.admin_get_user(
-            UserPoolId=userpool['Id'],
-            Username=user['user_id']
-        )
+        u = cognito.admin_get_user(UserPoolId=userpool["Id"], Username=user["user_id"])
 
-        for attr in u['UserAttributes']:
-            if attr['Name'] in attributes:
-                user[attr['Name']] = attr['Value']
+        for attr in u["UserAttributes"]:
+            if attr["Name"] in attributes:
+                user[attr["Name"]] = attr["Value"]
 
     return users
 
@@ -66,7 +60,7 @@ def _get_experiment_users(aurora_client, experiment_id, env):
     try:
         users = aurora_client.select(query)
         return _get_user_cognito_info(users, env)
-    except:
+    except Exception:
         return []
 
 
@@ -116,23 +110,23 @@ def _format_table(content):
 
 def _format_runs(content):
     for run in content:
-        print(run['pipeline_type'].upper())
-        _print_tabbed('execution_arn', run['execution_arn'])
+        print(run["pipeline_type"].upper())
+        _print_tabbed("execution_arn", run["execution_arn"])
 
-        run_details = run['last_status_response'][run['pipeline_type']]
+        run_details = run["last_status_response"][run["pipeline_type"]]
 
-        _print_tabbed('status\t', run_details['status'])
-        if(run_details['status'] != "SUCCEEDED"):
+        _print_tabbed("status\t", run_details["status"])
+        if run_details["status"] != "SUCCEEDED":
 
             error_string = f"{run_details['error']['error']}"
-            if(run_details['error'].get('cause')):
-                error_string += run_details['error']['cause']
+            if run_details["error"].get("cause"):
+                error_string += run_details["error"]["cause"]
 
-            _print_tabbed('error\t', error_string)
+            _print_tabbed("error\t", error_string)
 
-        _print_tabbed('start_date', run_details['startDate'])
-        _print_tabbed('stop_date', run_details['stopDate'])
-        _print_tabbed('completed_steps', run_details['completedSteps'])
+        _print_tabbed("start_date", run_details["startDate"])
+        _print_tabbed("stop_date", run_details["stopDate"])
+        _print_tabbed("completed_steps", run_details["completedSteps"])
         print()
 
 
@@ -141,28 +135,24 @@ def _pretty_print(result):
     WIDTH = 30
 
     print()
-    print("=" * WIDTH , "EXPERIMENT", "=" * WIDTH, "\n")
-    _format_item(result['info'])
+    print("=" * WIDTH, "EXPERIMENT", "=" * WIDTH, "\n")
+    _format_item(result["info"])
     print()
 
-    print("=" * WIDTH , "USERS", "=" * WIDTH, "\n")
-    _format_table(result['users'])
+    print("=" * WIDTH, "USERS", "=" * WIDTH, "\n")
+    _format_table(result["users"])
     print()
 
-    print("=" * WIDTH , "SAMPLES", "=" * WIDTH, "\n")
-    if len(result['samples']):
-        _format_table(result['samples'])
+    print("=" * WIDTH, "SAMPLES", "=" * WIDTH, "\n")
+    if len(result["samples"]):
+        _format_table(result["samples"])
     else:
         print("No samples uploaded")
     print()
 
-    print("=" * WIDTH , "PIPELINE RUNNER", "=" * WIDTH, "\n")
-    _format_item(result['pipeline_runner'])
-    print()
-
-    print("=" * WIDTH , "RUNS", "=" * WIDTH, "\n")
-    if len(result['runs']):
-        _format_runs(result['runs'])
+    print("=" * WIDTH, "RUNS", "=" * WIDTH, "\n")
+    if len(result["runs"]):
+        _format_runs(result["runs"])
     else:
         print("Experiment has not been processed")
 
@@ -178,8 +168,6 @@ def _pretty_print(result):
     "-i",
     "--input_env",
     required=True,
-    default=STAGING,
-    show_default=True,
     help="Input environment to pull the data from.",
 )
 @click.option(
@@ -194,16 +182,11 @@ def _pretty_print(result):
     "-o",
     "--output",
     required=False,
-    default='false',
+    default="false",
     show_default=True,
     help="Output result to a format. Supported format: json, yaml",
 )
-def info(
-    experiment_id,
-    input_env,
-    aws_profile,
-    output
-):
+def info(experiment_id, input_env, aws_profile, output):
     """
     Shows the required information related to the experiment.
     It requires an open tunnel to the desired environment to fetch data from SQL:
@@ -216,35 +199,18 @@ def info(
     aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
 
     aurora_client.open_tunnel()
-
+    
     info = _get_experiment_info(aurora_client, experiment_id)
-
-    pipeline_runner = {
-        'pipeline_runner': "Batch" if info['pod_cpus'] else "Fargate",
-        "pod_cpus": f"{info['pod_cpus'] } cores" if info['pod_cpus'] else "16 cores",
-        "pod_memory": f"{info['pod_memory'] / 1024} GB" if info['pod_memory'] else "28 GB"
-    }
-
-    del info['pod_cpus']
-    del info['pod_memory']
-
     users = _get_experiment_users(aurora_client, experiment_id, input_env)
     samples = _get_experiment_samples(aurora_client, experiment_id)
     runs = _get_experiment_runs(aurora_client, experiment_id)
 
     aurora_client.close_tunnel()
 
-    result = {
-        "info": info,
-        "pipeline_runner": pipeline_runner,
-        "users": users,
-        "runs": runs,
-        "samples": samples
-    }
+    result = {"info": info, "users": users, "runs": runs, "samples": samples}
 
-    if output == 'json':
-        print(json.dumps(result))
+    if output == "json":
+        print(json.dumps(result, indent=4))
         exit
     else:
         _pretty_print(result)
-

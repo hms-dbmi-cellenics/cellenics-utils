@@ -25,6 +25,7 @@ file_type_to_name_map = {
     "features10x": "features.tsv.gz",
     "matrix10x": "matrix.mtx.gz",
     "barcodes10x": "barcodes.tsv.gz",
+    "rhapsody": "Expression_Data.gz",
 }
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
@@ -156,7 +157,8 @@ def _download_samples(
         num_files = len(sample_files)
 
         print(
-            f"Downloading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
+            f"Downloading files for sample {sample_name} \
+                (sample {sample_idx+1}/{num_samples})",
         )
 
         for file_idx, sample_file in enumerate(sample_files):
@@ -413,7 +415,7 @@ def download(
 
     selected_files = []
     if all:
-        selected_files = [SAMPLES, CELLSETS, RAW_FILE, PROCESSED_FILE]
+        selected_files = [SAMPLES, RAW_FILE, PROCESSED_FILE, CELLSETS]
     else:
         selected_files = list(files)
 
@@ -425,7 +427,8 @@ def download(
             file in selected_files for file in incompatible_file_types
         ):
             raise Exception(
-                "'--without_tunnel' is incompatible with '-f samples', '-f sample_mapping' and '--name_with_id'"
+                "'--without_tunnel' is incompatible with '-f samples', '-f \
+                sample_mapping' and '--name_with_id'"
             )
     else:
         aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
@@ -481,6 +484,7 @@ def download(
                 boto3_session,
                 aws_account_id,
             )
+
         elif file == FILTERED_CELLS:
             print("\n== Downloading filtered cells files")
             _download_filtered_cells(
