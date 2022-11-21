@@ -5,15 +5,10 @@ from pathlib import Path
 import boto3
 import click
 
-from ..rds.run import run_rds_command
-from ..utils.constants import (
-    CELLSETS_BUCKET,
-    DEFAULT_AWS_PROFILE,
-    PROCESSED_FILES_BUCKET,
-    RAW_FILES_BUCKET,
-    SAMPLES_BUCKET,
-    STAGING,
-)
+from ..utils.AuroraClient import AuroraClient
+from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
+                               PROCESSED_FILES_BUCKET, RAW_FILES_BUCKET,
+                               SAMPLES_BUCKET, STAGING)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -40,140 +35,13 @@ def _upload_file(bucket, s3_path, file_path, boto3_session):
     print(f"{file_path}, {bucket}, {s3_path}")
     s3.meta.client.upload_file(str(file_path), bucket, s3_path)
 
-
-def _process_query_output(query_result):
-    json_text = (
-        query_result.replace("+", "")
-        .split("\n", 2)[2]
-        .replace("\n", "")
-        .replace("(1 row)", "")
-        .strip()
-    )
-
-    if not json_text:
-        raise Exception("No data returned from query")
-
-    return json.loads(json_text)
-
-
-def _query_db(query, output_env, aws_profile):
-    query = f"""psql -c "SELECT json_agg(q) FROM ( {query} ) AS q" """
-
-    return _process_query_output(
-        run_rds_command(
-            query,
-            SANDBOX_ID,
-            output_env,
-            USER,
-            REGION,
-            aws_profile,
-            capture_output=True,
-        )
-    )
-
-
-def _get_experiment_samples(experiment_id, output_env, aws_profile):
+def _get_experiment_samples(experiment_id, aurora_client):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return _query_db(query, output_env, aws_profile)
-
-
-def _get_sample_files(sample_ids, output_env, aws_profile):
-    query = f""" SELECT sample_id, s3_path, sample_file_type FROM sample_file \
-            INNER JOIN sample_to_sample_file_map \
-            ON sample_to_sample_file_map.sample_file_id = sample_file.id \
-            WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
-    """
-
-    return _query_db(query, output_env, aws_profile)
-
-
-def _get_samples(experiment_id, output_env, aws_profile):
-    print(f"Querying samples for {experiment_id}...")
-    samples = _get_experiment_samples(experiment_id, output_env, aws_profile)
-
-    sample_id_to_name = {}
-    for sample in samples:
-        sample_id_to_name[sample["sample_id"]] = sample["sample_name"]
-
-    print(f"Querying sample files for {experiment_id}...")
-    sample_ids = [entry["sample_id"] for entry in samples]
-    sample_files = _get_sample_files(sample_ids, output_env, aws_profile)
-
-    result = {}
-    for sample_file in sample_files:
-        sample_id = sample_file["sample_id"]
-        sample_name = sample_id_to_name[sample_id]
-
-        if not result.get(sample_name):
-            result[sample_name] = []
-
-        result[sample_name].append(
-            {
-                "sample_id": sample_id,
-                "sample_name": sample_name,
-                "s3_path": sample_file["s3_path"],
-                "sample_file_name": file_type_to_name_map[
-                    sample_file["sample_file_type"]
-                ],
-            }
-        )
-
-    return result
-
-
-def _upload_samples(
-    experiment_id,
-    output_env,
-    input_path,
-    use_sample_id_as_name,
-    boto3_session,
-    aws_account_id,
-    aws_profile,
-):
-    bucket = f"{SAMPLES_BUCKET}-{output_env}-{aws_account_id}"
-
-    samples_list = _get_samples(experiment_id, output_env, aws_profile)
-    num_samples = len(samples_list)
-
-    print(f"\n{num_samples} samples found. uploading sample files...\n")
-
-    for sample_idx, value in enumerate(samples_list.items()):
-        sample_name, sample_files = value
-
-        if use_sample_id_as_name:
-            sample_name = sample_files[0]["sample_id"]
-
-        num_files = len(sample_files)
-
-        print(
-            f"uploading files for sample {sample_name} (sample {sample_idx+1}/{num_samples})",
-        )
-
-        for file_idx, sample_file in enumerate(sample_files):
-            s3_path = sample_file["s3_path"]
-
-            file_name = sample_file["sample_file_name"]
-            file_path = input_path / sample_name / file_name
-
-            print(f"> uploading {s3_path} (file {file_idx+1}/{num_files})")
-
-            s3client = boto3_session.client("s3")
-            s3client.head_object(Bucket=bucket, Key=s3_path)
-            _upload_file(bucket, s3_path, file_path, boto3_session)
-
-        print(f"Sample {sample_name} uploaded.\n")
-
-    click.echo(
-        click.style(
-            "All samples for the experiment have been uploaded.",
-            fg="green",
-        )
-    )
-
+    return aurora_client.select(query)
 
 def _upload_raw_rds_files(
     experiment_id,
@@ -184,8 +52,6 @@ def _upload_raw_rds_files(
     aws_account_id,
     aws_profile,
 ):
-    s3 = boto3_session.resource("s3")
-
     bucket = f"{RAW_FILES_BUCKET}-{output_env}-{aws_account_id}"
     local_folder_path = os.path.join(input_path, f"{experiment_id}/raw")
     end_message = "Raw RDS files have been uploaded."
@@ -209,7 +75,12 @@ def _upload_raw_rds_files(
 
         return
 
-    sample_list = _get_experiment_samples(experiment_id, output_env, aws_profile)
+    aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, output_env, aws_profile)
+
+    aurora_client.open_tunnel()
+    sample_list = _get_experiment_samples(experiment_id, aurora_client)
+    aurora_client.close_tunnel()
+
     num_samples = len(sample_list)
 
     print(f"\n{num_samples} samples found. Uploading raw rds files...\n")
