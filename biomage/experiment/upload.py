@@ -75,11 +75,8 @@ def _upload_raw_rds_files(
 
         return
 
-    aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, output_env, aws_profile)
-
-    aurora_client.open_tunnel()
-    sample_list = _get_experiment_samples(experiment_id, aurora_client)
-    aurora_client.close_tunnel()
+    with AuroraClient(SANDBOX_ID, USER, REGION, output_env, aws_profile) as aurora_client:
+        sample_list = _get_experiment_samples(experiment_id, aurora_client)
 
     num_samples = len(sample_list)
 
