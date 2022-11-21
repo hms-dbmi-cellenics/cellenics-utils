@@ -66,11 +66,9 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
     """
 
     try:
-        aurora_client = AuroraClient(sandbox_id, user, region, input_env, aws_profile, local_port)
+        with AuroraClient(sandbox_id, user, region, input_env, aws_profile, local_port) as client:
+            client.run_query(command, capture_output = False)
 
-        aurora_client.open_tunnel()
-        aurora_client.run_query(command, capture_output = False)
-        aurora_client.close_tunnel()
     except Exception:
         print(
             "\n"

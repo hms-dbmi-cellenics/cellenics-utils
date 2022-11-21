@@ -123,6 +123,13 @@ class AuroraClient():
         self.aws_profile = aws_profile
         self.local_port = local_port
 
+    def __enter__(self):
+        self.open_tunnel()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, tb):
+        self.close_tunnel()
+
     def open_tunnel(self):
         if (self.local_port != None):
             return
