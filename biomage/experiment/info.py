@@ -130,33 +130,6 @@ def _format_runs(content):
         print()
 
 
-def _pretty_print(result):
-
-    WIDTH = 30
-
-    print()
-    print("=" * WIDTH, "EXPERIMENT", "=" * WIDTH, "\n")
-    _format_item(result["info"])
-    print()
-
-    print("=" * WIDTH, "USERS", "=" * WIDTH, "\n")
-    _format_table(result["users"])
-    print()
-
-    print("=" * WIDTH, "SAMPLES", "=" * WIDTH, "\n")
-    if len(result["samples"]):
-        _format_table(result["samples"])
-    else:
-        print("No samples uploaded")
-    print()
-
-    print("=" * WIDTH, "RUNS", "=" * WIDTH, "\n")
-    if len(result["runs"]):
-        _format_runs(result["runs"])
-    else:
-        print("Experiment has not been processed")
-
-
 @click.command()
 @click.option(
     "-e",
@@ -178,15 +151,7 @@ def _pretty_print(result):
     show_default=True,
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
-@click.option(
-    "-o",
-    "--output",
-    required=False,
-    default="false",
-    show_default=True,
-    help="Output result to a format. Supported format: json, yaml",
-)
-def info(experiment_id, input_env, aws_profile, output):
+def info(experiment_id, input_env, aws_profile):
     """
     Shows the required information related to the experiment.
     It requires an open tunnel to the desired environment to fetch data from SQL:
@@ -204,8 +169,4 @@ def info(experiment_id, input_env, aws_profile, output):
 
     result = {"info": info, "users": users, "runs": runs, "samples": samples}
 
-    if output == "json":
-        print(json.dumps(result, indent=4))
-        exit
-    else:
-        _pretty_print(result)
+    print(json.dumps(result, indent=4))
