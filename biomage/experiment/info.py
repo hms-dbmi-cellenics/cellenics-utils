@@ -130,33 +130,6 @@ def _format_runs(content):
         print()
 
 
-def _pretty_print(result):
-
-    WIDTH = 30
-
-    print()
-    print("=" * WIDTH, "EXPERIMENT", "=" * WIDTH, "\n")
-    _format_item(result["info"])
-    print()
-
-    print("=" * WIDTH, "USERS", "=" * WIDTH, "\n")
-    _format_table(result["users"])
-    print()
-
-    print("=" * WIDTH, "SAMPLES", "=" * WIDTH, "\n")
-    if len(result["samples"]):
-        _format_table(result["samples"])
-    else:
-        print("No samples uploaded")
-    print()
-
-    print("=" * WIDTH, "RUNS", "=" * WIDTH, "\n")
-    if len(result["runs"]):
-        _format_runs(result["runs"])
-    else:
-        print("Experiment has not been processed")
-
-
 @click.command()
 @click.option(
     "-e",
@@ -205,8 +178,4 @@ def info(experiment_id, input_env, aws_profile, output):
 
     result = {"info": info, "users": users, "runs": runs, "samples": samples}
 
-    if output == "json":
-        print(json.dumps(result, indent=4))
-        exit
-    else:
-        _pretty_print(result)
+    print(json.dumps(result, indent=4))
