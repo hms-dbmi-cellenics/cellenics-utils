@@ -151,15 +151,7 @@ def _format_runs(content):
     show_default=True,
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
-@click.option(
-    "-o",
-    "--output",
-    required=False,
-    default="false",
-    show_default=True,
-    help="Output result to a format. Supported format: json, yaml",
-)
-def info(experiment_id, input_env, aws_profile, output):
+def info(experiment_id, input_env, aws_profile):
     """
     Shows the required information related to the experiment.
     It requires an open tunnel to the desired environment to fetch data from SQL:
