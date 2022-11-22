@@ -5,6 +5,7 @@ from pathlib import Path
 import boto3
 import click
 
+from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import (
     CELLSETS_BUCKET,
     DEFAULT_AWS_PROFILE,
@@ -14,7 +15,6 @@ from ..utils.constants import (
     SAMPLES_BUCKET,
     STAGING,
 )
-from ..utils.db import init_db
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -87,28 +87,28 @@ def _create_sample_mapping(samples_list, output_path):
     print(f"Sample name-id map downloaded to: {str(samples_file)}.\n")
 
 
-def _get_experiment_samples(query_db, experiment_id):
+def _get_experiment_samples(experiment_id, aurora_client):
     query = f"""
         SELECT id as sample_id, name as sample_name \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
-    return query_db(query)
+    return aurora_client.select(query)
 
 
-def _get_sample_files(query_db, sample_ids):
+def _get_sample_files(sample_ids, aurora_client):
     query = f""" SELECT sample_id, s3_path, sample_file_type FROM sample_file \
             INNER JOIN sample_to_sample_file_map \
             ON sample_to_sample_file_map.sample_file_id = sample_file.id \
             WHERE sample_to_sample_file_map.sample_id IN ('{ "','".join(sample_ids) }')
     """
 
-    return query_db(query)
+    return aurora_client.select(query)
 
 
-def _get_samples(query_db, experiment_id, input_env):
+def _get_samples(experiment_id, aurora_client):
     print(f"Querying samples for {experiment_id}...")
-    samples = _get_experiment_samples(query_db, experiment_id)
+    samples = _get_experiment_samples(experiment_id, aurora_client)
 
     sample_id_to_name = {}
     for sample in samples:
@@ -116,7 +116,7 @@ def _get_samples(query_db, experiment_id, input_env):
 
     print(f"Querying sample files for {experiment_id}...")
     sample_ids = [entry["sample_id"] for entry in samples]
-    sample_files = _get_sample_files(query_db, sample_ids)
+    sample_files = _get_sample_files(sample_ids, aurora_client)
 
     result = {}
     for sample_file in sample_files:
@@ -141,17 +141,17 @@ def _get_samples(query_db, experiment_id, input_env):
 
 
 def _download_samples(
-    query_db,
     experiment_id,
     input_env,
     output_path,
     use_sample_id_as_name,
     boto3_session,
     aws_account_id,
+    aurora_client,
 ):
     bucket = f"{SAMPLES_BUCKET}-{input_env}-{aws_account_id}"
 
-    samples_list = _get_samples(query_db, experiment_id, input_env)
+    samples_list = _get_samples(experiment_id, aurora_client)
     num_samples = len(samples_list)
 
     print(f"\n{num_samples} samples found. Downloading sample files...\n")
@@ -193,12 +193,11 @@ def _download_samples(
 
 
 def _download_sample_mapping(
-    query_db,
     experiment_id,
-    input_env,
     output_path,
+    aurora_client,
 ):
-    samples_list = _get_samples(query_db, experiment_id, input_env)
+    samples_list = _get_samples(experiment_id, aurora_client)
     _create_sample_mapping(samples_list, output_path)
     click.echo(
         click.style(
@@ -209,7 +208,6 @@ def _download_sample_mapping(
 
 
 def _download_raw_rds_files(
-    query_db,
     experiment_id,
     input_env,
     output_path,
@@ -217,6 +215,7 @@ def _download_raw_rds_files(
     without_tunnel,
     boto3_session,
     aws_account_id,
+    aurora_client,
 ):
     end_message = "Raw RDS files have been downloaded."
 
@@ -230,7 +229,7 @@ def _download_raw_rds_files(
         print(end_message)
         return
 
-    sample_list = _get_experiment_samples(query_db, experiment_id)
+    sample_list = _get_experiment_samples(experiment_id, aurora_client)
     num_samples = len(sample_list)
 
     print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
@@ -413,8 +412,6 @@ def download(
     boto3_session = boto3.Session(profile_name=aws_profile)
     aws_account_id = boto3_session.client("sts").get_caller_identity().get("Account")
 
-    query_db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
-
     # Set output path
     # By default add experiment_id to the output path
     if output_path == DATA_LOCATION:
@@ -430,6 +427,8 @@ def download(
     else:
         selected_files = list(files)
 
+    aurora_client = None
+
     if without_tunnel:
         incompatible_file_types = [SAMPLES, SAMPLE_MAPPING]
         if name_with_id is True or any(
@@ -439,19 +438,22 @@ def download(
                 "'--without_tunnel' is incompatible with '-f samples', '-f \
                 sample_mapping' and '--name_with_id'"
             )
+    else:
+        aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
+        aurora_client.open_tunnel()
 
     for file in selected_files:
         if file == SAMPLES:
             print("\n== Downloading sample files")
             try:
                 _download_samples(
-                    query_db,
                     experiment_id,
                     input_env,
                     output_path,
                     name_with_id,
                     boto3_session,
                     aws_account_id,
+                    aurora_client,
                 )
             except Exception as e:
 
@@ -471,7 +473,6 @@ def download(
         elif file == RAW_FILE:
             print("\n== Downloading raw RDS file")
             _download_raw_rds_files(
-                query_db,
                 experiment_id,
                 input_env,
                 output_path,
@@ -479,6 +480,7 @@ def download(
                 without_tunnel,
                 boto3_session,
                 aws_account_id,
+                aurora_client,
             )
 
         elif file == PROCESSED_FILE:
@@ -509,7 +511,9 @@ def download(
 
         elif file == SAMPLE_MAPPING:
             print("\n== Download sample mapping file")
-            _download_sample_mapping(query_db, experiment_id, input_env, output_path)
-
+            _download_sample_mapping(experiment_id, output_path, aurora_client)
         else:
             print(f"\n== Unknown file option {file}")
+
+    if not without_tunnel:
+        aurora_client.close_tunnel()

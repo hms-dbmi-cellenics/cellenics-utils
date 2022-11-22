@@ -5,8 +5,8 @@ import boto3
 import click
 from tabulate import tabulate
 
-from ..utils.constants import DEFAULT_AWS_PROFILE
-from ..utils.db import init_db
+from ..utils.AuroraClient import AuroraClient
+from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -20,12 +20,12 @@ REGION = "eu-west-1"
 USER = "dev_role"
 
 
-def _get_experiment_info(db, experiment_id):
+def _get_experiment_info(aurora_client, experiment_id):
     query = f"""
         SELECT id as experiment_id, name as experiment_name, created_at, \
             pod_cpus, pod_memory FROM experiment WHERE id = '{experiment_id}'
     """
-    return db(query)[0]
+    return aurora_client.select(query)[0]
 
 
 def _get_user_cognito_info(
@@ -51,40 +51,40 @@ def _get_user_cognito_info(
     return users
 
 
-def _get_experiment_users(db, experiment_id, env):
+def _get_experiment_users(aurora_client, experiment_id, env):
     query = f"""
         SELECT user_id, access_role \
             FROM user_access WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        users = db(query)
+        users = aurora_client.select(query)
         return _get_user_cognito_info(users, env)
     except Exception:
         return []
 
 
-def _get_experiment_samples(db, experiment_id):
+def _get_experiment_samples(aurora_client, experiment_id):
     query = f"""
         SELECT id as sample_id, name, sample_technology, options \
             FROM sample WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        return db(query)
-    except Exception:
+        return aurora_client.select(query)
+    except:
         return []
 
 
-def _get_experiment_runs(db, experiment_id):
+def _get_experiment_runs(aurora_client, experiment_id):
     query = f"""
         SELECT pipeline_type, execution_arn, last_status_response \
             FROM experiment_execution WHERE experiment_id = '{experiment_id}'
     """
 
     try:
-        return db(query)
-    except Exception:
+        return aurora_client.select(query)
+    except:
         return []
 
 
@@ -169,12 +169,11 @@ def info(experiment_id, input_env, aws_profile, output):
     biomage experiment info -e 2093e95fd17372fb558b81b9142f230e -i production
     """
 
-    db = init_db(SANDBOX_ID, USER, REGION, input_env, aws_profile)
-
-    info = _get_experiment_info(db, experiment_id)
-    users = _get_experiment_users(db, experiment_id, input_env)
-    samples = _get_experiment_samples(db, experiment_id)
-    runs = _get_experiment_runs(db, experiment_id)
+    with AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile) as aurora_client:
+        info = _get_experiment_info(aurora_client, experiment_id)
+        users = _get_experiment_users(aurora_client, experiment_id, input_env)
+        samples = _get_experiment_samples(aurora_client, experiment_id)
+        runs = _get_experiment_runs(aurora_client, experiment_id)
 
     result = {"info": info, "users": users, "runs": runs, "samples": samples}
 
