@@ -22,13 +22,12 @@ SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
 
 DEFAULT_BRANCH = "master"
 
-yaml = YAML()
-
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
 
 
 def get_manifests(templates, pins, token, repo_to_ref):
+    yaml = YAML()
     manifests = []
 
     # Open each template and iterate through the documents. If we
