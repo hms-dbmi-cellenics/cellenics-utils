@@ -10,7 +10,8 @@ import anybase32
 import boto3
 import click
 import requests
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 from github import Github
 from inquirer import Checkbox, Confirm, Text, prompt
 from inquirer.themes import GreenPassion
@@ -21,6 +22,7 @@ SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
 
 DEFAULT_BRANCH = "master"
 
+yaml = YAML()
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)
@@ -33,7 +35,7 @@ def get_manifests(templates, pins, token, repo_to_ref):
     # find a `fluxcd.io/automated` annotation, set it to the appropriate
     # value depending on the pinning request.
     for name, template in templates.items():
-        documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
+        documents = yaml.load_all(template.text)
 
         for document in documents:
             # disable automatic image fetching if pinning is on
@@ -63,7 +65,9 @@ def get_manifests(templates, pins, token, repo_to_ref):
 
             manifests.append(document)
 
-    manifests = yaml.dump_all(manifests)
+    stream = StringIO()
+    yaml.dump_all(manifests, stream)
+    manifests = stream.getvalue()
 
     return manifests
 
