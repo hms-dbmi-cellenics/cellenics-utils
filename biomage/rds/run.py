@@ -1,13 +1,7 @@
-import sys
-from subprocess import run as sub_run
-
-import boto3
 import click
 
+from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
-
-# we use writer because reader might also point to writer making it not safe
-ENDPOINT_TYPE = "writer"
 
 
 @click.command()
@@ -72,9 +66,9 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
     """
 
     try:
-        run_rds_command(
-            command, sandbox_id, input_env, user, region, aws_profile, local_port
-        )
+        with AuroraClient(sandbox_id, user, region, input_env, aws_profile, local_port) as client:
+            client.run_query(command, capture_output = False)
+
     except Exception:
         print(
             "\n"
@@ -84,78 +78,3 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
             '- You may need to install psql, run "brew install postgresql"\n'
         )
 
-
-def run_rds_command(
-    command,
-    sandbox_id,
-    input_env,
-    user,
-    region,
-    aws_profile,
-    local_port=None,
-    capture_output=False,
-):
-    aws_session = boto3.Session(profile_name=aws_profile)
-
-    password = None
-
-    if input_env == "development":
-        password = "password"
-        local_port = local_port or 5431
-    else:
-        local_port = local_port or 5432
-
-        rds_client = aws_session.client("rds")
-
-        remote_endpoint = get_rds_endpoint(
-            input_env, sandbox_id, rds_client, ENDPOINT_TYPE
-        )
-
-        print(
-            f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
-        )
-        password = rds_client.generate_db_auth_token(
-            remote_endpoint, 5432, user, region
-        )
-
-    print("Token generated", file=sys.stderr)
-
-    result = None
-
-    if capture_output:
-        result = sub_run(
-            f'PGPASSWORD="{password}" {command} \
-                --host=localhost \
-                --port={local_port} \
-                --username={user} \
-                --dbname=aurora_db',
-            capture_output=True,
-            text=True,
-            shell=True,
-        )
-    else:
-        result = sub_run(
-            f'PGPASSWORD="{password}" {command} \
-                --host=localhost \
-                --port={local_port} \
-                --username={user} \
-                --dbname=aurora_db',
-            shell=True,
-        )
-
-    if result.returncode != 0:
-        raise Exception(result.stderr)
-
-    if capture_output:
-        return result.stdout
-
-
-def get_rds_endpoint(input_env, sandbox_id, rds_client, endpoint_type):
-    response = rds_client.describe_db_cluster_endpoints(
-        DBClusterIdentifier=f"aurora-cluster-{input_env}-{sandbox_id}",
-        Filters=[
-            {"Name": "db-cluster-endpoint-type", "Values": [endpoint_type]},
-        ],
-    )
-
-    return response["DBClusterEndpoints"][0]["Endpoint"]
