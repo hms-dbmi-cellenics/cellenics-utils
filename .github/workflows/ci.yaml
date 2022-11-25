@@ -3,6 +3,13 @@ on:
   push:
     branches:
       - master
+  release:
+    types:
+      - released
+  pull_request:
+    branches:
+      - master
+
 jobs:
   test:
     name: Test biomage-utils
@@ -11,6 +18,23 @@ jobs:
     - id: checkout
       name: Check out source code
       uses: actions/checkout@v2
+
+    - id: black
+      name: Black code formatter
+      uses: psf/black@stable
+
+    - name: Set up Python environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - id: flake8
+      name: Use flake8 linting
+      uses: py-actions/flake8@v2
+
+    - uses: jamescurtin/isort-action@master
+      with:
+        requirementsFiles: "requirements.txt"
 
     - id: test
       name: Run tests
