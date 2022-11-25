@@ -12,6 +12,7 @@ def force_exit_handler(signum, frame):
     run(f"{file_dir}/cleanup_tunnel.sh", shell=True)
     exit()
 
+
 @click.command()
 @click.option(
     "-i",
@@ -70,19 +71,23 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose):
     biomage rds tunnel -i staging
     """
 
-    open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose = verbose)
+    open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose=verbose)
 
-    input("""
-Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab
+    input(
+        """
+Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r
+ $REGION -p $AWS_PROFILE\" in a different tab
 
 ------------------------------
 Press enter to close session.
 ------------------------------
-""")
+"""
+    )
 
     close_tunnel()
 
-def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose = False):
+
+def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose=False):
     signal.signal(signal.SIGINT, force_exit_handler)
 
     # we use the writer endpoint because the reader endpoint might still connect to
@@ -101,8 +106,9 @@ def open_tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose 
             endpoint_type,
             aws_profile,
         ],
-        stdout = None if verbose else DEVNULL
+        stdout=None if verbose else DEVNULL,
     )
+
 
 def close_tunnel():
     file_dir = pathlib.Path(__file__).parent.resolve()

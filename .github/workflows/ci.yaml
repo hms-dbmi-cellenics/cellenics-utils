@@ -10,6 +10,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test biomage-utils
@@ -17,16 +21,17 @@ jobs:
     steps:
     - id: checkout
       name: Check out source code
-      uses: actions/checkout@v2
-
-    - id: black
-      name: Black code formatter
-      uses: psf/black@stable
+      uses: actions/checkout@v3
 
     - name: Set up Python environment
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
+        cache: 'pip'
+
+    - id: black
+      name: Black code formatter
+      uses: psf/black@stable
 
     - id: flake8
       name: Use flake8 linting
@@ -34,10 +39,10 @@ jobs:
 
     - uses: jamescurtin/isort-action@master
       with:
-        requirementsFiles: "requirements.txt"
+        configuration: "--profile=black"
 
-    - id: test
-      name: Run tests
-      run: |-
-        make install
-        make test
+    # - id: test
+    #   name: Run tests
+    #   run: |-
+    #     make install
+    #     make test

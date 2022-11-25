@@ -229,8 +229,9 @@ def rollback_if_necessary(iam, keys, result_codes):
 def exclude_iac_from_rotation(repos, org_name):
     warning_message = """
         This script WILL NOT rotate any secrets in the iac repository.
-        If you want to rotate secrets in the iac repository, you will need to do that either manually,
-        or by adjusting this script to fit the environment structure of the secrets in iac.
+        If you want to rotate secrets in the iac repository, you will need to do that
+        either manually, or by adjusting this script to fit the environment structure
+        of the secrets in iac.
     """
     click.echo(click.style("WARNING: " + warning_message, fg="yellow"))
     repos_without_iac = []

@@ -6,7 +6,7 @@ import click
 from tabulate import tabulate
 
 from ..utils.AuroraClient import AuroraClient
-from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -60,7 +60,8 @@ def _get_experiment_users(aurora_client, experiment_id, env):
     try:
         users = aurora_client.select(query)
         return _get_user_cognito_info(users, env)
-    except Exception:
+    except Exception as e:
+        print(e)
         return []
 
 
@@ -72,7 +73,8 @@ def _get_experiment_samples(aurora_client, experiment_id):
 
     try:
         return aurora_client.select(query)
-    except:
+    except Exception as e:
+        print(e)
         return []
 
 
@@ -84,7 +86,8 @@ def _get_experiment_runs(aurora_client, experiment_id):
 
     try:
         return aurora_client.select(query)
-    except:
+    except Exception as e:
+        print(e)
         return []
 
 
@@ -161,7 +164,9 @@ def info(experiment_id, input_env, aws_profile):
     biomage experiment info -e 2093e95fd17372fb558b81b9142f230e -i production
     """
 
-    with AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile) as aurora_client:
+    with AuroraClient(
+        SANDBOX_ID, USER, REGION, input_env, aws_profile
+    ) as aurora_client:
         info = _get_experiment_info(aurora_client, experiment_id)
         users = _get_experiment_users(aurora_client, experiment_id, input_env)
         samples = _get_experiment_samples(aurora_client, experiment_id)

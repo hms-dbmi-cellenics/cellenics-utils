@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 
@@ -6,9 +5,13 @@ import boto3
 import click
 
 from ..utils.AuroraClient import AuroraClient
-from ..utils.constants import (CELLSETS_BUCKET, DEFAULT_AWS_PROFILE,
-                               PROCESSED_FILES_BUCKET, RAW_FILES_BUCKET,
-                               SAMPLES_BUCKET, STAGING)
+from ..utils.constants import (
+    CELLSETS_BUCKET,
+    DEFAULT_AWS_PROFILE,
+    PROCESSED_FILES_BUCKET,
+    RAW_FILES_BUCKET,
+    STAGING,
+)
 
 SAMPLES = "samples"
 RAW_FILE = "raw_rds"
@@ -35,6 +38,7 @@ def _upload_file(bucket, s3_path, file_path, boto3_session):
     print(f"{file_path}, {bucket}, {s3_path}")
     s3.meta.client.upload_file(str(file_path), bucket, s3_path)
 
+
 def _get_experiment_samples(experiment_id, aurora_client):
     query = f"""
         SELECT id as sample_id, name as sample_name \
@@ -42,6 +46,7 @@ def _get_experiment_samples(experiment_id, aurora_client):
     """
 
     return aurora_client.select(query)
+
 
 def _upload_raw_rds_files(
     experiment_id,
@@ -58,7 +63,8 @@ def _upload_raw_rds_files(
 
     if without_tunnel:
         print(
-            "IMPORTANT: rds tunnel disabled, local folder is expected to have the structure <experiment_id>/<sample_id>/r.rds"
+            """IMPORTANT: rds tunnel disabled, local folder is expected to have the
+            structure <experiment_id>/<sample_id>/r.rds"""
         )
         for root, dirs, files in os.walk(local_folder_path):
             for file_name in files:
@@ -75,7 +81,9 @@ def _upload_raw_rds_files(
 
         return
 
-    with AuroraClient(SANDBOX_ID, USER, REGION, output_env, aws_profile) as aurora_client:
+    with AuroraClient(
+        SANDBOX_ID, USER, REGION, output_env, aws_profile
+    ) as aurora_client:
         sample_list = _get_experiment_samples(experiment_id, aurora_client)
 
     num_samples = len(sample_list)
