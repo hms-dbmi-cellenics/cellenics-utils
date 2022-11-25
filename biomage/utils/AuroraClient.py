@@ -25,7 +25,7 @@ def _run_rds_command(
     verbose=True,
 ):
 
-    aws_session = boto3.Session(profile_name=aws_profile)
+    aws_session = boto3.Session(profile_name=aws_profile, region_name=region)
 
     password = None
 

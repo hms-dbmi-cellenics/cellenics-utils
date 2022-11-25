@@ -71,10 +71,12 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
         ) as client:
             client.run_query(command, capture_output=False)
 
-    except Exception:
+    except Exception as e:
         print(
             "\n"
-            "There was an error connecting to the db. Try these steps:\n"
+            "There was an error connecting to the db:\n"
+            f"{e}\n"
+            "Try these steps:\n"
             '- Make sure the tunnel is running. If not run "biomage rds tunnel"\n'
             "- If the tunnel is running, try restarting the tunnel\n"
             '- You may need to install psql, run "brew install postgresql"\n'
