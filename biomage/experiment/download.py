@@ -36,6 +36,7 @@ file_type_to_name_map = {
 
 DATA_LOCATION = os.getenv("BIOMAGE_DATA_PATH", "./data")
 
+
 # Copied from https://stackoverflow.com/a/62945526
 def _download_folder(bucket_name, s3_path, local_folder_path, boto3_session):
     s3 = boto3_session.resource("s3")

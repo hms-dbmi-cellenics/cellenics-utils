@@ -45,7 +45,7 @@ develop: ## Installs development dependencies
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
 	@venv/bin/black biomage/
-	@venv/bin/isort --sp isort.cfg biomage/
+	@venv/bin/isort --profile=black biomage/
 	@echo "    [✓]"
 	@echo
 
