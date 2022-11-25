@@ -1,4 +1,4 @@
-name: Test biomage-utils
+name: CI for biomage-utils
 on:
   push:
     branches:
