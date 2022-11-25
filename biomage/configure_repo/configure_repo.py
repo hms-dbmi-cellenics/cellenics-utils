@@ -72,7 +72,8 @@ def configure_repo(name, token, create, org):
             questions = [
                 Confirm(
                     name="create",
-                    message=f"Repository {name} does not exist. Do you want to create it?",
+                    message=f"""Repository {name} does not exist.
+                    Do you want to create it?""",
                 )
             ]
 

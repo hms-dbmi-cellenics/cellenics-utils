@@ -12,6 +12,7 @@ from ..rds.tunnel import open_tunnel as open_tunnel_cmd
 # we use writer because reader might also point to writer making it not safe
 ENDPOINT_TYPE = "writer"
 
+
 def _run_rds_command(
     command,
     sandbox_id,
@@ -21,7 +22,7 @@ def _run_rds_command(
     aws_profile,
     local_port=None,
     capture_output=False,
-    verbose=True
+    verbose=True,
 ):
 
     aws_session = boto3.Session(profile_name=aws_profile)
@@ -42,7 +43,8 @@ def _run_rds_command(
 
         if verbose:
             print(
-                f"Generating temporary token for {input_env}-{sandbox_id}", file=sys.stderr
+                f"Generating temporary token for {input_env}-{sandbox_id}",
+                file=sys.stderr,
             )
 
         password = rds_client.generate_db_auth_token(
@@ -107,15 +109,17 @@ def _process_output_as_json(query_result):
 
     return json.loads(json_text)
 
+
 def _find_free_port():
     for port in range(5432, 6000):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            res = sock.connect_ex(('localhost', port))
+            res = sock.connect_ex(("localhost", port))
             if res != 0:
                 return port
 
-class AuroraClient():
-    def __init__(self, sandbox_id, user, region, env, aws_profile, local_port = None):
+
+class AuroraClient:
+    def __init__(self, sandbox_id, user, region, env, aws_profile, local_port=None):
         self.sandbox_id = sandbox_id
         self.user = user
         self.region = region
@@ -126,22 +130,24 @@ class AuroraClient():
     def __enter__(self):
         self.open_tunnel()
         return self
-    
+
     def __exit__(self, exc_type, exc_value, tb):
         self.close_tunnel()
 
     def open_tunnel(self):
-        if (self.local_port != None):
+        if self.local_port is not None:
             return
-    
+
         free_port = _find_free_port()
-        if (free_port == None):
+        if free_port is None:
             raise Exception("No free port between 5432 and 6000")
         self.local_port = free_port
 
-        open_tunnel_cmd(self.env, self.region, self.sandbox_id, self.local_port, self.aws_profile)
+        open_tunnel_cmd(
+            self.env, self.region, self.sandbox_id, self.local_port, self.aws_profile
+        )
 
-    def run_query(self, query, capture_output = True, verbose=False):
+    def run_query(self, query, capture_output=True, verbose=False):
         return _run_rds_command(
             query,
             self.sandbox_id,
@@ -151,11 +157,12 @@ class AuroraClient():
             self.aws_profile,
             local_port=self.local_port,
             capture_output=capture_output,
-            verbose=verbose
+            verbose=verbose,
         )
 
-    def select(self, query, as_json = True):
-        query = f"""psql -c "SELECT {"json_agg(q)" if as_json else "q" } FROM ( {query} ) AS q" """
+    def select(self, query, as_json=True):
+        query = f"""psql -c "SELECT {"json_agg(q)" if as_json else "q" }
+                             FROM ( {query} ) AS q" """
 
         return _process_output_as_json(
             _run_rds_command(
@@ -167,7 +174,7 @@ class AuroraClient():
                 self.aws_profile,
                 local_port=self.local_port,
                 capture_output=True,
-                verbose=False
+                verbose=False,
             )
         )
 

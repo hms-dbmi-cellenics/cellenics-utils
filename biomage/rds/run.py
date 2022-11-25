@@ -43,7 +43,7 @@ from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
     required=False,
     default=None,
     show_default=True,
-    help="Port to use locally for the tunnel, default is 5431 for inframock db, 5432 otherwise.",
+    help="Local port for the tunnel, default is 5431 for inframock db, 5432 otherwise.",
 )
 @click.option(
     "-p",
@@ -66,8 +66,10 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
     """
 
     try:
-        with AuroraClient(sandbox_id, user, region, input_env, aws_profile, local_port) as client:
-            client.run_query(command, capture_output = False)
+        with AuroraClient(
+            sandbox_id, user, region, input_env, aws_profile, local_port
+        ) as client:
+            client.run_query(command, capture_output=False)
 
     except Exception:
         print(
@@ -77,4 +79,3 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
             "- If the tunnel is running, try restarting the tunnel\n"
             '- You may need to install psql, run "brew install postgresql"\n'
         )
-

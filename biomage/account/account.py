@@ -36,7 +36,8 @@ def generate_password():
 
 def create_account(full_name, email, userpool):
     """
-    Creates a new account with the information provided. Requires a password change call afterwards."""
+    Creates a new account with the information provided.
+    Requires a password change call afterwards."""
     p = Popen(
         f"""aws cognito-idp admin-create-user \
             --user-pool-id "{userpool}" \

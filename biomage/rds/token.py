@@ -1,5 +1,4 @@
 import sys
-from subprocess import run as sub_run
 
 import boto3
 import click
@@ -53,7 +52,8 @@ ENDPOINT_TYPE = "writer"
 )
 def token(input_env, user, region, sandbox_id, aws_profile):
     """
-    Generates a temporary token that can be used to login to the database (through the ssh tunnel).\n
+    Generates a temporary token that can be used to login to the database
+    (through the ssh tunnel).\n
 
     Examples.:\n
         biomage rds token\n

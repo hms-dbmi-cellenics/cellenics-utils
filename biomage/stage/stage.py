@@ -10,17 +10,18 @@ import anybase32
 import boto3
 import click
 import requests
-from ruamel.yaml import YAML
-from ruamel.yaml.compat import StringIO
 from github import Github
 from inquirer import Checkbox, Confirm, Text, prompt
 from inquirer.themes import GreenPassion
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 
 from ..utils.staging import check_if_sandbox_exists
 
 SANDBOX_NAME_REGEX = re.compile(r"^[a-z0-9][-a-z0-9]*[a-z0-9]$")
 
 DEFAULT_BRANCH = "master"
+
 
 def recursive_get(d, *keys):
     return reduce(lambda c, k: c.get(k, {}), keys, d)

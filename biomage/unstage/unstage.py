@@ -52,7 +52,8 @@ def unstage(token, org, sandbox_id):
         secrets = base64.b64encode(secrets["CiphertextBlob"]).decode()
 
         questions = [
-            Confirm('delete',
+            Confirm(
+                "delete",
                 default=False,
                 message="Are you sure you want to remove the sandbox "
                 f"with ID `{sandbox_id}`. This cannot be undone.",
