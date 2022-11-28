@@ -41,7 +41,9 @@ def get_manifests(templates, pins, token, repo_to_ref):
             # pin chart version if pinning is on
             if recursive_get(document, "spec", "url"):
                 if name in pins:
-                    # Remove commit from ref, and use branch instead
+                    # Remove branch from ref, and use commit instead
+                    del document["spec"]["ref"]["branch"]
+
                     document["spec"]["ref"]["commit"] = get_branch_ref(
                         document["spec"]["url"],
                         token,
@@ -194,7 +196,7 @@ def get_branch_ref(url, token, repo_to_ref=None, return_sha=False):
         return target_branch
 
     for ref in repo.get_git_refs():
-        if ref.ref == target_branch:
+        if ref.ref == f"refs/heads/{target_branch}":
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
