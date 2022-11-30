@@ -31,19 +31,17 @@ def get_manifests(templates, pins, token, repo_to_ref):
     yaml = YAML()
     manifests = []
 
-    # Open each template and iterate through the documents. If we
-    # find a `fluxcd.io/automated` annotation, set it to the appropriate
-    # value depending on the pinning request.
+    # Open each template and iterate through the documents.
     for name, template in templates.items():
         documents = yaml.load_all(template.text)
-
         for document in documents:
-            # pin chart version if pinning is on
-            if document.get("kind") == "ImageUpdateAutomation" and name in pins:
-                document["spec"]["suspend"] = True
 
-            if document.get("kind") == "GitRepository":
-                if name in pins:
+            if name in pins:
+                # pin chart version if pinning is on
+                if document.get("kind") == "ImageUpdateAutomation":
+                    document["spec"]["suspend"] = True
+
+                if document.get("kind") == "GitRepository":
                     # Remove branch from ref, and use commit instead
                     del document["spec"]["ref"]["branch"]
 
@@ -52,13 +50,6 @@ def get_manifests(templates, pins, token, repo_to_ref):
                         token,
                         repo_to_ref=repo_to_ref,
                         return_sha=True,
-                    )
-                else:
-                    document["spec"]["ref"]["branch"] = get_branch_ref(
-                        document["spec"]["url"],
-                        token,
-                        repo_to_ref=repo_to_ref,
-                        return_sha=False,
                     )
 
             manifests.append(document)
@@ -74,12 +65,10 @@ def download_templates(org, repo, ref):
     # If no pull request ID was specified in the command.
     if isinstance(ref, int):
         template = f"refs-pull-{ref}-merge.yaml"
-    elif isinstance(ref, str):
-        template = f"refs-heads-{ref}.yaml"
     elif not ref:
         template = f"refs-heads-{DEFAULT_BRANCH}.yaml"
     else:
-        raise Exception("Ref must be integer, string, or None.")
+        raise Exception("Ref must be integer or None.")
 
     url = (
         f"https://raw.githubusercontent.com/{org}/flux-v2-migration/master/"
@@ -178,19 +167,8 @@ def get_branch_ref(chart_url, token, repo_to_ref=None, return_sha=False):
     org = g.get_organization(org)
     repo = org.get_repo(repo_name)
 
-    # We set the reference here according to the chart repo, not the repo
-    # to be released to avoid pointing to invalid references for repos whose
-    # charts are in IAC.
-    ref = None
-    if repo_name in repo_to_ref:
-        ref = repo_to_ref[repo_name]
-
-    if isinstance(ref, int):
-        pr = repo.get_pull(ref)
-        target_branch = pr.head.ref
-    elif isinstance(ref, str):
-        target_branch = ref
-    else:
+    # Here we check if the PR to get is designated when creating the staging environment
+    if not isinstance(repo_to_ref.get(repo_name), int):
         target_branch = repo.default_branch
 
     # if no specific reference was specified (e.g. `api` instead of `api/22`)
