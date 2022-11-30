@@ -39,10 +39,10 @@ def get_manifests(templates, pins, token, repo_to_ref):
 
         for document in documents:
             # pin chart version if pinning is on
-            if document.get('kind') == 'ImageUpdateAutomation' and name in pins:
+            if document.get("kind") == "ImageUpdateAutomation" and name in pins:
                 document["spec"]["suspend"] = True
 
-            if document.get('kind') == 'GitRepository':
+            if document.get("kind") == "GitRepository":
                 if name in pins:
                     # Remove branch from ref, and use commit instead
                     del document["spec"]["ref"]["branch"]
