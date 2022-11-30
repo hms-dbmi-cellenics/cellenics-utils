@@ -154,7 +154,7 @@ def compile_requirements(org, deployments):
     return templates, repo_to_ref
 
 
-def get_branch_ref(url, token, repo_to_ref=None, return_sha=False):
+def get_branch_ref(chart_url, token, repo_to_ref=None, return_sha=False):
     """
     Get a reference to a branch given the chart information (git, path, ref)
     supplied.
@@ -171,7 +171,7 @@ def get_branch_ref(url, token, repo_to_ref=None, return_sha=False):
 
     # A `git` reference can be https://github.com/biomage-org/releases
     # Here we extract the repository and organization from the string.
-    path = url.split(":")
+    path = chart_url.split(":")
     org, repo_name = path[1].split("/")[-2:]
 
     g = Github(token)
