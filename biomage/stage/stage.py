@@ -31,36 +31,25 @@ def get_manifests(templates, pins, token, repo_to_ref):
     yaml = YAML()
     manifests = []
 
-    # Open each template and iterate through the documents. If we
-    # find a `fluxcd.io/automated` annotation, set it to the appropriate
-    # value depending on the pinning request.
+    # Open each template and iterate through the documents.
     for name, template in templates.items():
         documents = yaml.load_all(template.text)
-
         for document in documents:
-            # disable automatic image fetching if pinning is on
-            if recursive_get(
-                document, "metadata", "annotations", "fluxcd.io/automated"
-            ):
-                document["metadata"]["annotations"]["fluxcd.io/automated"] = str(
-                    name not in pins
-                ).lower()
 
-            # pin chart version if pinning is on
-            if recursive_get(document, "spec", "chart", "ref"):
-                if name in pins:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
+            if name in pins:
+                # pin chart version if pinning is on
+                if document.get("kind") == "ImageUpdateAutomation":
+                    document["spec"]["suspend"] = True
+
+                if document.get("kind") == "GitRepository":
+                    # Remove branch from ref, and use commit instead
+                    del document["spec"]["ref"]["branch"]
+
+                    document["spec"]["ref"]["commit"] = get_branch_ref(
+                        document["spec"]["url"],
                         token,
                         repo_to_ref=repo_to_ref,
                         return_sha=True,
-                    )
-                else:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
-                        token,
-                        repo_to_ref=repo_to_ref,
-                        return_sha=False,
                     )
 
             manifests.append(document)
@@ -76,12 +65,10 @@ def download_templates(org, repo, ref):
     # If no pull request ID was specified in the command.
     if isinstance(ref, int):
         template = f"refs-pull-{ref}-merge.yaml"
-    elif isinstance(ref, str):
-        template = f"refs-heads-{ref}.yaml"
     elif not ref:
         template = f"refs-heads-{DEFAULT_BRANCH}.yaml"
     else:
-        raise Exception("Ref must be integer, string, or None.")
+        raise Exception("Ref must be integer or None.")
 
     url = (
         f"https://raw.githubusercontent.com/{org}/releases/master/"
@@ -156,7 +143,7 @@ def compile_requirements(org, deployments):
     return templates, repo_to_ref
 
 
-def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
+def get_branch_ref(chart_url, token, repo_to_ref=None, return_sha=False):
     """
     Get a reference to a branch given the chart information (git, path, ref)
     supplied.
@@ -173,26 +160,16 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
 
     # A `git` reference can be https://github.com/biomage-org/releases
     # Here we extract the repository and organization from the string.
-    path = chart["git"].split(":")
+    path = chart_url.split(":")
     org, repo_name = path[1].split("/")[-2:]
 
     g = Github(token)
     org = g.get_organization(org)
     repo = org.get_repo(repo_name)
 
-    # We set the reference here according to the chart repo, not the repo
-    # to be released to avoid pointing to invalid references for repos whose
-    # charts are in IAC.
-    ref = None
-    if repo_name in repo_to_ref:
-        ref = repo_to_ref[repo_name]
-
-    if isinstance(ref, int):
-        target_branch = f"refs/pull/{ref}/head"
-    elif isinstance(ref, str):
-        target_branch = f"refs/heads/{ref}"
-    else:
-        target_branch = f"refs/heads/{repo.default_branch}"
+    # Here we check if the PR to get is designated when creating the staging environment
+    if not isinstance(repo_to_ref.get(repo_name), int):
+        target_branch = repo.default_branch
 
     # if no specific reference was specified (e.g. `api` instead of `api/22`)
     # and no SHA was requested, return the name of the branch
@@ -200,7 +177,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
         return target_branch
 
     for ref in repo.get_git_refs():
-        if ref.ref == target_branch:
+        if ref.ref == f"refs/heads/{target_branch}":
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
