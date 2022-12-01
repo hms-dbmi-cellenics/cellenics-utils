@@ -76,7 +76,7 @@ def unstage(token, org, sandbox_id):
         wf = r.get_workflow(wf)
 
         wf.create_dispatch(
-            ref="releases",
+            ref="master",
             inputs={"sandbox-id": sandbox_id, "secrets": secrets},
         )
 

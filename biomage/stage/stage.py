@@ -410,7 +410,7 @@ def stage(token, org, deployments, with_rds, auto):
     wf = r.get_workflow(wf)
 
     workflow_started = wf.create_dispatch(
-        ref="releases",
+        ref="master",
         inputs={
             "manifest": manifest,
             "sandbox-id": sandbox_id,
