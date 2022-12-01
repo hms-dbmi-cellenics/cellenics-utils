@@ -71,7 +71,7 @@ def download_templates(org, repo, ref):
         raise Exception("Ref must be integer or None.")
 
     url = (
-        f"https://raw.githubusercontent.com/{org}/flux-v2-migration/master/"
+        f"https://raw.githubusercontent.com/{org}/releases/master/"
         f"staging-candidates/{repo}/{template}"
     )
 
@@ -410,7 +410,7 @@ def stage(token, org, deployments, with_rds, auto):
     wf = r.get_workflow(wf)
 
     workflow_started = wf.create_dispatch(
-        ref="flux-v2-migration",
+        ref="releases",
         inputs={
             "manifest": manifest,
             "sandbox-id": sandbox_id,
