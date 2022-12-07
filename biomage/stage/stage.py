@@ -449,13 +449,10 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo(
         f"""\tflux reconcile helmrelease ui --namespace ui-{sandbox_id} \
 --context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
-
         f"""\tflux reconcile helmrelease api --namespace api-{sandbox_id} \
 --context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
-
         f"""\tflux reconcile helmrelease pipeline --namespace pipeline-{sandbox_id} \
 --context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
-
         f"""\tflux reconcile helmrelease worker --namespace worker-{sandbox_id} \
 --context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
     )
