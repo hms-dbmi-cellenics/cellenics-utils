@@ -438,8 +438,8 @@ def stage(token, org, deployments, with_rds, auto):
         click.style(
             "✔️ Deployment submitted. You can check your progress at "
             f"https://github.com/{org}/iac/actions. When the deployment is done"
-            " run the following command to trigger flux synchronization and "
-            " speed up the process:",
+            " you will have to run the following command for each of the repositories "
+            " to trigger flux synchronization and speed up the process:",
             fg="green",
             bold=True,
         )
@@ -447,8 +447,14 @@ def stage(token, org, deployments, with_rds, auto):
 
     click.echo()
     click.echo(
-        "\tfluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
-        "242905224710:cluster/biomage-staging",
+        f"""\tflux reconcile helmrelease ui --namespace ui-{sandbox_id} \
+--context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease api --namespace api-{sandbox_id} \
+--context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease pipeline --namespace pipeline-{sandbox_id} \
+--context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease worker --namespace worker-{sandbox_id} \
+--context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
     )
     click.echo()
 
