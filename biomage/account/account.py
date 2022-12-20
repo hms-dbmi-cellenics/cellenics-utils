@@ -56,28 +56,47 @@ def create_account(full_name, email, aws_profile, region, userpool):
 
 @click.command()
 @click.option(
+    "-e",
     "--email",
     required=True,
     help="User email for the account to change the password in production.",
 )
 @click.option(
+    "-w",
     "--password",
     required=True,
-    help="Password for the new account.",
+    help="New password for the account.",
 )
 @click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
+    "-r",
+    "--region",
+    required=False,
+    default="eu-west-1",
+    show_default=True,
+    help="Region the userpool is in.",
+)
+@click.option(
+    "-u",
     "--userpool",
     required=True,
     help="Userpool of the account to change.",
 )
-def change_password(email, password, userpool):
+def change_password(email, password, aws_profile, region, userpool):
     print(
         "Changing password for %s to %s in user pool %s..."
         % (email, password, userpool)
     )
 
     try:
-        _change_password(email, password, userpool)
+        _change_password(email, password, aws_profile, region, userpool)
     except Exception as error:
         print("Error changing password: %s" % error)
 
@@ -122,9 +141,9 @@ def _change_password(email, password, aws_profile, region, userpool):
     "-r",
     "--region",
     required=False,
-    default=DEFAULT_AWS_PROFILE,
+    default="eu-west-1",
     show_default=True,
-    help="The name of the profile stored in ~/.aws/credentials to use.",
+    help="Region the userpool is in.",
 )
 @click.option(
     "-u",
