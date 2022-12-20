@@ -22,14 +22,12 @@ setup(
     package_data={
             "": ["config.yaml"],
     },
-
     entry_points={
         "console_scripts": ["cellenics = cellenics.__main__:main"],
     },
-
     python_requires=">=3.7",
     install_requires=requirements,
     extras_require={
-        'dev': dev_requirements,
+        "dev": dev_requirements,
     },
 )

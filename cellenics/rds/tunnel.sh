@@ -31,18 +31,13 @@ or check source for other ssm install options https://docs.aws.amazon.com/system
 	exit
 }
 
-function cleanup() {
+function on_error() {
 	if [ $? -ne 0 ]; then
 		show_requirements
 	fi
-
-
-	ssh -O exit -S $tmp_socket_prefix-ssh.sock *
-	rm $tmp_socket_prefix*
-	echo "Finished cleaning up"
 }
 
-trap cleanup EXIT
+trap cleanup INT TERM
 
 RDSHOST="$(aws rds describe-db-cluster-endpoints \
 	--region $REGION \
@@ -55,6 +50,7 @@ RDSHOST="$(aws rds describe-db-cluster-endpoints \
 INSTANCE_DATA=$(aws ec2 describe-instances \
 	--filters "Name=tag:Name,Values=rds-$ENVIRONMENT-ssm-agent" \
 	--output json \
+	--region $REGION \
 	--query "Reservations[*].Instances[*].{InstanceId:InstanceId, AvailabilityZone:Placement.AvailabilityZone}" \
 	--profile $AWS_PROFILE)
 
@@ -66,18 +62,12 @@ then
 	exit 1
 fi
 
-tmp_socket_prefix=tmp-$RANDOM
+tmp_socket_prefix=/tmp/tmp-tunnel
+
+rm -f "${tmp_socket_prefix}"
 
 ssh-keygen -t rsa -f $tmp_socket_prefix -N ''
 
-AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://$tmp_socket_prefix.pub --profile $AWS_PROFILE
+AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --region $REGION --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://$tmp_socket_prefix.pub --profile $AWS_PROFILE
 
 ssh -i $tmp_socket_prefix -N -f -M -S $tmp_socket_prefix-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --region ${REGION} --profile ${AWS_PROFILE} --document-name AWS-StartSSHSession --parameters portNumber=%p"
-
-echo "Finished setting up, run \"cellenics rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r $REGION -p $AWS_PROFILE\" in a different tab"
-echo
-echo "------------------------------"
-echo "Press enter to close session."
-echo "------------------------------"
-read
-echo
