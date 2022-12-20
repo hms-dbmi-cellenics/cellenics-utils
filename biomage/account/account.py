@@ -34,12 +34,12 @@ def generate_password():
     )
 
 
-def create_account(full_name, email, aws_profile, region, userpool):
+def create_account(full_name, email, aws_profile, userpool):
     """
     Creates a new account with the information provided.
     Requires a password change call afterwards."""
 
-    session = boto3.Session(profile_name=aws_profile, region_name=region)
+    session = boto3.Session(profile_name=aws_profile)
     cognito = session.client("cognito-idp")
 
     cognito.admin_create_user(
@@ -62,7 +62,7 @@ def create_account(full_name, email, aws_profile, region, userpool):
     help="User email for the account to change the password in production.",
 )
 @click.option(
-    "-w",
+    "-P",
     "--password",
     required=True,
     help="New password for the account.",
@@ -76,33 +76,25 @@ def create_account(full_name, email, aws_profile, region, userpool):
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 @click.option(
-    "-r",
-    "--region",
-    required=False,
-    default="eu-west-1",
-    show_default=True,
-    help="Region the userpool is in.",
-)
-@click.option(
     "-u",
     "--userpool",
     required=True,
     help="Userpool of the account to change.",
 )
-def change_password(email, password, aws_profile, region, userpool):
+def change_password(email, password, aws_profile, userpool):
     print(
         "Changing password for %s to %s in user pool %s..."
         % (email, password, userpool)
     )
 
     try:
-        _change_password(email, password, aws_profile, region, userpool)
+        _change_password(email, password, aws_profile, userpool)
     except Exception as error:
         print("Error changing password: %s" % error)
 
 
-def _change_password(email, password, aws_profile, region, userpool):
-    session = boto3.Session(profile_name=aws_profile, region_name=region)
+def _change_password(email, password, aws_profile, userpool):
+    session = boto3.Session(profile_name=aws_profile)
     cognito = session.client("cognito-idp")
 
     cognito.admin_set_user_password(
@@ -124,7 +116,7 @@ def _change_password(email, password, aws_profile, region, userpool):
     help="The first and last name for the user. (e.g.: Arthur Dent)",
 )
 @click.option(
-    "-w",
+    "-P",
     "--password",
     required=False,
     help="Password for the new account.",
@@ -138,20 +130,12 @@ def _change_password(email, password, aws_profile, region, userpool):
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 @click.option(
-    "-r",
-    "--region",
-    required=False,
-    default="eu-west-1",
-    show_default=True,
-    help="Region the userpool is in.",
-)
-@click.option(
     "-u",
     "--userpool",
     required=True,
     help="Userpool to add the new account to.",
 )
-def create_user(full_name, email, password, aws_profile, region, userpool):
+def create_user(full_name, email, password, aws_profile, userpool):
     """
     Creates a new account with the provided password. The user will not receive any
     email and the account & email will be marked as verified.
@@ -164,27 +148,25 @@ def create_user(full_name, email, password, aws_profile, region, userpool):
         print(error)
         sys.exit(1)
 
-    error = _create_user(full_name, email, password, userpool, aws_profile, region)
+    error = _create_user(full_name, email, password, userpool, aws_profile)
     if error:
         print("Error creating user: %s" % error)
 
 
-def _create_user(
-    full_name, email, password, userpool, aws_profile, region, overwrite=False
-):
+def _create_user(full_name, email, password, userpool, aws_profile, overwrite=False):
 
     # format full_name into title and email into lowercase
     full_name = full_name.title()
     email = email.lower()
 
     try:
-        create_account(full_name, email, aws_profile, region, userpool)
+        create_account(full_name, email, aws_profile, userpool)
     except Exception as error:
         if error and not ("UsernameExistsException" in str(error) and overwrite):
             return error
 
     try:
-        _change_password(email, password, aws_profile, region, userpool)
+        _change_password(email, password, aws_profile, userpool)
     except Exception as error:
         return error
 
