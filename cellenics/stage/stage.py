@@ -194,7 +194,9 @@ def get_sandbox_id(templates, manifests, org, auto=False):
             if opts.ref != DEFAULT_BRANCH
         ]
     )
-    user_name = re.sub(r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", "")))
+    user_name = re.sub(
+        r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", ""))
+    )
 
     fragments = (
         user_name,
@@ -352,10 +354,10 @@ def stage(token, org, deployments, with_rds, auto):
     Deploys a custom staging environment.
     """
 
-    if org == 'hms-dbmi-cellenics':
-        staging_url = 'staging.single-cell-platform.net'
-    elif org == 'biomage-org':
-        staging_url = 'scp-staging.biomage.net'
+    if org == "hms-dbmi-cellenics":
+        staging_url = "staging.single-cell-platform.net"
+    elif org == "biomage-org":
+        staging_url = "scp-staging.biomage.net"
 
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
