@@ -77,7 +77,7 @@ def run(command, sandbox_id, input_env, user, region, local_port, aws_profile):
             "There was an error connecting to the db:\n"
             f"{e}\n"
             "Try these steps:\n"
-            '- Make sure the tunnel is running. If not run "biomage rds tunnel"\n'
+            '- Make sure the tunnel is running. If not run "cellenics rds tunnel"\n'
             "- If the tunnel is running, try restarting the tunnel\n"
             '- You may need to install psql, run "brew install postgresql"\n'
         )

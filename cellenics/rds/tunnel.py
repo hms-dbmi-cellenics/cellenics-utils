@@ -75,7 +75,7 @@ def tunnel(input_env, region, sandbox_id, local_port, aws_profile, verbose):
 
     input(
         """
-Finished setting up, run \"biomage rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r
+Finished setting up, run \"cellenics rds run psql -i $ENVIRONMENT -s $SANDBOX_ID -r
  $REGION -p $AWS_PROFILE\" in a different tab
 
 ------------------------------
