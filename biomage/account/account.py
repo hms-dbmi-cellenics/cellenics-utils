@@ -5,7 +5,6 @@ import string
 import sys
 import time
 from secrets import choice
-from subprocess import PIPE, Popen
 
 import boto3
 import click
@@ -48,18 +47,9 @@ def create_account(full_name, email, aws_profile, region, userpool):
         Username=email,
         MessageAction="SUPPRESS",
         UserAttributes=[
-            {
-                'Name': 'email',
-                'Value': email
-            },
-            {
-                'Name': 'name',
-                'Value': full_name
-            },
-            {
-                'Name': 'email_verified',
-                'Value': 'true'
-            },
+            {"Name": "email", "Value": email},
+            {"Name": "name", "Value": full_name},
+            {"Name": "email_verified", "Value": "true"},
         ],
     )
 
@@ -97,10 +87,7 @@ def _change_password(email, password, aws_profile, region, userpool):
     cognito = session.client("cognito-idp")
 
     cognito.admin_set_user_password(
-        UserPoolId=userpool,
-        Username=email,
-        Password=password,
-        Permanent=True
+        UserPoolId=userpool, Username=email, Password=password, Permanent=True
     )
 
 
@@ -163,7 +150,9 @@ def create_user(full_name, email, password, aws_profile, region, userpool):
         print("Error creating user: %s" % error)
 
 
-def _create_user(full_name, email, password, userpool, aws_profile, region, overwrite=False):
+def _create_user(
+    full_name, email, password, userpool, aws_profile, region, overwrite=False
+):
 
     # format full_name into title and email into lowercase
     full_name = full_name.title()
@@ -255,7 +244,9 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
 
             password = generate_password()
 
-            error = _create_user(full_name, email, password, userpool, aws_profile, overwrite)
+            error = _create_user(
+                full_name, email, password, userpool, aws_profile, overwrite
+            )
             if error and not ("UsernameExistsException" in str(error) and overwrite):
                 out.write("%s,%s,Already have an account\n" % (full_name, email))
                 continue
