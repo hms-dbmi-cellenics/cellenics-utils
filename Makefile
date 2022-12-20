@@ -15,7 +15,7 @@ endif
 #--------------------------------------------------
 # Targets
 #--------------------------------------------------
-install: clean ## Creates venv, and adds biomage as system command
+install: clean ## Creates venv, and adds cellenics as system command
 	@echo "==> Creating virtual environment..."
 	@python3 -m venv venv/
 	@echo "    [✓]"
