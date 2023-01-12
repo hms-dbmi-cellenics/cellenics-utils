@@ -210,6 +210,14 @@ def _validate_input(email, full_name):
     help="Input environment to pull the data from.",
 )
 @click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
     "--overwrite",
     required=False,
     default=False,
@@ -257,7 +265,7 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
                 print(error)
                 sys.exit(1)
 
-            print("%s,%s,%s\n" % (full_name, email, password))
+            print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
 
