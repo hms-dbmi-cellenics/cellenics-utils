@@ -6,6 +6,7 @@ import sys
 import time
 from secrets import choice
 
+import biomage_programmatic_interface as bpi
 import boto3
 import click
 import pandas as pd
@@ -229,7 +230,7 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
     The first column should be the full_name in the format: first_name last_name
-    The second row should be the email.
+    The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
 
@@ -268,7 +269,53 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
+@click.command()
+@click.option(
+    "--user_email",
+    required=True,
+    help="User list containing email and password for the accounts in csv.",
+)
+@click.option(
+    "--user_password",
+    required=True,
+    help="User list containing email and password for the accounts in csv.",
+)
+@click.option(
+    "--experiment_name",
+    required=True,
+    help="Experiment name to be created",
+)
+@click.option(
+    "--samples_path",
+    required=True,
+    help="Local path to the samples for upload",
+)
+@click.option(
+    "--instance_url",
+    required=True,
+    help="Local path to the samples for upload",
+)
+def create_process_experiment(experiment_name, user_email, user_password, samples_path, instance_url):
+    """
+    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
+    The file should be in csv format.
+    The first column should be the full_name in the format: first_name last_name
+    The second column should be the email.
+    The third column is the user passoword used for login.
+    E.g.: Arthur Dent, arthur_dent@galaxy.gl, potatoPassword123
+    """
+    connection = bpi.Connection(user_email, user_password, instance_url)
+    # accept ToS
+    experiment = connection.create_experiment(experiment_name)
+    experiment.upload_samples(samples_path)
+    
+    #cleanup - unaccept ToS
+
+# @click.command()
+# def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url)
 
 account.add_command(create_user)
 account.add_command(change_password)
 account.add_command(create_users_list)
+account.add_command(create_process_experiment)
+
