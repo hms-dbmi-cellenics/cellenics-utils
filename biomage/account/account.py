@@ -233,6 +233,10 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
+    _create_users_list_func(user_list, header, input_env, aws_profile, overwrite)
+
+
+def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite):
 
     userpool = None
     if input_env == PRODUCTION:
@@ -257,6 +261,7 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
             error = _create_user(
                 full_name, email, password, userpool, aws_profile, overwrite
             )
+            print("error ", error)
             if error and not ("UsernameExistsException" in str(error) and overwrite):
                 out.write("%s,%s,Already have an account\n" % (full_name, email))
                 continue
@@ -269,16 +274,27 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
+
+def _create_process_experiment(experiment_name, user_email, user_password, samples_path, instance_url):
+    """
+    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
+    The file should be in csv format.
+    The first column should be the full_name in the format: first_name last_name
+    The second column should be the email.
+    The third column is the user passoword used for login.
+    E.g.: Arthur Dent, arthur_dent@galaxy.gl, potatoPassword123
+    """
+    connection = bpi.Connection(user_email, user_password, instance_url)
+    experiment = connection.create_experiment(experiment_name)
+    experiment.upload_samples(samples_path)
+
+    #cleanup - unaccept ToS
+
 @click.command()
 @click.option(
-    "--user_email",
+    "--user_list",
     required=True,
-    help="User list containing email and password for the accounts in csv.",
-)
-@click.option(
-    "--user_password",
-    required=True,
-    help="User list containing email and password for the accounts in csv.",
+    help="User list containing user and email for the new accounts in csv.",
 )
 @click.option(
     "--experiment_name",
@@ -292,30 +308,56 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
 )
 @click.option(
     "--instance_url",
-    required=True,
-    help="Local path to the samples for upload",
+    required=False,
+    default='https://api-default.scp-staging.biomage.net/',
+    help="URL of the cellenics api",
 )
-def create_process_experiment(experiment_name, user_email, user_password, samples_path, instance_url):
-    """
-    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
-    The file should be in csv format.
-    The first column should be the full_name in the format: first_name last_name
-    The second column should be the email.
-    The third column is the user passoword used for login.
-    E.g.: Arthur Dent, arthur_dent@galaxy.gl, potatoPassword123
-    """
-    connection = bpi.Connection(user_email, user_password, instance_url)
-    # accept ToS
-    experiment = connection.create_experiment(experiment_name)
-    experiment.upload_samples(samples_path)
-    
-    #cleanup - unaccept ToS
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url, aws_profile):
+    cognito_pool = COGNITO_STAGING_POOL
 
-# @click.command()
-# def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url)
+    # creating the users
+    _create_users_list_func(user_list, None, 'staging', aws_profile, False)
+    session = boto3.Session(profile_name=aws_profile)
+    client = session.client('cognito-idp')
+    created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
+
+    for _, name, email, password in created_users.itertuples():
+        # Update the user's "custom:agreed_terms" attribute
+        response2 = client.admin_update_user_attributes(
+            UserPoolId=cognito_pool,
+            Username=email,
+            UserAttributes=[
+                {
+                    'Name': 'custom:agreed_terms',
+                    'Value': 'true',
+                },
+            ]
+        )
+        print(response2)
+        _create_process_experiment(experiment_name, email, password, samples_path, instance_url)
+
+        # update agreed_terms to 'false' again
+        response2 = client.admin_update_user_attributes(
+            UserPoolId=cognito_pool,
+            Username=email,
+            UserAttributes=[
+                {
+                    'Name': 'custom:agreed_terms',
+                    'Value': 'false',
+                },
+            ]
+        )
+
 
 account.add_command(create_user)
 account.add_command(change_password)
 account.add_command(create_users_list)
-account.add_command(create_process_experiment)
-
+account.add_command(create_process_experiment_list)
