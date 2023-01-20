@@ -261,7 +261,7 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
             error = _create_user(
                 full_name, email, password, userpool, aws_profile, overwrite
             )
-            print("error ", error)
+
             if error and not ("UsernameExistsException" in str(error) and overwrite):
                 out.write("%s,%s,Already have an account\n" % (full_name, email))
                 continue
@@ -276,14 +276,6 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
 
 
 def _create_process_experiment(experiment_name, user_email, user_password, samples_path, instance_url):
-    """
-    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
-    The file should be in csv format.
-    The first column should be the full_name in the format: first_name last_name
-    The second column should be the email.
-    The third column is the user passoword used for login.
-    E.g.: Arthur Dent, arthur_dent@galaxy.gl, potatoPassword123
-    """
     connection = bpi.Connection(user_email, user_password, instance_url)
     experiment = connection.create_experiment(experiment_name)
     experiment.upload_samples(samples_path)
@@ -320,6 +312,14 @@ def _create_process_experiment(experiment_name, user_email, user_password, sampl
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url, aws_profile):
+    """
+    Creates users, using the user_list file.
+    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
+    The file should be in csv format.
+    The first column should be the full_name in the format: first_name last_name
+    The second column should be the email.
+    E.g.: Arthur Dent, arthur_dent@galaxy.gl
+    """
     cognito_pool = COGNITO_STAGING_POOL
 
     # creating the users
