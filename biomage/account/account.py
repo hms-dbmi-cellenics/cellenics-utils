@@ -288,7 +288,6 @@ def _create_process_experiment(experiment_name, user_email, user_password, sampl
     experiment = connection.create_experiment(experiment_name)
     experiment.upload_samples(samples_path)
 
-    #cleanup - unaccept ToS
 
 @click.command()
 @click.option(
