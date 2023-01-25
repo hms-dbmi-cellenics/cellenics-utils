@@ -25,6 +25,9 @@ def account():
 COGNITO_PRODUCTION_POOL = os.getenv("COGNITO_PRODUCTION_POOL")
 COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL")
 
+if (not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL):
+    raise Exception('COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL environment variables must be set!')
+
 
 def generate_password():
     today = time.strftime("%Y-%m-%d")
@@ -274,13 +277,6 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
-
-def _create_process_experiment(experiment_name, user_email, user_password, samples_path, instance_url):
-    connection = bpi.Connection(user_email, user_password, instance_url)
-    experiment = connection.create_experiment(experiment_name)
-    experiment.upload_samples(samples_path)
-
-
 @click.command()
 @click.option(
     "--user_list",
@@ -311,7 +307,18 @@ def _create_process_experiment(experiment_name, user_email, user_password, sampl
     show_default=True,
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
-def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url, aws_profile):
+@click.option(
+    "--admin_email",
+    required=True,
+    help="admin email for cognito",
+)
+
+@click.option(
+    "--admin_password",
+    required=True,
+    help="admin password for cognito",
+)
+def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url, aws_profile, admin_email, admin_password):
     """
     Creates users, using the user_list file.
     Creates experiment, uploads samples and processes the projet for each row in the user_list file.
@@ -328,32 +335,14 @@ def create_process_experiment_list(experiment_name, user_list, samples_path, ins
     client = session.client('cognito-idp')
     created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
 
-    for _, name, email, password in created_users.itertuples():
-        # Update the user's "custom:agreed_terms" attribute
-        response2 = client.admin_update_user_attributes(
-            UserPoolId=cognito_pool,
-            Username=email,
-            UserAttributes=[
-                {
-                    'Name': 'custom:agreed_terms',
-                    'Value': 'true',
-                },
-            ]
-        )
-        print(response2)
-        _create_process_experiment(experiment_name, email, password, samples_path, instance_url)
+    # creating the experiment and uploading samples
+    admin_connection = bpi.Connection(admin_email, admin_password, instance_url)
+    experiment = admin_connection.create_experiment(experiment_name)
 
-        # update agreed_terms to 'false' again
-        response2 = client.admin_update_user_attributes(
-            UserPoolId=cognito_pool,
-            Username=email,
-            UserAttributes=[
-                {
-                    'Name': 'custom:agreed_terms',
-                    'Value': 'false',
-                },
-            ]
-        )
+    experiment.upload_samples(samples_path)
+    for _, name, email, password in created_users.itertuples():
+        toUserId = client.admin_get_user(UserPoolId=cognito_pool, Username=email)['Username']
+        experiment.clone(toUserId)
 
 
 account.add_command(create_user)
