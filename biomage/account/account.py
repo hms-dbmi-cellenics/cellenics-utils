@@ -27,7 +27,8 @@ COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL")
 
 if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
     raise Exception(
-        "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL environment variables must be set!"
+        "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL" +
+        " environment variables must be set!"
     )
 
 
