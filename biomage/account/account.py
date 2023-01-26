@@ -25,8 +25,10 @@ def account():
 COGNITO_PRODUCTION_POOL = os.getenv("COGNITO_PRODUCTION_POOL")
 COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL")
 
-if (not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL):
-    raise Exception('COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL environment variables must be set!')
+if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
+    raise Exception(
+        "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL environment variables must be set!"
+    )
 
 
 def generate_password():
@@ -277,6 +279,7 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
+
 @click.command()
 @click.option(
     "--user_list",
@@ -296,7 +299,7 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
 @click.option(
     "--instance_url",
     required=False,
-    default='https://api-default.scp-staging.biomage.net/',
+    default="https://api-default.scp-staging.biomage.net/",
     help="URL of the cellenics api",
 )
 @click.option(
@@ -312,16 +315,24 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
     required=True,
     help="admin email for cognito",
 )
-
 @click.option(
     "--admin_password",
     required=True,
     help="admin password for cognito",
 )
-def create_process_experiment_list(experiment_name, user_list, samples_path, instance_url, aws_profile, admin_email, admin_password):
+def create_process_experiment_list(
+    experiment_name,
+    user_list,
+    samples_path,
+    instance_url,
+    aws_profile,
+    admin_email,
+    admin_password,
+):
     """
     Creates users, using the user_list file.
-    Creates experiment, uploads samples and processes the projet for each row in the user_list file.
+    Creates experiment, uploads samples and processes the projet
+    for each row in the user_list file.
     The file should be in csv format.
     The first column should be the full_name in the format: first_name last_name
     The second column should be the email.
@@ -330,9 +341,9 @@ def create_process_experiment_list(experiment_name, user_list, samples_path, ins
     cognito_pool = COGNITO_STAGING_POOL
 
     # creating the users
-    _create_users_list_func(user_list, None, 'staging', aws_profile, False)
+    _create_users_list_func(user_list, None, "staging", aws_profile, False)
     session = boto3.Session(profile_name=aws_profile)
-    client = session.client('cognito-idp')
+    client = session.client("cognito-idp")
     created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
 
     # creating the experiment and uploading samples
@@ -341,7 +352,9 @@ def create_process_experiment_list(experiment_name, user_list, samples_path, ins
 
     experiment.upload_samples(samples_path)
     for _, name, email, password in created_users.itertuples():
-        toUserId = client.admin_get_user(UserPoolId=cognito_pool, Username=email)['Username']
+        toUserId = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
+            "Username"
+        ]
         experiment.clone(toUserId)
 
 
