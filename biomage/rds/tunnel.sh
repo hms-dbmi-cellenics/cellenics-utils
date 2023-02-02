@@ -68,6 +68,6 @@ rm -f "${tmp_socket_prefix}"
 
 ssh-keygen -t rsa -f $tmp_socket_prefix -N ''
 
-AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --region $REGION --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ssm-user --ssh-public-key file://$tmp_socket_prefix.pub --profile $AWS_PROFILE
+AWS_PAGER="" aws ec2-instance-connect send-ssh-public-key --region $REGION --instance-id $INSTANCE_ID --availability-zone $AVAILABILITY_ZONE --instance-os-user ec2-user --ssh-public-key file://$tmp_socket_prefix.pub --profile $AWS_PROFILE
 
-ssh -i $tmp_socket_prefix -N -f -M -S $tmp_socket_prefix-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ssm-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --region ${REGION} --profile ${AWS_PROFILE} --document-name AWS-StartSSHSession --parameters portNumber=%p"
+ssh -i $tmp_socket_prefix -N -f -M -S $tmp_socket_prefix-ssh.sock -L "$LOCAL_PORT:${RDSHOST}:5432" "ec2-user@${INSTANCE_ID}" -o "IdentitiesOnly yes" -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o ProxyCommand="aws ssm start-session --target %h --region ${REGION} --profile ${AWS_PROFILE} --document-name AWS-StartSSHSession --parameters portNumber=%p"
