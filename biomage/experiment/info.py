@@ -80,7 +80,7 @@ def _get_experiment_samples(aurora_client, experiment_id):
 
 def _get_experiment_runs(aurora_client, experiment_id):
     query = f"""
-        SELECT pipeline_type, execution_arn, last_status_response \
+        SELECT pipeline_type, state_machine_arn, execution_arn, last_status_response \
             FROM experiment_execution WHERE experiment_id = '{experiment_id}'
     """
 
@@ -143,7 +143,8 @@ def _format_runs(content):
 @click.option(
     "-i",
     "--input_env",
-    required=True,
+    required=False,
+    default="production",
     help="Input environment to pull the data from.",
 )
 @click.option(
