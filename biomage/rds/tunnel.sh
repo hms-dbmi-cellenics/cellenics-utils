@@ -48,7 +48,7 @@ RDSHOST="$(aws rds describe-db-cluster-endpoints \
 	| tr -d '"')"
 
 INSTANCE_DATA=$(aws ec2 describe-instances \
-	--filters "Name=tag:Name,Values=rds-$ENVIRONMENT-ssm-agent" \
+	--filters "Name=tag:Name,Values=rds-$ENVIRONMENT-ssm-agent" "Name=instance-state-name,Values=running" \
 	--output json \
 	--region $REGION \
 	--query "Reservations[*].Instances[*].{InstanceId:InstanceId, AvailabilityZone:Placement.AvailabilityZone}" \
