@@ -25,12 +25,6 @@ def account():
 COGNITO_PRODUCTION_POOL = os.getenv("COGNITO_PRODUCTION_POOL")
 COGNITO_STAGING_POOL = os.getenv("COGNITO_STAGING_POOL")
 
-if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
-    raise Exception(
-        "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
-        + " environment variables must be set!"
-    )
-
 
 def generate_password():
     today = time.strftime("%Y-%m-%d")
@@ -337,6 +331,12 @@ def create_process_experiment_list(
     The second column should be the email.
     E.g.: Arthur Dent, arthur_dent@galaxy.gl
     """
+    if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
+        raise Exception(
+            "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
+            + " environment variables must be set!"
+        )
+
     cognito_pool = COGNITO_STAGING_POOL
 
     # creating the users
