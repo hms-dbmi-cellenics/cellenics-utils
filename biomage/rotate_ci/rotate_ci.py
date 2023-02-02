@@ -279,7 +279,8 @@ def rotate_ci(token, org):
     policies = dict(policies)
 
     click.echo(
-        f"Found {len(policies.keys())} repositories marked as requiring CI IAM policies.\nThese are: {', '.join(policies.keys())}"
+        f"Found {len(policies.keys())} repositories marked as requiring CI IAM "
+        f"policies.\nThese are: {', '.join(policies.keys())}"
     )
 
     questions = [
