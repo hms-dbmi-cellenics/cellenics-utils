@@ -236,7 +236,11 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
 
 
 def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite):
-
+    if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
+        raise Exception(
+            "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
+            + " environment variables must be set!"
+        )
     userpool = None
     if input_env == PRODUCTION:
         userpool = COGNITO_PRODUCTION_POOL
@@ -331,11 +335,6 @@ def create_process_experiment_list(
     The second column should be the email.
     E.g.: Arthur Dent, arthur_dent@galaxy.gl
     """
-    if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
-        raise Exception(
-            "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
-            + " environment variables must be set!"
-        )
 
     cognito_pool = COGNITO_STAGING_POOL
 
