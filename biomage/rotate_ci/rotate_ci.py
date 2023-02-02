@@ -10,6 +10,9 @@ from botocore.config import Config
 from github import Github
 
 from ..utils.encrypt import encrypt
+from inquirer import Confirm, prompt
+from inquirer.themes import GreenPassion
+
 
 config = Config(
     region_name="eu-west-1",
@@ -275,10 +278,23 @@ def rotate_ci(token, org):
     repos = exclude_iac_from_rotation(repos, org.login)
 
     policies = [ret for ret in (filter_iam_repos(repo) for repo in repos) if ret]
-    click.echo(
-        f"Found {len(policies)} repositories marked as requiring CI IAM policies."
-    )
     policies = dict(policies)
+
+    click.echo(
+        f"Found {len(policies.keys())} repositories marked as requiring CI IAM policies.\nThese are: {policies.keys()}" 
+    )
+
+    questions = [
+            Confirm(
+                name="create",
+                message="Are you sure you want to rotate ci for these repositories?",
+                default=False,
+            )
+        ]
+    click.echo()
+    answer = prompt(questions, theme=GreenPassion())
+    if not answer["create"]:
+        exit(1)
 
     iam = boto3.client("iam", config=config)
     create_new_iam_users(policies)
