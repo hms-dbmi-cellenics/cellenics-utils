@@ -161,7 +161,6 @@ def create_user(full_name, email, password, aws_profile, userpool):
 
 
 def _create_user(full_name, email, password, userpool, aws_profile, overwrite=False):
-
     # format full_name into title and email into lowercase
     full_name = full_name.title()
     email = email.lower()
@@ -253,7 +252,6 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
         for _, full_name, email in df.itertuples():
-
             full_name = full_name.title().strip()
             email = email.lower().strip()
 
