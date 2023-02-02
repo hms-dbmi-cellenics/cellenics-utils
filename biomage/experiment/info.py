@@ -101,7 +101,6 @@ def _format_item(details):
 
 
 def _format_table(content):
-
     header = list(content[0].keys())
     table = []
 
@@ -120,7 +119,6 @@ def _format_runs(content):
 
         _print_tabbed("status\t", run_details["status"])
         if run_details["status"] != "SUCCEEDED":
-
             error_string = f"{run_details['error']['error']}"
             if run_details["error"].get("cause"):
                 error_string += run_details["error"]["cause"]

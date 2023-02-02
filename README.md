@@ -72,9 +72,10 @@ configuration in configure-repo/configure_repo.py script.
 
 ### rotate-ci
 
-Rotates the AWS access keys used by the CI runners. You must have the required
-AWS rights to use this utility. Credentials will be fetched in the same way as
-they are for the AWS CLI.
+Rotates the AWS access keys used by the CI runners, *with the exception of iac*.
+You must have sufficient AWS rights and github access token to use this
+utility. Credentials will be fetched in the same way as they are for the AWS
+CLI.
 
 You can run:
 
