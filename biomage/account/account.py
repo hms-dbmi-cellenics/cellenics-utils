@@ -232,10 +232,10 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
-    _create_users_list_func(user_list, header, input_env, aws_profile, overwrite)
+    _create_users_list(user_list, header, input_env, aws_profile, overwrite)
 
 
-def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite):
+def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
     if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
         raise Exception(
             "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
@@ -281,7 +281,7 @@ def _create_users_list_func(user_list, header, input_env, aws_profile, overwrite
 @click.option(
     "--user_list",
     required=True,
-    help="User list containing user and email for the new accounts in csv.",
+    help="Path to the user list csv file containing user and email for the new accounts.",
 )
 @click.option(
     "--experiment_name",
@@ -339,16 +339,21 @@ def create_process_experiment_list(
     cognito_pool = COGNITO_STAGING_POOL
 
     # creating the users
-    _create_users_list_func(user_list, None, "staging", aws_profile, False)
+    print('Creating users from the csv file')
+    _create_users_list(user_list, None, "staging", aws_profile, False)
+
     session = boto3.Session(profile_name=aws_profile)
     client = session.client("cognito-idp")
     created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
 
     # creating the experiment and uploading samples
     admin_connection = bpi.Connection(admin_email, admin_password, instance_url)
+
+    print('Creating and uploading samples for the experiment as admin')
     experiment = admin_connection.create_experiment(experiment_name)
 
     experiment.upload_samples(samples_path)
+    print('Cloning and running the experiment for each user')
     for _, name, email, password in created_users.itertuples():
         toUserId = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
             "Username"
