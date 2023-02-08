@@ -355,11 +355,13 @@ def create_process_experiment_list(
     experiment.upload_samples(samples_path)
     print('Cloning and running the experiment for each user')
     for _, name, email, password in created_users.itertuples():
-        toUserId = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
+        to_user_id = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
             "Username"
         ]
-        new_experiment = experiment.clone(toUserId)
+        new_experiment = experiment.clone(to_user_id)
         new_experiment.run()
+        print('Experiment ', new_experiment,
+              ' cloned and started processing for user ', to_user_id)
 
 
 account.add_command(create_user)
