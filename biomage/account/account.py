@@ -339,7 +339,7 @@ def create_process_experiment_list(
     cognito_pool = COGNITO_STAGING_POOL
 
     # creating the users
-    print('Creating users from the csv file')
+    print("Creating users from the csv file")
     _create_users_list(user_list, None, "staging", aws_profile, False)
 
     session = boto3.Session(profile_name=aws_profile)
@@ -349,19 +349,23 @@ def create_process_experiment_list(
     # creating the experiment and uploading samples
     admin_connection = bpi.Connection(admin_email, admin_password, instance_url)
 
-    print('Creating and uploading samples for the experiment as admin')
+    print("Creating and uploading samples for the experiment as admin")
     experiment = admin_connection.create_experiment(experiment_name)
 
     experiment.upload_samples(samples_path)
-    print('Cloning and running the experiment for each user')
+    print("Cloning and running the experiment for each user")
     for _, name, email, password in created_users.itertuples():
         to_user_id = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
             "Username"
         ]
         new_experiment = experiment.clone(to_user_id)
         new_experiment.run()
-        print('Experiment ', new_experiment,
-              ' cloned and started processing for user ', to_user_id)
+        print(
+            "Experiment ",
+            new_experiment,
+            " cloned and started processing for user ",
+            to_user_id,
+        )
 
 
 account.add_command(create_user)
