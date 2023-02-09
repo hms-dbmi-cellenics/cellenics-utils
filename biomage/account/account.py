@@ -6,6 +6,7 @@ import sys
 import time
 from secrets import choice
 
+import biomage_programmatic_interface as bpi
 import boto3
 import click
 import pandas as pd
@@ -161,8 +162,7 @@ def _create_user(full_name, email, password, userpool, aws_profile, overwrite=Fa
     try:
         create_account(full_name, email, aws_profile, userpool)
     except Exception as error:
-        if error and not ("UsernameExistsException" in str(error) and overwrite):
-            return error
+        return error
 
     try:
         _change_password(email, password, aws_profile, userpool)
@@ -228,10 +228,18 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
     The first column should be the full_name in the format: first_name last_name
-    The second row should be the email.
+    The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
+    _create_users_list(user_list, header, input_env, aws_profile, overwrite)
 
+
+def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
+    if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
+        raise Exception(
+            "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
+            + " environment variables must be set!"
+        )
     userpool = None
     if input_env == PRODUCTION:
         userpool = COGNITO_PRODUCTION_POOL
@@ -254,19 +262,113 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
             error = _create_user(
                 full_name, email, password, userpool, aws_profile, overwrite
             )
-            if error and not ("UsernameExistsException" in str(error) and overwrite):
-                out.write("%s,%s,Already have an account\n" % (full_name, email))
-                continue
 
             if error:
-                print("Error creating user {email} with password {password}")
-                print(error)
-                sys.exit(1)
+                if "UsernameExistsException" in str(error) and overwrite:
+                    out.write("%s,%s,Already have an account\n" % (full_name, email))
+                    continue
+                else:
+                    print(f"Error creating user {email} with password {password}")
+                    print(error)
+                    sys.exit(1)
 
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
 
 
+@click.command()
+@click.option(
+    "--user_list",
+    required=True,
+    help="Path to the user list csv file containing user"
+    + "and email for the new accounts.",
+)
+@click.option(
+    "--experiment_name",
+    required=True,
+    help="Experiment name to be created",
+)
+@click.option(
+    "--samples_path",
+    required=True,
+    help="Local path to the samples for upload",
+)
+@click.option(
+    "--instance_url",
+    required=False,
+    default="production",
+    help="URL of the cellenics api",
+)
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
+    "--admin_email",
+    required=True,
+    help="admin email for cognito",
+)
+@click.option(
+    "--admin_password",
+    required=True,
+    help="admin password for cognito",
+)
+def create_process_experiment_list(
+    experiment_name,
+    user_list,
+    samples_path,
+    instance_url,
+    aws_profile,
+    admin_email,
+    admin_password,
+):
+    """
+    Creates users, using the user_list file.
+    Creates experiment, uploads samples and processes the projet
+    for each row in the user_list file.
+    The file should be in csv format.
+    The first column should be the full_name in the format: first_name last_name
+    The second column should be the email.
+    E.g.: Arthur Dent, arthur_dent@galaxy.gl
+    """
+
+    cognito_pool = COGNITO_PRODUCTION_POOL
+
+    # creating the users
+    print("Creating users from the csv file")
+    _create_users_list(user_list, None, "production", aws_profile, False)
+
+    session = boto3.Session(profile_name=aws_profile)
+    client = session.client("cognito-idp")
+    created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
+
+    # creating the experiment and uploading samples
+    admin_connection = bpi.Connection(admin_email, admin_password, instance_url)
+
+    print("Creating and uploading samples for the experiment as admin")
+    experiment = admin_connection.create_experiment(experiment_name)
+
+    experiment.upload_samples(samples_path)
+    print("Cloning and running the experiment for each user")
+    for _, name, email, password in created_users.itertuples():
+        to_user_id = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
+            "Username"
+        ]
+        new_experiment = experiment.clone(to_user_id)
+        new_experiment.run()
+        print(
+            "Experiment ",
+            new_experiment,
+            " cloned and started processing for user ",
+            to_user_id,
+        )
+
+
 account.add_command(create_user)
 account.add_command(change_password)
 account.add_command(create_users_list)
+account.add_command(create_process_experiment_list)
