@@ -264,7 +264,7 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
             )
 
             if error:
-                if ("UsernameExistsException" in str(error) and overwrite):
+                if "UsernameExistsException" in str(error) and overwrite:
                     out.write("%s,%s,Already have an account\n" % (full_name, email))
                     continue
                 else:
