@@ -162,8 +162,7 @@ def _create_user(full_name, email, password, userpool, aws_profile, overwrite=Fa
     try:
         create_account(full_name, email, aws_profile, userpool)
     except Exception as error:
-        if error and not ("UsernameExistsException" in str(error) and overwrite):
-            return error
+        return error
 
     try:
         _change_password(email, password, aws_profile, userpool)
@@ -264,14 +263,14 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
                 full_name, email, password, userpool, aws_profile, overwrite
             )
 
-            if error and not ("UsernameExistsException" in str(error) and overwrite):
-                out.write("%s,%s,Already have an account\n" % (full_name, email))
-                continue
-
             if error:
-                print("Error creating user {email} with password {password}")
-                print(error)
-                sys.exit(1)
+                if ("UsernameExistsException" in str(error) and overwrite):
+                    out.write("%s,%s,Already have an account\n" % (full_name, email))
+                    continue
+                else:
+                    print(f"Error creating user {email} with password {password}")
+                    print(error)
+                    sys.exit(1)
 
             print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
@@ -296,7 +295,7 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
 @click.option(
     "--instance_url",
     required=False,
-    default="https://api-default.scp-staging.biomage.net/",
+    default="production",
     help="URL of the cellenics api",
 )
 @click.option(
@@ -336,11 +335,11 @@ def create_process_experiment_list(
     E.g.: Arthur Dent, arthur_dent@galaxy.gl
     """
 
-    cognito_pool = COGNITO_STAGING_POOL
+    cognito_pool = COGNITO_PRODUCTION_POOL
 
     # creating the users
     print("Creating users from the csv file")
-    _create_users_list(user_list, None, "staging", aws_profile, False)
+    _create_users_list(user_list, None, "production", aws_profile, False)
 
     session = boto3.Session(profile_name=aws_profile)
     client = session.client("cognito-idp")
