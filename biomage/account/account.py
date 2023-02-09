@@ -280,8 +280,8 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
 @click.option(
     "--user_list",
     required=True,
-    help="Path to the user list csv file containing user" +
-    "and email for the new accounts.",
+    help="Path to the user list csv file containing user"
+    + "and email for the new accounts.",
 )
 @click.option(
     "--experiment_name",
