@@ -114,7 +114,6 @@ def _upload_processed_rds_file(
     boto3_session,
     aws_account_id,
 ):
-
     file_name = "processed_r.rds"
     bucket = f"{PROCESSED_FILES_BUCKET}-{output_env}-{aws_account_id}"
     end_message = "Processed RDS files have been uploaded."

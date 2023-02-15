@@ -35,7 +35,6 @@ def get_manifests(templates, pins, token, repo_to_ref):
     for name, template in templates.items():
         documents = yaml.load_all(template.text)
         for document in documents:
-
             if name in pins:
                 # pin chart version if pinning is on
                 if document.get("kind") == "ImageUpdateAutomation":
@@ -249,7 +248,6 @@ def get_sandbox_id(templates, manifests, org, auto=False):
 
 
 def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=False):
-
     # autopin the repos on the default branch
     if auto:
         pins = [

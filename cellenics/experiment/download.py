@@ -225,7 +225,6 @@ def _download_raw_rds_files(
 
     # Download all the files prefixed with experiment_id, no added checks
     if without_tunnel:
-
         folder_path = output_path / "raw"
         _download_folder(bucket, experiment_id, folder_path, boto3_session)
         print(end_message)
@@ -237,7 +236,6 @@ def _download_raw_rds_files(
     print(f"\n{num_samples} samples found. Downloading raw rds files...\n")
 
     for sample_idx, sample in enumerate(sample_list):
-
         s3_path = f"{experiment_id}/{sample['sample_id']}/r.rds"
 
         if use_sample_id_as_name:
@@ -265,7 +263,6 @@ def _download_processed_rds_file(
     boto3_session,
     aws_account_id,
 ):
-
     file_name = "processed_r.rds"
     bucket = f"{PROCESSED_FILES_BUCKET}-{input_env}-{aws_account_id}"
     end_message = "Processed RDS files have been downloaded."
@@ -458,7 +455,6 @@ def download(
                     aurora_client,
                 )
             except Exception as e:
-
                 message = e.args[0]
                 if "No data returned from query" in message:
                     click.echo(
