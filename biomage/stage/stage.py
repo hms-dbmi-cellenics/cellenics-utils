@@ -245,6 +245,17 @@ def get_sandbox_id(templates, manifests, org, auto=False):
         return sandbox_id
 
 
+def get_pr_number(deployments, repo_name):
+    pr = [pr for pr in deployments if repo_name in pr]
+
+    # pr with repo_name is not staged
+    if not len(pr):
+        return None
+
+    # The pr string has format "api/123"
+    return pr[0].split("/")[1]
+
+
 def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=False):
     # autopin the repos on the default branch
     if auto:
@@ -415,6 +426,7 @@ def stage(token, org, deployments, with_rds, auto):
             # Convert stage_rds to string because Github has issues with boolean inputs
             # https://github.com/actions/runner/issues/1483
             "with-rds": str(with_rds),
+            "pipeline-pr": get_pr_number(deployments, "pipeline") or "",
             "secrets": secrets,
         },
     )
