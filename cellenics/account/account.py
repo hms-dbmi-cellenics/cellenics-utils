@@ -5,12 +5,13 @@ import string
 import sys
 import time
 from secrets import choice
-from subprocess import PIPE, Popen
 
+import biomage_programmatic_interface as bpi
+import boto3
 import click
 import pandas as pd
 
-from ..utils.constants import PRODUCTION, STAGING
+from ..utils.constants import DEFAULT_AWS_PROFILE, PRODUCTION, STAGING
 
 
 @click.group()
@@ -34,98 +35,108 @@ def generate_password():
     )
 
 
-def create_account(full_name, email, userpool):
+def create_account(full_name, email, aws_profile, userpool):
     """
-    Creates a new account with the information provided. Requires a password change call afterwards."""
-    p = Popen(
-        f"""aws cognito-idp admin-create-user \
-            --user-pool-id "{userpool}" \
-            --username "{email}" \
-            --message-action "SUPPRESS" \
-            --user-attributes \
-                "Name=email,Value={email}" \
-                "Name=name,Value='{full_name}'" \
-                "Name=email_verified,Value=true" """,
-        stdin=PIPE,
-        stdout=PIPE,
-        stderr=PIPE,
-        shell=True,
+    Creates a new account with the information provided.
+    Requires a password change call afterwards."""
+
+    session = boto3.Session(profile_name=aws_profile)
+    cognito = session.client("cognito-idp")
+
+    cognito.admin_create_user(
+        UserPoolId=userpool,
+        Username=email,
+        MessageAction="SUPPRESS",
+        UserAttributes=[
+            {"Name": "email", "Value": email},
+            {"Name": "name", "Value": full_name},
+            {"Name": "email_verified", "Value": "true"},
+        ],
     )
-
-    output, error = p.communicate(input=b"\n")
-    if output:
-        print(output)
-
-    return error
 
 
 @click.command()
 @click.option(
+    "-e",
     "--email",
     required=True,
     help="User email for the account to change the password in production.",
 )
 @click.option(
+    "-P",
     "--password",
     required=True,
-    help="Password for the new account.",
+    help="New password for the account.",
 )
 @click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
+    "-u",
     "--userpool",
     required=True,
     help="Userpool of the account to change.",
 )
-def change_password(email, password, userpool):
+def change_password(email, password, aws_profile, userpool):
     print(
         "Changing password for %s to %s in user pool %s..."
         % (email, password, userpool)
     )
-    error = _change_password(email, password, userpool)
-    if error:
+
+    try:
+        _change_password(email, password, aws_profile, userpool)
+    except Exception as error:
         print("Error changing password: %s" % error)
 
 
-def _change_password(email, password, userpool):
-    p = Popen(
-        f"""aws cognito-idp admin-set-user-password \
-            --user-pool-id "{userpool}" \
-            --username "{email}" \
-            --password "{password}" \
-            --permanent""",
-        stdin=PIPE,
-        stdout=PIPE,
-        stderr=PIPE,
-        shell=True,
-    )
-    output, error = p.communicate(input=b"\n")
-    if output:
-        print(output)
+def _change_password(email, password, aws_profile, userpool):
+    session = boto3.Session(profile_name=aws_profile)
+    cognito = session.client("cognito-idp")
 
-    return error
+    cognito.admin_set_user_password(
+        UserPoolId=userpool, Username=email, Password=password, Permanent=True
+    )
 
 
 @click.command()
 @click.option(
+    "-e",
     "--email",
     required=True,
     help="User email for the account.",
 )
 @click.option(
+    "-n",
     "--full_name",
     required=True,
     help="The first and last name for the user. (e.g.: Arthur Dent)",
 )
 @click.option(
+    "-P",
     "--password",
     required=False,
     help="Password for the new account.",
 )
 @click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
+    "-u",
     "--userpool",
     required=True,
     help="Userpool to add the new account to.",
 )
-def create_user(full_name, email, password, userpool):
+def create_user(full_name, email, password, aws_profile, userpool):
     """
     Creates a new account with the provided password. The user will not receive any
     email and the account & email will be marked as verified.
@@ -138,23 +149,24 @@ def create_user(full_name, email, password, userpool):
         print(error)
         sys.exit(1)
 
-    error = _create_user(full_name, email, password, userpool)
+    error = _create_user(full_name, email, password, userpool, aws_profile)
     if error:
         print("Error creating user: %s" % error)
 
 
-def _create_user(full_name, email, password, userpool, overwrite=False):
-
+def _create_user(full_name, email, password, userpool, aws_profile, overwrite=False):
     # format full_name into title and email into lowercase
     full_name = full_name.title()
     email = email.lower()
 
-    error = create_account(full_name, email, userpool)
-    if error and not ("UsernameExistsException" in str(error) and overwrite):
+    try:
+        create_account(full_name, email, aws_profile, userpool)
+    except Exception as error:
         return error
 
-    error = _change_password(email, password, userpool)
-    if error:
+    try:
+        _change_password(email, password, aws_profile, userpool)
+    except Exception as error:
         return error
 
 
@@ -197,21 +209,37 @@ def _validate_input(email, full_name):
     help="Input environment to pull the data from.",
 )
 @click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
     "--overwrite",
     required=False,
     default=False,
     show_default=True,
     help="Overwrite password for existing user accounts.",
 )
-def create_users_list(user_list, header, input_env, overwrite):
+def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     """
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
     The first column should be the full_name in the format: first_name last_name
-    The second row should be the email.
+    The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
+    _create_users_list(user_list, header, input_env, aws_profile, overwrite)
 
+
+def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
+    if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
+        raise Exception(
+            "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
+            + " environment variables must be set!"
+        )
     userpool = None
     if input_env == PRODUCTION:
         userpool = COGNITO_PRODUCTION_POOL
@@ -221,7 +249,6 @@ def create_users_list(user_list, header, input_env, overwrite):
     with open(user_list + ".out", "w") as out:
         df = pd.read_csv(user_list, header=header, quoting=csv.QUOTE_ALL)
         for _, full_name, email in df.itertuples():
-
             full_name = full_name.title().strip()
             email = email.lower().strip()
 
@@ -232,20 +259,116 @@ def create_users_list(user_list, header, input_env, overwrite):
 
             password = generate_password()
 
-            error = _create_user(full_name, email, password, userpool, overwrite)
-            if error and not ("UsernameExistsException" in str(error) and overwrite):
-                out.write("%s,%s,Already have an account\n" % (full_name, email))
-                continue
+            error = _create_user(
+                full_name, email, password, userpool, aws_profile, overwrite
+            )
 
             if error:
-                print("Error creating user {email} with password {password}")
-                print(error)
-                sys.exit(1)
+                if "UsernameExistsException" in str(error) and overwrite:
+                    out.write("%s,%s,Already have an account\n" % (full_name, email))
+                    continue
+                else:
+                    print(f"Error creating user {email} with password {password}")
+                    print(error)
+                    sys.exit(1)
 
-            print("%s,%s,%s\n" % (full_name, email, password))
+            print("%s,%s,%s" % (full_name, email, password))
             out.write("%s,%s,%s\n" % (full_name, email, password))
+
+
+@click.command()
+@click.option(
+    "--user_list",
+    required=True,
+    help="Path to the user list csv file containing user"
+    + "and email for the new accounts.",
+)
+@click.option(
+    "--experiment_name",
+    required=True,
+    help="Experiment name to be created",
+)
+@click.option(
+    "--samples_path",
+    required=True,
+    help="Local path to the samples for upload",
+)
+@click.option(
+    "--instance_url",
+    required=False,
+    default="production",
+    help="URL of the cellenics api",
+)
+@click.option(
+    "-p",
+    "--aws_profile",
+    required=False,
+    default=DEFAULT_AWS_PROFILE,
+    show_default=True,
+    help="The name of the profile stored in ~/.aws/credentials to use.",
+)
+@click.option(
+    "--admin_email",
+    required=True,
+    help="admin email for cognito",
+)
+@click.option(
+    "--admin_password",
+    required=True,
+    help="admin password for cognito",
+)
+def create_process_experiment_list(
+    experiment_name,
+    user_list,
+    samples_path,
+    instance_url,
+    aws_profile,
+    admin_email,
+    admin_password,
+):
+    """
+    Creates users, using the user_list file.
+    Creates experiment, uploads samples and processes the projet
+    for each row in the user_list file.
+    The file should be in csv format.
+    The first column should be the full_name in the format: first_name last_name
+    The second column should be the email.
+    E.g.: Arthur Dent, arthur_dent@galaxy.gl
+    """
+
+    cognito_pool = COGNITO_PRODUCTION_POOL
+
+    # creating the users
+    print("Creating users from the csv file")
+    _create_users_list(user_list, None, "production", aws_profile, False)
+
+    session = boto3.Session(profile_name=aws_profile)
+    client = session.client("cognito-idp")
+    created_users = pd.read_csv(user_list + ".out", header=None, quoting=csv.QUOTE_ALL)
+
+    # creating the experiment and uploading samples
+    admin_connection = bpi.Connection(admin_email, admin_password, instance_url)
+
+    print("Creating and uploading samples for the experiment as admin")
+    experiment = admin_connection.create_experiment(experiment_name)
+
+    experiment.upload_samples(samples_path)
+    print("Cloning and running the experiment for each user")
+    for _, name, email, password in created_users.itertuples():
+        to_user_id = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
+            "Username"
+        ]
+        new_experiment = experiment.clone(to_user_id)
+        new_experiment.run()
+        print(
+            "Experiment ",
+            new_experiment,
+            " cloned and started processing for user ",
+            to_user_id,
+        )
 
 
 account.add_command(create_user)
 account.add_command(change_password)
 account.add_command(create_users_list)
+account.add_command(create_process_experiment_list)

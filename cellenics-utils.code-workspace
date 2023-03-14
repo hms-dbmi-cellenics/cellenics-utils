@@ -6,24 +6,26 @@
 	],
 	"settings": {
 		"[python]": {
-			"editor.formatOnPaste": true,
+			"editor.defaultFormatter": "ms-python.black-formatter",
 			"editor.formatOnSave": true,
+			"editor.formatOnPaste": true,
 			"editor.codeActionsOnSave": {
 				"source.organizeImports": true
-			}
-		},
+			},
+		  },
+		"isort.args":["--profile", "black"],
+
 		"python.pythonPath": "venv",
-		"python.sortImports.args": [
-			"-rc", // recursive on all files
-			"-sp isort.cfg" //points to isort config file
-		],
+
 		"python.formatting.provider": "black",
 		"python.linting.enabled": true,
 		"python.linting.pylintEnabled": false,
 		"python.linting.flake8Enabled": true,
 		"markdownlint.config": {
 			"default": true,
-			"MD003": { "style": "setext_with_atx" },
+			"MD003": {
+				"style": "setext_with_atx"
+			},
 		}
 	}
 }

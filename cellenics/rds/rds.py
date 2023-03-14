@@ -1,8 +1,8 @@
 import click
 
 from .run import run
-from .tunnel import tunnel
 from .token import token
+from .tunnel import tunnel
 
 
 @click.group()
