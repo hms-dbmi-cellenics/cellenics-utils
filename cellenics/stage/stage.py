@@ -193,7 +193,9 @@ def get_sandbox_id(templates, manifests, org, auto=False):
             if opts.ref != DEFAULT_BRANCH
         ]
     )
-    user_name = re.sub(r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", "")))
+    user_name = re.sub(
+        r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", ""))
+    )
 
     fragments = (
         user_name,
