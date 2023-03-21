@@ -478,7 +478,7 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo(
         click.style(
             "✔️ The deployment, when done, should be available at "
-            f"https://ui-{sandbox_id}.${staging_url}",
+            f"https://ui-{sandbox_id}.{staging_url}",
             fg="green",
             bold=True,
         )
