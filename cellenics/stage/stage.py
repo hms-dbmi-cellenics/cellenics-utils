@@ -361,6 +361,11 @@ def stage(token, org, deployments, with_rds, auto):
     Deploys a custom staging environment.
     """
 
+    if org == "hms-dbmi-cellenics":
+        staging_url = "staging.single-cell-platform.net"
+    elif org == "biomage-org":
+        staging_url = "scp-staging.biomage.net"
+
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
 
@@ -458,20 +463,20 @@ def stage(token, org, deployments, with_rds, auto):
     click.echo()
     click.echo(
         f"""\tflux reconcile helmrelease ui --namespace ui-{sandbox_id} \
---context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
         f"""\tflux reconcile helmrelease api --namespace api-{sandbox_id} \
---context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
         f"""\tflux reconcile helmrelease pipeline --namespace pipeline-{sandbox_id} \
---context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
         f"""\tflux reconcile helmrelease worker --namespace worker-{sandbox_id} \
---context arn:aws:eks:eu-west-1:242905224710:cluster/biomage-staging\n"""
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
     )
     click.echo()
 
     click.echo(
         click.style(
             "✔️ The deployment, when done, should be available at "
-            f"https://ui-{sandbox_id}.scp-staging.biomage.net/",
+            f"https://ui-{sandbox_id}.${staging_url}",
             fg="green",
             bold=True,
         )

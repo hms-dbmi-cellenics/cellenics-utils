@@ -16,7 +16,7 @@ CELLSETS = "cellsets"
 SAMPLE_MAPPING = "sample_mapping"
 
 SANDBOX_ID = "default"
-REGION = "eu-west-1"
+REGION = "us-east-1"
 USER = "dev_role"
 
 
