@@ -24,7 +24,6 @@ CELLSETS = "cellsets"
 SAMPLE_MAPPING = "sample_mapping"
 
 SANDBOX_ID = "default"
-REGION = "eu-west-1"
 USER = "dev_role"
 
 file_type_to_name_map = {
@@ -407,8 +406,10 @@ def download(
     -f samples -f cellsets -o output/folder
     """
 
+
     boto3_session = boto3.Session(profile_name=aws_profile)
     aws_account_id = boto3_session.client("sts").get_caller_identity().get("Account")
+    aws_region = boto3_session.region_name
 
     # Set output path
     # By default add experiment_id to the output path
@@ -437,7 +438,7 @@ def download(
                 sample_mapping' and '--name_with_id'"
             )
     else:
-        aurora_client = AuroraClient(SANDBOX_ID, USER, REGION, input_env, aws_profile)
+        aurora_client = AuroraClient(SANDBOX_ID, USER, aws_region, input_env, aws_profile)
         aurora_client.open_tunnel()
 
     for file in selected_files:
