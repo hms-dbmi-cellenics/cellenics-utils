@@ -406,7 +406,6 @@ def download(
     -f samples -f cellsets -o output/folder
     """
 
-
     boto3_session = boto3.Session(profile_name=aws_profile)
     aws_account_id = boto3_session.client("sts").get_caller_identity().get("Account")
     aws_region = boto3_session.region_name
