@@ -438,7 +438,9 @@ def download(
                 sample_mapping' and '--name_with_id'"
             )
     else:
-        aurora_client = AuroraClient(SANDBOX_ID, USER, aws_region, input_env, aws_profile)
+        aurora_client = AuroraClient(
+            SANDBOX_ID, USER, aws_region, input_env, aws_profile
+        )
         aurora_client.open_tunnel()
 
     for file in selected_files:
