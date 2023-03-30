@@ -1,5 +1,6 @@
 import click
 
+from .migrate import migrate
 from .run import run
 from .token import token
 from .tunnel import tunnel
@@ -16,3 +17,4 @@ def rds():
 rds.add_command(tunnel)
 rds.add_command(run)
 rds.add_command(token)
+rds.add_command(migrate)
