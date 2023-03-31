@@ -4,8 +4,7 @@ from pathlib import Path
 
 import click
 
-from ..rds.tunnel import close_tunnel as close_tunnel_cmd
-from ..rds.tunnel import open_tunnel as open_tunnel_cmd
+from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import DEFAULT_AWS_ACCOUNT_ID, DEVELOPMENT, STAGING
 
 IAC_PATH = os.getenv("BIOMAGE_IAC_PATH")
@@ -54,17 +53,16 @@ def migrate(iac_path, sandbox_id, input_env):
 
     if not IAC_PATH:
         raise Exception("BIOMAGE_IAC_PATH enviroment variable not set. Set BIOMAGE_IAC_PATH to the path of the IAC folder.")
-    
-    region = "eu-west-1"
-    aws_profile = "default"
-    aws_account_id = "000000000000"
-    local_port = 5431
+
+    REGION = "eu-west-1"
+    AWS_PROFILE = "default"
+    AWS_ACCOUNT_ID = "000000000000"
+    USER = "dev_role"
+    LOCAL_PORT = 5431
 
     if input_env == STAGING:
-        aws_account_id = DEFAULT_AWS_ACCOUNT_ID
-        local_port = 5432
-
-    
+        AWS_ACCOUNT_ID = DEFAULT_AWS_ACCOUNT_ID
+        LOCAL_PORT = 5432
 
     iac_path = os.path.join(iac_path, "migrations/sql-migrations/")
 
@@ -72,8 +70,8 @@ def migrate(iac_path, sandbox_id, input_env):
         **os.environ,
         "NODE_ENV": input_env,
         "SANDBOX_ID": str(sandbox_id),
-        "AWS_ACCOUNT_ID": aws_account_id,
-        "AWS_REGION": region
+        "AWS_ACCOUNT_ID": AWS_ACCOUNT_ID,
+        "AWS_REGION": REGION
     }
 
     if input_env == DEVELOPMENT:
@@ -83,9 +81,8 @@ def migrate(iac_path, sandbox_id, input_env):
             raise Exception("Migrating to staging but sandbox id is not set. Set sandbox id by setting the value of the the -s option.")
 
         try:
-            open_tunnel_cmd(input_env, region, sandbox_id, local_port, aws_profile)
-            _migrate(iac_path, migration_env)
-            close_tunnel_cmd()
+            with AuroraClient( sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT ):
+                _migrate(iac_path, migration_env)
 
         except Exception as e:
             print(
