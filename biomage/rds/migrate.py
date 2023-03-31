@@ -8,22 +8,19 @@ from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import DEFAULT_AWS_ACCOUNT_ID, DEVELOPMENT, STAGING
 
 # Assuming that biomage-utils and iac root folders are located in the same folder
-MODULE_PATH=os.path.dirname(os.path.abspath(__file__))
-DEFAULT_IAC_PATH=os.path.join(MODULE_PATH, "../../../iac")
+MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_IAC_PATH = os.path.join(MODULE_PATH, "../../../iac")
 IAC_PATH = os.getenv("BIOMAGE_IAC_PATH", DEFAULT_IAC_PATH)
+
 
 def _migrate(iac_path, migration_env):
     proc = subprocess.Popen(
-    [
-        "node_modules/.bin/knex",
-        "migrate:latest",
-        "--cwd",
-        iac_path
-    ],
+        ["node_modules/.bin/knex", "migrate:latest", "--cwd", iac_path],
         cwd=iac_path,
-        env=migration_env
+        env=migration_env,
     )
     proc.wait()
+
 
 @click.command()
 @click.option(
@@ -71,14 +68,16 @@ def migrate(iac_path, sandbox_id, input_env):
         "NODE_ENV": input_env,
         "SANDBOX_ID": str(sandbox_id),
         "AWS_ACCOUNT_ID": AWS_ACCOUNT_ID,
-        "AWS_REGION": REGION
+        "AWS_REGION": REGION,
     }
 
     if input_env == DEVELOPMENT:
         _migrate(iac_path, migration_env)
     else:
         if not sandbox_id:
-            raise Exception("Migrating to staging but sandbox id is not set. Set sandbox id by setting the value of the the -s option.")
+            raise Exception(
+                "Migrating to staging but sandbox id is not set. Set sandbox id by setting the value of the the -s option."
+            )
 
-        with AuroraClient( sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT ):
+        with AuroraClient(sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT):
             _migrate(iac_path, migration_env)
