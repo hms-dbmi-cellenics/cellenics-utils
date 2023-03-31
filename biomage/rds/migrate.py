@@ -1,6 +1,5 @@
 import os
 import subprocess
-from pathlib import Path
 
 import click
 
@@ -56,7 +55,7 @@ def _migrate(command, iac_path, migration_env):
 )
 def migrate(iac_path, sandbox_id, input_env, command):
     """
-    Runs knex migration command in local or staged env. Runs migrate:latest if no command is provided
+    Runs knex migration command (default to migrate:latest) in local or staged env.
 
     Examples.:\n
         biomage rds migrate -i staging -s <sandbox_id>\n
@@ -87,9 +86,7 @@ def migrate(iac_path, sandbox_id, input_env, command):
         _migrate(command, iac_path, migration_env)
     else:
         if not sandbox_id:
-            raise Exception(
-                "Migrating to staging but sandbox id is not set. Set sandbox id by setting the value of the the -s option."
-            )
+            raise Exception("""Migrating to staged env without sandbox id.""")
 
         with AuroraClient(sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT):
             _migrate(command, iac_path, migration_env)
