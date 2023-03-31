@@ -48,7 +48,7 @@ def _migrate(command, iac_path, migration_env):
     help="Path to the IAC folder",
 )
 @click.argument("command", required=False, nargs=-1)
-def migrate(iac_path, sandbox_id, input_env, command):
+def migrator(iac_path, sandbox_id, input_env, command):
     """
     Runs knex migration command (default to migrate:latest) in local or staged env.
 
