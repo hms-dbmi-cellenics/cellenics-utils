@@ -13,10 +13,7 @@ IAC_PATH = os.getenv("BIOMAGE_IAC_PATH", DEFAULT_IAC_PATH)
 
 
 def _migrate(command, iac_path, migration_env):
-
-    # Command might contain spaces (e.g. "migrate:rollback --all")
-    # This has to be split and added to the command array to be parsed corrrectly
-    knex_command = ["node_modules/.bin/knex", "--cwd", iac_path] + command.split(" ")
+    knex_command = ["node_modules/.bin/knex", "--cwd", iac_path] + list(command)
 
     proc = subprocess.Popen(
         knex_command,
@@ -50,21 +47,14 @@ def _migrate(command, iac_path, migration_env):
     show_default=True,
     help="Path to the IAC folder",
 )
-@click.option(
-    "-c",
-    "--command",
-    required=False,
-    default="migrate:latest",
-    show_default=True,
-    help="Knex command to execute",
-)
+@click.argument("command", required=False, nargs=-1)
 def migrate(iac_path, sandbox_id, input_env, command):
     """
     Runs knex migration command (default to migrate:latest) in local or staged env.
 
     Examples.:\n
         biomage rds migrate -i staging -s <sandbox_id>\n
-        biomage rds migrate -i staging -s <sandbox_id> -c "migrate:rollback --all"
+        biomage rds migrate -i staging -s <sandbox_id> -- migrate:rollback --all
     """
 
     REGION = "eu-west-1"
@@ -76,6 +66,10 @@ def migrate(iac_path, sandbox_id, input_env, command):
     if input_env == STAGING:
         AWS_ACCOUNT_ID = DEFAULT_AWS_ACCOUNT_ID
         LOCAL_PORT = 5432
+
+    # Empty command evaluates to
+    if not command:
+        command = "migrate:latest"
 
     iac_path = os.path.join(iac_path, "migrations/sql-migrations/")
 
