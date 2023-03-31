@@ -80,13 +80,5 @@ def migrate(iac_path, sandbox_id, input_env):
         if not sandbox_id:
             raise Exception("Migrating to staging but sandbox id is not set. Set sandbox id by setting the value of the the -s option.")
 
-        try:
-            with AuroraClient( sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT ):
-                _migrate(iac_path, migration_env)
-
-        except Exception as e:
-            print(
-                "\n"
-                "There was an error connecting to the db:\n"
-                f"{e}\n"
-            )
+        with AuroraClient( sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT ):
+            _migrate(iac_path, migration_env)
