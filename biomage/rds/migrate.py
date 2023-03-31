@@ -53,7 +53,7 @@ def migrate(iac_path, sandbox_id, input_env, command):
     Runs knex migration command (default to migrate:latest) in local or staged env.
 
     Examples.:\n
-        biomage rds migrate -i development -s <sandbox_id>\n
+        biomage rds migrate -i development\n
         biomage rds migrate -i staging -s <sandbox_id>\n
         biomage rds migrate -i staging -s <sandbox_id> -- migrate:rollback --all
     """
@@ -68,9 +68,9 @@ def migrate(iac_path, sandbox_id, input_env, command):
         AWS_ACCOUNT_ID = DEFAULT_AWS_ACCOUNT_ID
         LOCAL_PORT = 5432
 
-    # Empty command evaluates to
+    # Empty command evaluates to empty tuple
     if not command:
-        command = "migrate:latest"
+        command = ("migrate:latest",)
 
     iac_path = os.path.join(iac_path, "migrations/sql-migrations/")
 
