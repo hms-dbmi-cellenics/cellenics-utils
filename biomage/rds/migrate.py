@@ -13,9 +13,9 @@ DEFAULT_IAC_PATH = os.path.join(MODULE_PATH, "../../../iac")
 IAC_PATH = os.getenv("BIOMAGE_IAC_PATH", DEFAULT_IAC_PATH)
 
 
-def _migrate(iac_path, migration_env):
+def _migrate(command, iac_path, migration_env):
     proc = subprocess.Popen(
-        ["node_modules/.bin/knex", "migrate:latest", "--cwd", iac_path],
+        ["node_modules/.bin/knex", command, "--cwd", iac_path],
         cwd=iac_path,
         env=migration_env,
     )
@@ -46,9 +46,21 @@ def _migrate(iac_path, migration_env):
     show_default=True,
     help="Path to the IAC folder",
 )
-def migrate(iac_path, sandbox_id, input_env):
+@click.option(
+    "-c",
+    "--command",
+    required=False,
+    default="migrate:latest",
+    show_default=True,
+    help="Knex command to execute",
+)
+def migrate(iac_path, sandbox_id, input_env, command):
     """
-    Migrate database in environment
+    Runs knex migration command in local or staged env. Runs migrate:latest if no command is provided
+
+    Examples.:\n
+        biomage rds migrate -i staging -s <sandbox_id>\n
+        biomage rds migrate -i staging -s <sandbox_id> -c migrate:rollback
     """
 
     REGION = "eu-west-1"
@@ -72,7 +84,7 @@ def migrate(iac_path, sandbox_id, input_env):
     }
 
     if input_env == DEVELOPMENT:
-        _migrate(iac_path, migration_env)
+        _migrate(command, iac_path, migration_env)
     else:
         if not sandbox_id:
             raise Exception(
@@ -80,4 +92,4 @@ def migrate(iac_path, sandbox_id, input_env):
             )
 
         with AuroraClient(sandbox_id, USER, REGION, input_env, AWS_PROFILE, LOCAL_PORT):
-            _migrate(iac_path, migration_env)
+            _migrate(command, iac_path, migration_env)
