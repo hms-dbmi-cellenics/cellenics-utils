@@ -7,7 +7,10 @@ import click
 from ..utils.AuroraClient import AuroraClient
 from ..utils.constants import DEFAULT_AWS_ACCOUNT_ID, DEVELOPMENT, STAGING
 
-IAC_PATH = os.getenv("BIOMAGE_IAC_PATH")
+# Assuming that biomage-utils and iac root folders are located in the same folder
+MODULE_PATH=os.path.dirname(os.path.abspath(__file__))
+DEFAULT_IAC_PATH=os.path.join(MODULE_PATH, "../../../iac")
+IAC_PATH = os.getenv("BIOMAGE_IAC_PATH", DEFAULT_IAC_PATH)
 
 def _migrate(iac_path, migration_env):
     proc = subprocess.Popen(
@@ -50,9 +53,6 @@ def migrate(iac_path, sandbox_id, input_env):
     """
     Migrate database in environment
     """
-
-    if not IAC_PATH:
-        raise Exception("BIOMAGE_IAC_PATH enviroment variable not set. Set BIOMAGE_IAC_PATH to the path of the IAC folder.")
 
     REGION = "eu-west-1"
     AWS_PROFILE = "default"
