@@ -13,8 +13,13 @@ IAC_PATH = os.getenv("BIOMAGE_IAC_PATH", DEFAULT_IAC_PATH)
 
 
 def _migrate(command, iac_path, migration_env):
+
+    # Command might contain spaces (e.g. "migrate:rollback --all")
+    # This has to be split and added to the command array to be parsed corrrectly
+    knex_command = ["node_modules/.bin/knex", "--cwd", iac_path] + command.split(" ")
+
     proc = subprocess.Popen(
-        ["node_modules/.bin/knex", command, "--cwd", iac_path],
+        knex_command,
         cwd=iac_path,
         env=migration_env,
     )
@@ -59,7 +64,7 @@ def migrate(iac_path, sandbox_id, input_env, command):
 
     Examples.:\n
         biomage rds migrate -i staging -s <sandbox_id>\n
-        biomage rds migrate -i staging -s <sandbox_id> -c migrate:rollback
+        biomage rds migrate -i staging -s <sandbox_id> -c "migrate:rollback --all"
     """
 
     REGION = "eu-west-1"
