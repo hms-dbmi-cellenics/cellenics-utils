@@ -53,6 +53,7 @@ def migrate(iac_path, sandbox_id, input_env, command):
     Runs knex migration command (default to migrate:latest) in local or staged env.
 
     Examples.:\n
+        biomage rds migrate -i development -s <sandbox_id>\n
         biomage rds migrate -i staging -s <sandbox_id>\n
         biomage rds migrate -i staging -s <sandbox_id> -- migrate:rollback --all
     """
