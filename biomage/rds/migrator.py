@@ -54,7 +54,7 @@ def migrator(iac_path, sandbox_id, input_env, command):
 
     Examples.:\n
         biomage rds migrate\n
-        biomage rds migrate migrate:down\n
+        biomage rds migrate -- migrate:down\n
         biomage rds migrate -i staging -s <sandbox_id>\n
         biomage rds migrate -i staging -s <sandbox_id> -- migrate:rollback --all
     """
