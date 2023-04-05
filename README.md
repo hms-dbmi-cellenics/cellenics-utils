@@ -55,6 +55,7 @@ then simply do:
 
 *  `COGNITO_PRODUCTION_POOL` and `COGNITO_STAGING_POOL`: The Cognito pool ids used for user account administration. It is recommended to set this interactively. For example, run `export COGNITO_PRODUCTION_POOL=eu-west-1_BLAH` before running `biomage account ...`.
 
+*  `BIOMAGE_IAC_PATH`: Absolute path to the root folder of the IAC repostory in your local machine. This variable is used in the `biomage rds migrate` command. If not set, by default the command assumes that the `biomage-utils` folder is located in the same directory as the `iac` directory.
 
 Utilities
 ---------
