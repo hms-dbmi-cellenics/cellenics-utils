@@ -214,4 +214,4 @@ Example: Migrate database in staged environment
 Example: Rollback all migrations in staged environment
     biomage rds migrator -i staging -s <sandbox_id> -- migrate:rollback --all
 
-See `biomage rds migrate --help` for more details.
+See `biomage rds migrator --help` for more details.
