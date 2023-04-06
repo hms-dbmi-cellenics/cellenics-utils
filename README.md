@@ -55,6 +55,7 @@ then simply do:
 
 *  `COGNITO_PRODUCTION_POOL` and `COGNITO_STAGING_POOL`: The Cognito pool ids used for user account administration. It is recommended to set this interactively. For example, run `export COGNITO_PRODUCTION_POOL=eu-west-1_BLAH` before running `biomage account ...`.
 
+*  `BIOMAGE_IAC_PATH`: Absolute path to the root folder of the IAC repostory in your local machine. This variable is used in the `biomage rds migrate` command. If not set, by default the command assumes that the `biomage-utils` folder is located in the same directory as the `iac` directory.
 
 Utilities
 ---------
@@ -197,3 +198,21 @@ Example: dump the in staging
     biomage rds run psql
 
 See `biomage rds run --help` for more details.
+
+#### rds migrator
+
+Run Knex migration commands for development and staged environments.
+
+Example: Migrate development database (inframock must be running)
+    biomage rds migrator
+
+Example: Undo last migration in development (inframock must be running)
+    biomage rds migrator -- migrate:down
+
+Example: Migrate database in staged environment
+    biomage rds migrator -i staging -s <sandbox_id>
+
+Example: Rollback all migrations in staged environment
+    biomage rds migrator -i staging -s <sandbox_id> -- migrate:rollback --all
+
+See `biomage rds migrator --help` for more details.

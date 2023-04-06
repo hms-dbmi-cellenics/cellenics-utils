@@ -82,6 +82,7 @@ test: ## Tests that biomage cmd & subcommand are available
 	biomage rds run --help > /dev/null
 	biomage rds token --help > /dev/null
 	biomage rds tunnel --help > /dev/null
+	biomage rds migrator --help > /dev/null
 	@echo "    [✓]"
 	@echo
 
