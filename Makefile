@@ -24,6 +24,7 @@ install: clean ## Creates venv, and adds cellenics as system command
 	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
 	@venv/bin/pip install -e .
+	@venv/bin/pip install -e ../programmatic_interface/
 	@sudo ln -sf '$(CURDIR)/venv/bin/cellenics' $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
