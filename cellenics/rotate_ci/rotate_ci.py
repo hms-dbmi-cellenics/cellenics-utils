@@ -8,6 +8,8 @@ import click
 import requests
 from botocore.config import Config
 from github import Github
+from inquirer import Confirm, prompt
+from inquirer.themes import GreenPassion
 
 from ..utils.encrypt import encrypt
 
@@ -192,7 +194,6 @@ def rollback_if_necessary(iam, keys, result_codes):
         "{0:<15}{1:<25}{2:<15}".format("REPOSITORY", "UPDATE STATUS (HTTP)", "STATUS")
     )
     for repo, code in result_codes.items():
-
         status = None
         username = f"ci-user-{repo}"
         generated_key_id, _ = keys[repo]
@@ -225,11 +226,13 @@ def rollback_if_necessary(iam, keys, result_codes):
 
     return success
 
+
 def exclude_iac_from_rotation(repos, org_name):
     warning_message = """
         This script WILL NOT rotate any secrets in the iac repository.
-        If you want to rotate secrets in the iac repository, you will need to do that either manually,
-        or by adjusting this script to fit the environment structure of the secrets in iac.
+        If you want to rotate secrets in the iac repository, you will need to do that
+        either manually, or by adjusting this script to fit the environment structure
+        of the secrets in iac.
     """
     click.echo(click.style("WARNING: " + warning_message, fg="yellow"))
     repos_without_iac = []
@@ -237,6 +240,7 @@ def exclude_iac_from_rotation(repos, org_name):
         if repo.full_name != f"{org_name}/iac":
             repos_without_iac.append(repo)
     return repos_without_iac
+
 
 @click.command()
 @click.option(
@@ -272,10 +276,24 @@ def rotate_ci(token, org):
     repos = exclude_iac_from_rotation(repos, org.login)
 
     policies = [ret for ret in (filter_iam_repos(repo) for repo in repos) if ret]
-    click.echo(
-        f"Found {len(policies)} repositories marked as requiring CI IAM policies."
-    )
     policies = dict(policies)
+
+    click.echo(
+        f"Found {len(policies.keys())} repositories marked as requiring CI IAM "
+        f"policies.\nThese are: {', '.join(policies.keys())}"
+    )
+
+    questions = [
+        Confirm(
+            name="create",
+            message="Are you sure you want to rotate ci for these repositories?",
+            default=False,
+        )
+    ]
+    click.echo()
+    answer = prompt(questions, theme=GreenPassion())
+    if not answer["create"]:
+        exit(1)
 
     iam = boto3.client("iam", config=config)
     create_new_iam_users(policies)

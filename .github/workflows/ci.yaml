@@ -3,6 +3,17 @@ on:
   push:
     branches:
       - master
+  release:
+    types:
+      - released
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test cellenics-utils
@@ -10,10 +21,28 @@ jobs:
     steps:
     - id: checkout
       name: Check out source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - id: test
-      name: Run tests
-      run: |-
-        make install
-        make test
+    - name: Set up Python environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - id: black
+      name: Black code formatter
+      uses: psf/black@stable
+
+    - id: flake8
+      name: Use flake8 linting
+      uses: py-actions/flake8@v2
+
+    - uses: jamescurtin/isort-action@master
+      with:
+        configuration: "--profile=black"
+
+    # - id: test
+    #   name: Run tests
+    #   run: |-
+    #     make install
+    #     make test

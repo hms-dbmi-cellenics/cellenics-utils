@@ -24,6 +24,7 @@ install: clean ## Creates venv, and adds cellenics as system command
 	@echo "==> Installing utility and dependencies..."
 	@venv/bin/pip install --upgrade pip
 	@venv/bin/pip install -e .
+	@venv/bin/pip install -e ../programmatic_interface/
 	@sudo ln -sf '$(CURDIR)/venv/bin/cellenics' $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
@@ -32,7 +33,7 @@ uninstall: clean ## Uninstalls utility and destroys venv
 	@echo "==> Uninstalling utility and dependencies..."
 	@venv/bin/pip uninstall -y cellenics-utils
 	@rm -rf venv/
-	@sudo rm -f $(ENTRY_POINT)
+	@rm -f $(ENTRY_POINT)
 	@echo "    [✓]"
 	@echo
 
@@ -45,7 +46,7 @@ develop: ## Installs development dependencies
 fmt: develop ## Formats python files
 	@echo "==> Formatting files..."
 	@venv/bin/black cellenics/
-	@venv/bin/isort --sp isort.cfg cellenics/
+	@venv/bin/isort --profile=black cellenics/
 	@echo "    [✓]"
 	@echo
 
@@ -70,6 +71,8 @@ test: ## Tests that cellenics cmd & subcommand are available
 
 	cellenics experiment --help > /dev/null
 	cellenics experiment download --help > /dev/null
+	cellenics experiment upload --help > /dev/null
+	cellenics experiment info --help > /dev/null
 
 	cellenics account --help > /dev/null
 	cellenics account change-password --help > /dev/null

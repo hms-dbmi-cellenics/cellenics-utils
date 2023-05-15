@@ -9,11 +9,12 @@ from functools import reduce
 import anybase32
 import boto3
 import click
-import random_name
 import requests
-import yaml
 from github import Github
-from PyInquirer import prompt
+from inquirer import Checkbox, Confirm, Text, prompt
+from inquirer.themes import GreenPassion
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 
 from ..utils.staging import check_if_sandbox_exists
 
@@ -27,43 +28,34 @@ def recursive_get(d, *keys):
 
 
 def get_manifests(templates, pins, token, repo_to_ref):
+    yaml = YAML()
     manifests = []
 
-    # Open each template and iterate through the documents. If we
-    # find a `fluxcd.io/automated` annotation, set it to the appropriate
-    # value depending on the pinning request.
+    # Open each template and iterate through the documents.
     for name, template in templates.items():
-        documents = yaml.load_all(template.text, Loader=yaml.SafeLoader)
-
+        documents = yaml.load_all(template.text)
         for document in documents:
-            # disable automatic image fetching if pinning is on
-            if recursive_get(
-                document, "metadata", "annotations", "fluxcd.io/automated"
-            ):
-                document["metadata"]["annotations"]["fluxcd.io/automated"] = str(
-                    name not in pins
-                ).lower()
+            if name in pins:
+                # pin chart version if pinning is on
+                if document.get("kind") == "ImageUpdateAutomation":
+                    document["spec"]["suspend"] = True
 
-            # pin chart version if pinning is on
-            if recursive_get(document, "spec", "chart", "ref"):
-                if name in pins:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
+                if document.get("kind") == "GitRepository":
+                    # Remove branch from ref, and use commit instead
+                    del document["spec"]["ref"]["branch"]
+
+                    document["spec"]["ref"]["commit"] = get_branch_ref(
+                        document["spec"]["url"],
                         token,
                         repo_to_ref=repo_to_ref,
                         return_sha=True,
                     )
-                else:
-                    document["spec"]["chart"]["ref"] = get_branch_ref(
-                        document["spec"]["chart"],
-                        token,
-                        repo_to_ref=repo_to_ref,
-                        return_sha=False,
-                    )
 
             manifests.append(document)
 
-    manifests = yaml.dump_all(manifests)
+    stream = StringIO()
+    yaml.dump_all(manifests, stream)
+    manifests = stream.getvalue()
 
     return manifests
 
@@ -72,12 +64,10 @@ def download_templates(org, repo, ref):
     # If no pull request ID was specified in the command.
     if isinstance(ref, int):
         template = f"refs-pull-{ref}-merge.yaml"
-    elif isinstance(ref, str):
-        template = f"refs-heads-{ref}.yaml"
     elif not ref:
         template = f"refs-heads-{DEFAULT_BRANCH}.yaml"
     else:
-        raise Exception("Ref must be integer, string, or None.")
+        raise Exception("Ref must be integer or None.")
 
     url = (
         f"https://raw.githubusercontent.com/{org}/releases/master/"
@@ -152,7 +142,7 @@ def compile_requirements(org, deployments):
     return templates, repo_to_ref
 
 
-def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
+def get_branch_ref(chart_url, token, repo_to_ref=None, return_sha=False):
     """
     Get a reference to a branch given the chart information (git, path, ref)
     supplied.
@@ -169,26 +159,16 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
 
     # A `git` reference can be https://github.com/hms-dbmi-cellenics/releases
     # Here we extract the repository and organization from the string.
-    path = chart["git"].split(":")
+    path = chart_url.split(":")
     org, repo_name = path[1].split("/")[-2:]
 
     g = Github(token)
     org = g.get_organization(org)
     repo = org.get_repo(repo_name)
 
-    # We set the reference here according to the chart repo, not the repo
-    # to be released to avoid pointing to invalid references for repos whose
-    # charts are in IAC.
-    ref = None
-    if repo_name in repo_to_ref:
-        ref = repo_to_ref[repo_name]
-
-    if isinstance(ref, int):
-        target_branch = f"refs/pull/{ref}/head"
-    elif isinstance(ref, str):
-        target_branch = f"refs/heads/{ref}"
-    else:
-        target_branch = f"refs/heads/{repo.default_branch}"
+    # Here we check if the PR to get is designated when creating the staging environment
+    if not isinstance(repo_to_ref.get(repo_name), int):
+        target_branch = repo.default_branch
 
     # if no specific reference was specified (e.g. `api` instead of `api/22`)
     # and no SHA was requested, return the name of the branch
@@ -196,7 +176,7 @@ def get_branch_ref(chart, token, repo_to_ref=None, return_sha=False):
         return target_branch
 
     for ref in repo.get_git_refs():
-        if ref.ref == target_branch:
+        if ref.ref == f"refs/heads/{target_branch}":
             return ref.object.sha
 
     raise Exception("Invalid repository supplied.")
@@ -213,7 +193,9 @@ def get_sandbox_id(templates, manifests, org, auto=False):
             if opts.ref != DEFAULT_BRANCH
         ]
     )
-    user_name = re.sub(r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", "")))
+    user_name = re.sub(
+        r"[^\w\s]", "", os.getenv("CELLENICS_NICK", os.getenv("USER", ""))
+    )
 
     fragments = (
         user_name,
@@ -239,17 +221,16 @@ def get_sandbox_id(templates, manifests, org, auto=False):
     )
     while True:
         questions = [
-            {
-                "type": "input",
-                "name": "sandbox_id",
-                "message": "Provide an ID:",
-                "default": sandbox_id,
-            }
+            Text(
+                name="sandbox_id",
+                message="Provide an ID:",
+                default=sandbox_id,
+            )
         ]
 
         click.echo()
-        sandbox_id = prompt(questions)
-        sandbox_id = sandbox_id["sandbox_id"]
+        answer = prompt(questions, theme=GreenPassion())
+        sandbox_id = answer["sandbox_id"]
 
         if len(sandbox_id) > 26:
             click.echo(click.style("Sandbox ID is more than 26 characters.", fg="red"))
@@ -266,8 +247,18 @@ def get_sandbox_id(templates, manifests, org, auto=False):
         return sandbox_id
 
 
-def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=False):
+def get_pr_number(deployments, repo_name):
+    pr = [pr for pr in deployments if repo_name in pr]
 
+    # pr with repo_name is not staged
+    if not len(pr):
+        return None
+
+    # The pr string has format "api/123"
+    return pr[0].split("/")[1]
+
+
+def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=False):
     # autopin the repos on the default branch
     if auto:
         pins = [
@@ -294,19 +285,20 @@ def create_manifest(templates, token, org, repo_to_ref, auto=False, with_rds=Fal
             "likely to be testing (e.g. pull requests) are not.",
         )
         questions = [
-            {
-                "type": "checkbox",
-                "name": "pins",
-                "message": "Which deployments would you like to pin?",
-                "choices": [
-                    {"name": name, "checked": props.ref == DEFAULT_BRANCH}
+            Checkbox(
+                name="pins",
+                message="Which deployments would you like to pin?",
+                choices=list(name for name in templates.keys()),
+                default=list(
+                    name
                     for name, props in templates.items()
-                ],
-            }
+                    if props.ref == DEFAULT_BRANCH
+                ),
+            )
         ]
 
         click.echo()
-        answer = prompt(questions)
+        answer = prompt(questions, theme=GreenPassion())
         pins = set(answer["pins"])
 
     if len(pins) > 0:
@@ -371,10 +363,10 @@ def stage(token, org, deployments, with_rds, auto):
     Deploys a custom staging environment.
     """
 
-    if org == 'hms-dbmi-cellenics':
-        staging_url = 'staging.single-cell-platform.net'
-    elif org == 'biomage-org':
-        staging_url = 'scp-staging.biomage.net'
+    if org == "hms-dbmi-cellenics":
+        staging_url = "staging.single-cell-platform.net"
+    elif org == "biomage-org":
+        staging_url = "scp-staging.biomage.net"
 
     # generate templats
     templates, repo_to_ref = compile_requirements(org, deployments)
@@ -411,16 +403,15 @@ def stage(token, org, deployments, with_rds, auto):
 
     if not auto:
         questions = [
-            {
-                "type": "confirm",
-                "name": "create",
-                "message": "Are you sure you want to create this deployment?",
-                "default": False,
-            }
+            Confirm(
+                name="create",
+                message="Are you sure you want to create this deployment?",
+                default=False,
+            )
         ]
         click.echo()
-        answers = prompt(questions)
-        if not answers["create"]:
+        answer = prompt(questions, theme=GreenPassion())
+        if not answer["create"]:
             exit(1)
 
     g = Github(token)
@@ -442,6 +433,7 @@ def stage(token, org, deployments, with_rds, auto):
             # Convert stage_rds to string because Github has issues with boolean inputs
             # https://github.com/actions/runner/issues/1483
             "with-rds": str(with_rds),
+            "pipeline-pr": get_pr_number(deployments, "pipeline") or "",
             "secrets": secrets,
         },
     )
@@ -463,8 +455,8 @@ def stage(token, org, deployments, with_rds, auto):
         click.style(
             "✔️ Deployment submitted. You can check your progress at "
             f"https://github.com/{org}/iac/actions. When the deployment is done"
-            " run the following command to trigger flux synchronization and "
-            " speed up the process:",
+            " you will have to run the following command for each of the repositories "
+            " to trigger flux synchronization and speed up the process:",
             fg="green",
             bold=True,
         )
@@ -472,8 +464,14 @@ def stage(token, org, deployments, with_rds, auto):
 
     click.echo()
     click.echo(
-        "\tfluxctl sync --k8s-fwd-ns flux --context arn:aws:eks:eu-west-1:"
-        "242905224710:cluster/biomage-staging",
+        f"""\tflux reconcile helmrelease ui --namespace ui-{sandbox_id} \
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease api --namespace api-{sandbox_id} \
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease pipeline --namespace pipeline-{sandbox_id} \
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
+        f"""\tflux reconcile helmrelease worker --namespace worker-{sandbox_id} \
+--context arn:aws:eks:us-east-1:160782110667:cluster/biomage-staging\n"""
     )
     click.echo()
 

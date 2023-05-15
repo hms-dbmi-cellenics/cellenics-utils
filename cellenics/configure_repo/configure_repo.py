@@ -1,7 +1,8 @@
 import click
 from github import Github
 from github.GithubException import UnknownObjectException
-from PyInquirer import prompt
+from inquirer import Confirm, prompt
+from inquirer.themes import GreenPassion
 
 
 def configure(r, token):
@@ -69,17 +70,16 @@ def configure_repo(name, token, create, org):
             click.echo(f"Repository {name} does not exist, creating...")
         else:
             questions = [
-                {
-                    "type": "confirm",
-                    "name": "create",
-                    "message": f"Repository {name} does not exist. "
-                    "Do you want to create it?",
-                }
+                Confirm(
+                    name="create",
+                    message=f"""Repository {name} does not exist.
+                    Do you want to create it?""",
+                )
             ]
 
-            answers = prompt(questions)
+            answer = prompt(questions, theme=GreenPassion())
 
-            if not answers["create"]:
+            if not answer["create"]:
                 exit(1)
 
         r = o.create_repo(name)
