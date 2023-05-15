@@ -197,3 +197,21 @@ Example: dump the in staging
     cellenics rds run psql
 
 See `cellenics rds run --help` for more details.
+
+#### rds migrator
+
+Run Knex migration commands for development and staged environments.
+
+Example: Migrate development database (inframock must be running)
+    cellenics rds migrator
+
+Example: Undo last migration in development (inframock must be running)
+    cellenics rds migrator -- migrate:down
+
+Example: Migrate database in staged environment
+    cellenics rds migrator -i staging -s <sandbox_id>
+
+Example: Rollback all migrations in staged environment
+    cellenics rds migrator -i staging -s <sandbox_id> -- migrate:rollback --all
+
+See `cellenics rds migrator --help` for more details.

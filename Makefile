@@ -83,6 +83,7 @@ test: ## Tests that cellenics cmd & subcommand are available
 	cellenics rds run --help > /dev/null
 	cellenics rds token --help > /dev/null
 	cellenics rds tunnel --help > /dev/null
+	cellenics rds migrator --help > /dev/null
 	@echo "    [✓]"
 	@echo
 

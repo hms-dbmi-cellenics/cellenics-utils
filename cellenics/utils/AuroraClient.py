@@ -134,13 +134,11 @@ class AuroraClient:
         self.close_tunnel()
 
     def open_tunnel(self):
-        if self.local_port is not None:
-            return
-
-        free_port = _find_free_port()
-        if free_port is None:
-            raise Exception("No free port between 5432 and 6000")
-        self.local_port = free_port
+        if self.local_port is None:
+            free_port = _find_free_port()
+            if free_port is None:
+                raise Exception("No free port between 5432 and 6000")
+            self.local_port = free_port
 
         open_tunnel_cmd(
             self.env, self.region, self.sandbox_id, self.local_port, self.aws_profile
