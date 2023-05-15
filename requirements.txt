@@ -3,7 +3,7 @@ blessed==1.19.1
 boto3==1.17.93
 botocore==1.20.93
 backoff==2.2.1
-certifi==2021.10.8
+certifi==2022.12.7
 cffi==1.15.0
 cfn-flip==1.2.3
 chardet==4.0.0
