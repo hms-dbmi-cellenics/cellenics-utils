@@ -154,7 +154,7 @@ def create_user(full_name, email, password, aws_profile, userpool):
         print("Error creating user: %s" % error)
 
 
-def _create_user(full_name, email, password, userpool, aws_profile, overwrite=False):
+def _create_user(full_name, email, password, userpool, aws_profile):
     # format full_name into title and email into lowercase
     full_name = full_name.title()
     email = email.lower()
@@ -217,13 +217,13 @@ def _validate_input(email, full_name):
     help="The name of the profile stored in ~/.aws/credentials to use.",
 )
 @click.option(
-    "--overwrite",
+    "--allow_exists",
     required=False,
     default=False,
     show_default=True,
-    help="Overwrite password for existing user accounts.",
+    help="if False, will throw error if account already exists.",
 )
-def create_users_list(user_list, header, input_env, aws_profile, overwrite):
+def create_users_list(user_list, header, input_env, aws_profile, allow_exists):
     """
     Creates a new account for each row in the user_list file.
     The file should be in csv format.
@@ -231,10 +231,10 @@ def create_users_list(user_list, header, input_env, aws_profile, overwrite):
     The second column should be the email.
     E.g.: Arthur Dent,arthur_dent@galaxy.gl
     """
-    _create_users_list(user_list, header, input_env, aws_profile, overwrite)
+    _create_users_list(user_list, header, input_env, aws_profile, allow_exists)
 
 
-def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
+def _create_users_list(user_list, header, input_env, aws_profile, allow_exists):
     if not COGNITO_STAGING_POOL and not COGNITO_PRODUCTION_POOL:
         raise Exception(
             "COGNITO_STAGING_POOL or COGNITO_PRODUCTION_POOL"
@@ -259,12 +259,10 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
 
             password = generate_password()
 
-            error = _create_user(
-                full_name, email, password, userpool, aws_profile, overwrite
-            )
+            error = _create_user(full_name, email, password, userpool, aws_profile)
 
             if error:
-                if "UsernameExistsException" in str(error) and overwrite:
+                if "UsernameExistsException" in str(error) and allow_exists:
                     out.write("%s,%s,Already have an account\n" % (full_name, email))
                     continue
                 else:
@@ -317,6 +315,13 @@ def _create_users_list(user_list, header, input_env, aws_profile, overwrite):
     required=True,
     help="admin password for cognito",
 )
+@click.option(
+    "--allow_exists",
+    required=False,
+    default=False,
+    show_default=True,
+    help="if False, will throw error if account already exists.",
+)
 def create_process_experiment_list(
     experiment_name,
     user_list,
@@ -325,6 +330,7 @@ def create_process_experiment_list(
     aws_profile,
     admin_email,
     admin_password,
+    allow_exists,
 ):
     """
     Creates users, using the user_list file.
@@ -340,7 +346,7 @@ def create_process_experiment_list(
 
     # creating the users
     print("Creating users from the csv file")
-    _create_users_list(user_list, None, "production", aws_profile, False)
+    _create_users_list(user_list, None, "production", aws_profile, allow_exists)
 
     session = boto3.Session(profile_name=aws_profile)
     client = session.client("cognito-idp")
@@ -351,8 +357,8 @@ def create_process_experiment_list(
 
     print("Creating and uploading samples for the experiment as admin")
     experiment = admin_connection.create_experiment(experiment_name)
-
     experiment.upload_samples(samples_path)
+
     print("Cloning and running the experiment for each user")
     for _, name, email, password in created_users.itertuples():
         to_user_id = client.admin_get_user(UserPoolId=cognito_pool, Username=email)[
