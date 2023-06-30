@@ -4,6 +4,7 @@ STAGING = "staging"
 PRODUCTION = "production"
 
 DEFAULT_AWS_PROFILE = "default"
+DEFAULT_AWS_ACCOUNT_ID = "160782110667"
 
 # S3 Bucket names
 SAMPLES_BUCKET = "biomage-originals"
