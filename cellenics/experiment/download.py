@@ -31,6 +31,7 @@ file_type_to_name_map = {
     "matrix10x": "matrix.mtx.gz",
     "barcodes10x": "barcodes.tsv.gz",
     "rhapsody": "Expression_Data.gz",
+    "seurat": "r.rds",
 }
 
 DATA_LOCATION = os.getenv("CELLENICS_DATA_PATH", "./data")
