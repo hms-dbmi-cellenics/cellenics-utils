@@ -30,7 +30,7 @@ ENDPOINT_TYPE = "writer"
     "-r",
     "--region",
     required=False,
-    default="eu-west-1",
+    default="us-east-1",
     show_default=True,
     help="Region the RDS server is in.",
 )

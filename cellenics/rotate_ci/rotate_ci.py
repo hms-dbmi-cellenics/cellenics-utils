@@ -14,7 +14,7 @@ from inquirer.themes import GreenPassion
 from ..utils.encrypt import encrypt
 
 config = Config(
-    region_name="eu-west-1",
+    region_name="us-east-1",
 )
 
 

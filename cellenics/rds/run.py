@@ -33,7 +33,7 @@ from ..utils.constants import DEFAULT_AWS_PROFILE, STAGING
     "-r",
     "--region",
     required=False,
-    default="eu-west-1",
+    default="us-east-1",
     show_default=True,
     help="Region the RDS server is in.",
 )
